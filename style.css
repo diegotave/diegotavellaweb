@@ -1,0 +1,79 @@
+/* ── RESET ───────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  transition: background 300ms ease, color 300ms ease;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+}
+
+/* ── VARIABLES ───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Colores — placeholder hasta definir paleta con Diego */
+  --bg:        #0a0a0a;
+  --fg:        #f0f0f0;
+  --accent:    #f0f0f0;   /* se reemplaza cuando llega el diseño */
+  --muted:     #555;
+  --border:    #222;
+
+  /* Tipografía — placeholder */
+  --font-body:    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  /* Espaciado base */
+  --gap:    clamp(12px, 2vw, 32px);
+  --pad-x:  clamp(16px, 4vw, 80px);
+  --pad-y:  clamp(16px, 3vh, 48px);
+
+  /* Cloudflare R2 base URL */
+  --r2: "https://pub-4ad247018d50485fa0850c9164489c59.r2.dev";
+}
+
+/* ── STAGE ───────────────────────────────────────────────────────────────── */
+
+#stage {
+  position: relative;
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── UTILIDADES ──────────────────────────────────────────────────────────── */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+}
