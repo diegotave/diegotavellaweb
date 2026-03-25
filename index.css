@@ -1,8 +1,6 @@
 /* ── INDEX — HOME ────────────────────────────────────────────────────────── */
 
-body {
-  background: #000;
-}
+body { background: #ffffff; }
 
 #stage {
   align-items: center;
@@ -10,138 +8,27 @@ body {
   min-height: 100vh;
 }
 
-/* ── LOGO CONTAINER — marco exterior con corchetes ───────────────────────── */
-
 #logo-container {
-  position: relative;
-  width: clamp(300px, 70vw, 1050px);
-  /* ratio del diseño original: aprox 1390 × 960 */
-  aspect-ratio: 1390 / 960;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* ── CORCHETES DE ESQUINA ────────────────────────────────────────────────── */
-/* Grosor y tamaño sacados del PNG */
-
-.corner {
-  position: absolute;
-  width:  clamp(22px, 5vw, 72px);
-  height: clamp(22px, 5vw, 72px);
-  --t: clamp(3px, 0.5vw, 7px);
-}
-
-.corner.tl { top: 0;    left: 0;
-  border-top:    var(--t) solid #fff;
-  border-left:   var(--t) solid #fff; }
-.corner.tr { top: 0;    right: 0;
-  border-top:    var(--t) solid #fff;
-  border-right:  var(--t) solid #fff; }
-.corner.bl { bottom: 0; left: 0;
-  border-bottom: var(--t) solid #fff;
-  border-left:   var(--t) solid #fff; }
-.corner.br { bottom: 0; right: 0;
-  border-bottom: var(--t) solid #fff;
-  border-right:  var(--t) solid #fff; }
-
-/* ── BLOQUE NEGRO ────────────────────────────────────────────────────────── */
-/* El bloque negro ocupa casi todo el container, dejando
-   solo el espacio de los corchetes en los bordes */
-
-#logo-block {
-  position: absolute;
-  /* margen igual al tamaño del corchete para que queden en el borde */
-  inset: clamp(22px, 5vw, 72px);
-  background: #000;
-  display: flex;
-  flex-direction: column;
-  /* nombre alineado a la izquierda, como en el PNG */
-  align-items: flex-start;
-  justify-content: center;
-  /* padding interno proporcional */
-  padding: 3% 5% 10%;
+  width: 100%;
+  padding: 0 clamp(20px, 5vw, 80px);
   box-sizing: border-box;
 }
 
-/* ── TIPOGRAFÍA — DIEGO / TAVELLA ────────────────────────────────────────── */
-
-#logo-name {
-  display: flex;
-  flex-direction: column;
-  /* interlineado muy ajustado, igual al PNG */
-  line-height: 0.88;
-  gap: 0;
-}
-
-.logo-line {
+#logo {
+  width: clamp(280px, 60vw, 900px);
+  height: auto;
   display: block;
-  white-space: nowrap;
 }
-
-.logo-char {
-  display: inline-block;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-weight: 700;
-  /* tamaño grande, proporcional al container */
-  font-size: clamp(52px, 12.5vw, 200px);
-  color: #fff;
-  /* interletrado del PNG: muy leve, casi 0 */
-  letter-spacing: -0.02em;
-  /* ancho fijo para evitar saltos durante el scramble */
-  min-width: 0.58em;
-  text-align: center;
-  line-height: 0.88;
-}
-
-/* scrambling — barely visible diff, solo para feedback visual */
-.logo-char.scrambling {
-  color: rgba(255,255,255,0.82);
-}
-
-/* locked — flash al caer */
-.logo-char.locked {
-  color: #fff;
-  animation: lock-flash 100ms ease-out forwards;
-}
-
-@keyframes lock-flash {
-  0%   { color: rgba(255,255,255,0.3); }
-  60%  { color: #fff; }
-  100% { color: #fff; }
-}
-
-/* ── POSTPRODUCTION ──────────────────────────────────────────────────────── */
-/* En el PNG está debajo del bloque negro, centrado,
-   con tracking muy amplio — alineado abajo */
-
-#logo-sub {
-  position: absolute;
-  /* debajo del bloque negro, centrado */
-  bottom: clamp(10px, 2.2vw, 34px);
-  left: clamp(22px, 5vw, 72px);
-  right: clamp(22px, 5vw, 72px);
-  text-align: center;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-weight: 700;
-  font-size: clamp(7px, 1.5vw, 23px);
-  color: #fff;
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  opacity: 0;
-  transition: opacity 500ms ease;
-}
-
-#logo-sub.visible { opacity: 1; }
 
 /* ── NAV ─────────────────────────────────────────────────────────────────── */
 
 #main-nav {
   position: fixed;
   bottom: clamp(20px, 4vh, 48px);
-  right:  clamp(20px, 4vw, 56px);
-  display: flex;
-  gap: 32px;
+  right: clamp(20px, 4vw, 56px);
   z-index: 10;
 }
 
@@ -152,24 +39,13 @@ body {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #fff;
-  opacity: 0;
-  transition: opacity 200ms ease;
-  pointer-events: none;
-}
-
-.nav-btn.ready {
   opacity: 0.45;
-  pointer-events: auto;
+  transition: opacity 200ms ease;
 }
 
-.nav-btn.ready:hover { opacity: 1; }
-
-/* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
+.nav-btn:hover { opacity: 1; }
 
 @media (max-width: 600px) {
-  #logo-container {
-    width: clamp(280px, 94vw, 500px);
-  }
   #main-nav {
     right: 50%;
     transform: translateX(50%);
