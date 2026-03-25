@@ -1,30 +1,61 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Works — Diego Tavella</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="works.css">
-</head>
-<body>
+/* ── RESET ───────────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-  <div id="stage">
+/* ── BODY ────────────────────────────────────────────────────────────────── */
+body {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
 
-    <header id="site-header">
-      <a href="index.html" id="header-logo">Diego Tavella</a>
-      <nav id="main-nav">
-        <a href="works.html" class="nav-btn active">Works</a>
-      </nav>
-    </header>
+/* ── STAGE — contiene video y botón alineados ────────────────────────────── */
+#stage {
+  position: relative;
+  width: 100%;
+  max-width: 1920px;
+  line-height: 0; /* evita espacio fantasma bajo el video */
+}
 
-    <main id="works-grid">
-      <!-- Los items se inyectan desde works.js -->
-    </main>
+/* ── VIDEO ───────────────────────────────────────────────────────────────── */
+#v {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 
-  </div>
+/* ── BOTÓN — posicionado en % sobre el canvas del video ──────────────────── */
+#logo-btn {
+  position: absolute;
+  left:   39.2%;
+  top:    38.0%;
+  width:  21.8%;
+  height: 23.9%;
 
-  <script src="works.js"></script>
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 
-</body>
-</html>
+  /* invisible hasta que el video freezea */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#logo-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* press: achica y vuelve, después navega */
+@keyframes press {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+#logo-btn.pressed {
+  animation: press 220ms ease forwards;
+}

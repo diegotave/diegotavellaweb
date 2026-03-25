@@ -3,23 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diego Tavella — Postproduction</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Diego Tavella</title>
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
 
   <div id="stage">
-
-    <div id="logo-container">
-      <img id="logo" src="assets/images/LOGOdiegotavellaWEB.png" alt="Diego Tavella Postproduction">
-    </div>
-
-    <nav id="main-nav">
-      <a href="works.html" class="nav-btn">Works</a>
-    </nav>
-
+    <video id="v" muted playsinline preload="auto">
+      <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
+    </video>
+    <button id="logo-btn" aria-label="Entrar a Works"></button>
   </div>
+
+  <script>
+    const v     = document.getElementById("v");
+    const btn   = document.getElementById("logo-btn");
+    const stage = document.getElementById("stage");
+    let frozen   = false;
+    let btnReady = false;
+
+    // Freeze en el último frame
+    v.addEventListener("loadedmetadata", () => {
+      const stopAt = v.duration - 0.04;
+      v.addEventListener("timeupdate", () => {
+        if (!frozen && v.currentTime >= stopAt) {
+          frozen = true;
+          v.pause();
+          btn.classList.add("visible");
+          btnReady = true;
+        }
+      });
+    });
+
+    v.addEventListener("ended", () => {
+      if (!frozen) {
+        frozen = true;
+        v.pause();
+        btn.classList.add("visible");
+        btnReady = true;
+      }
+    });
+
+    v.play().catch(() => {});
+
+    // Hover en el botón → efecto en el stage entero
+    btn.addEventListener("mouseenter", () => {
+      if (btnReady) stage.classList.add("hovered");
+    });
+    btn.addEventListener("mouseleave", () => {
+      stage.classList.remove("hovered");
+    });
+
+    // Click: press en el stage → navegar
+    btn.addEventListener("click", () => {
+      if (!btnReady) return;
+      btnReady = false;
+      stage.classList.remove("hovered");
+
+      stage.classList.remove("pressed");
+      void stage.offsetWidth; // reflow
+      stage.classList.add("pressed");
+
+      stage.addEventListener("animationend", () => {
+        window.location.href = "works.html";
+      }, { once: true });
+    });
+  </script>
 
 </body>
 </html>
