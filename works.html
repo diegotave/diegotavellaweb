@@ -1,61 +1,11 @@
-/* ── RESET ───────────────────────────────────────────────────────────────── */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-/* ── BODY ────────────────────────────────────────────────────────────────── */
-body {
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
-
-/* ── STAGE — contiene video y botón alineados ────────────────────────────── */
-#stage {
-  position: relative;
-  width: 100%;
-  max-width: 1920px;
-  line-height: 0; /* evita espacio fantasma bajo el video */
-}
-
-/* ── VIDEO ───────────────────────────────────────────────────────────────── */
-#v {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* ── BOTÓN — posicionado en % sobre el canvas del video ──────────────────── */
-#logo-btn {
-  position: absolute;
-  left:   39.2%;
-  top:    38.0%;
-  width:  21.8%;
-  height: 23.9%;
-
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-
-  /* invisible hasta que el video freezea */
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-#logo-btn.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* press: achica y vuelve, después navega */
-@keyframes press {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(0.92); }
-  100% { transform: scale(1); }
-}
-
-#logo-btn.pressed {
-  animation: press 220ms ease forwards;
-}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diego Tavella — Works</title>
+</head>
+<body>
+  <a href="index.html?r=1">Home</a>
+</body>
+</html>

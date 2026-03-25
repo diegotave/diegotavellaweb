@@ -22,31 +22,40 @@
     let frozen   = false;
     let btnReady = false;
 
-    // Freeze en el último frame
-    v.addEventListener("loadedmetadata", () => {
-      const stopAt = v.duration - 0.04;
-      v.addEventListener("timeupdate", () => {
-        if (!frozen && v.currentTime >= stopAt) {
-          frozen = true;
-          v.pause();
-          btn.classList.add("visible");
-          btnReady = true;
-        }
+    function activate() {
+      frozen   = true;
+      btnReady = true;
+      btn.classList.add("visible");
+    }
+
+    const returning = new URLSearchParams(window.location.search).get("r") === "1";
+
+    if (returning) {
+      // Volvemos de works — ir directo al último frame sin reproducir
+      v.addEventListener("loadedmetadata", () => {
+        v.currentTime = v.duration - 0.04;
       });
-    });
+      v.addEventListener("seeked", activate, { once: true });
+    } else {
+      // Primera visita — reproducir normalmente
+      v.addEventListener("loadedmetadata", () => {
+        const stopAt = v.duration - 0.04;
+        v.addEventListener("timeupdate", () => {
+          if (!frozen && v.currentTime >= stopAt) {
+            v.pause();
+            activate();
+          }
+        });
+      });
 
-    v.addEventListener("ended", () => {
-      if (!frozen) {
-        frozen = true;
-        v.pause();
-        btn.classList.add("visible");
-        btnReady = true;
-      }
-    });
+      v.addEventListener("ended", () => {
+        if (!frozen) { v.pause(); activate(); }
+      });
 
-    v.play().catch(() => {});
+      v.play().catch(() => {});
+    }
 
-    // Hover en el botón → efecto en el stage entero
+    // Hover
     btn.addEventListener("mouseenter", () => {
       if (btnReady) stage.classList.add("hovered");
     });
@@ -54,16 +63,14 @@
       stage.classList.remove("hovered");
     });
 
-    // Click: press en el stage → navegar
+    // Click
     btn.addEventListener("click", () => {
       if (!btnReady) return;
       btnReady = false;
       stage.classList.remove("hovered");
-
       stage.classList.remove("pressed");
-      void stage.offsetWidth; // reflow
+      void stage.offsetWidth;
       stage.classList.add("pressed");
-
       stage.addEventListener("animationend", () => {
         window.location.href = "works.html";
       }, { once: true });
