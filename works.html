@@ -95,8 +95,9 @@
           cards.forEach(c => { c.classList.remove("expanded"); c.style.transform = ""; });
         });
 
-        // Click → player
+        // Click → player (solo si ya está expandido, es decir, el hover ya morfó el círculo)
         card.addEventListener("click", () => {
+          if (!card.classList.contains("expanded")) return;
           const src = card.dataset.video;
           if (!src) return;
           const ratio = card.dataset.ratio || "16/9";

@@ -10,6 +10,7 @@ body {
   justify-content: center;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -25,6 +26,7 @@ body {
   position: relative;
   width:  min(100vw, 1920px);
   height: min(100vh, 1080px);
+  height: min(100dvh, 1080px);
   overflow: hidden;
   line-height: 0;
 }
