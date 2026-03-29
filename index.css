@@ -123,16 +123,50 @@ body {
 }
 
 /* ── VIDEO ───────────────────────────────────────────────────────────────── */
+
+/* Landscape — object-fit funciona bien */
 #v {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  min-width: 100%;
-  min-height: 100%;
-  width: auto;
-  height: auto;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
   display: block;
+}
+
+/* Tablet portrait (≥ 500px ancho): stage llena pantalla, video = altura × 16/9 */
+@media (orientation: portrait) and (min-width: 500px) {
+  #stage {
+    width: 100vw;
+    height: 100dvh;
+  }
+  #v {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100dvh;
+    width: calc(100dvh * 16 / 9);
+    object-fit: unset;
+  }
+}
+
+/* Phone portrait (< 500px ancho) */
+@media (orientation: portrait) and (max-width: 499px) {
+  #stage {
+    width: 100vw;
+    height: 100dvh;
+  }
+  #v {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 100dvh;
+    width: calc(100dvh * 16 / 9);
+    object-fit: unset;
+  }
 }
 
 /* ── FRAME ───────────────────────────────────────────────────────────────── */
