@@ -119,19 +119,20 @@
         let tw, th;
         if (vw / vh > rw / rh) { th = vh; tw = th * rw / rh; }
         else                    { tw = vw; th = tw * rh / rw; }
-        const tx = (vw - tw) / 2, ty = (vh - th) / 2;
 
         if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
-        player.removeAttribute("style");
-        player.style.display      = "block";
-        player.style.left         = rect.left   + "px";
-        player.style.top          = rect.top    + "px";
-        player.style.width        = rect.width  + "px";
-        player.style.height       = rect.height + "px";
-        player.style.borderRadius = "50%";
-        player.style.opacity      = "1";
+        // Player cubre todo el viewport
+        player.classList.add("open");
+        player.style.opacity = "0";
 
+        // Video arranca en la posición/tamaño del card (relativo al viewport)
+        playerV.style.position     = "absolute";
+        playerV.style.left         = rect.left   + "px";
+        playerV.style.top          = rect.top    + "px";
+        playerV.style.width        = rect.width  + "px";
+        playerV.style.height       = rect.height + "px";
+        playerV.style.borderRadius = "50%";
         playerV.src = src;
         playerV.muted = false;
         playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
@@ -140,16 +141,22 @@
         setTimeout(() => card.classList.remove("pressed"), 400);
         playerCl.style.opacity = "0";
 
-        playerAnim = player.animate([
-          { left: rect.left+"px", top: rect.top+"px", width: rect.width+"px", height: rect.height+"px", borderRadius: "50%", opacity: "1" },
-          { left: tx+"px",        top: ty+"px",        width: tw+"px",         height: th+"px",          borderRadius: "0px",  opacity: "1" }
+        // Fade in del negro
+        playerAnim = player.animate(
+          [{ opacity: "0" }, { opacity: "1" }],
+          { duration: 200, easing: "ease", fill: "forwards" }
+        );
+
+        // Video crece al tamaño correcto centrado
+        playerV.animate([
+          { left: rect.left+"px", top: rect.top+"px", width: rect.width+"px", height: rect.height+"px", borderRadius: "50%" },
+          { left: ((vw-tw)/2)+"px", top: ((vh-th)/2)+"px", width: tw+"px", height: th+"px", borderRadius: "0px" }
         ], { duration: 550, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
 
         playerAnim.finished.then(() => {
-          player.style.left = tx+"px"; player.style.top = ty+"px";
-          player.style.width = tw+"px"; player.style.height = th+"px";
-          player.style.borderRadius = "0px";
-          playerAnim.cancel(); playerAnim = null;
+          playerAnim.cancel();
+          player.style.opacity = "1";
+          playerAnim = null;
           playerCl.style.opacity = "1";
         }).catch(() => {});
       }
@@ -160,26 +167,20 @@
         playerV.pause();
         playerV.src = "";
 
-        const rect  = activeRect || { left: 0, top: 0, width: 0, height: 0 };
-        const fromL = parseFloat(player.style.left)   || 0;
-        const fromT = parseFloat(player.style.top)    || 0;
-        const fromW = parseFloat(player.style.width)  || 0;
-        const fromH = parseFloat(player.style.height) || 0;
-
-        const anim = player.animate([
-          { left: fromL+"px", top: fromT+"px", width: fromW+"px", height: fromH+"px", borderRadius: "0px",  opacity: "1" },
-          { left: rect.left+"px", top: rect.top+"px", width: rect.width+"px", height: rect.height+"px", borderRadius: "50%", opacity: "0" }
-        ], { duration: 480, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
-
+        const anim = player.animate(
+          [{ opacity: "1" }, { opacity: "0" }],
+          { duration: 300, easing: "ease", fill: "forwards" }
+        );
         playerAnim = anim;
 
         anim.finished.then(() => {
-          anim.cancel();                    // ← cancela el fill antes de tocar el DOM
-          player.removeAttribute("style");
-          player.style.display = "none";
-          playerAnim  = null;
-          activeCard  = null;
-          activeRect  = null;
+          anim.cancel();
+          player.classList.remove("open");
+          player.style.opacity = "";
+          playerV.removeAttribute("style");
+          playerAnim = null;
+          activeCard = null;
+          activeRect = null;
           vloop.currentTime = 0;
         }).catch(() => {});
       }

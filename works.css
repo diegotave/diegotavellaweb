@@ -167,16 +167,20 @@ body {
 #player {
   display: none;
   position: fixed;
-  overflow: hidden;
-  background: transparent;
+  inset: 0;
+  background: #000;
   z-index: 800;
+  align-items: center;
+  justify-content: center;
+}
+
+#player.open {
+  display: flex;
 }
 
 #player-v {
-  width: 100%;
-  height: 100%;
-  object-fit: fill;   /* llena exactamente el player, que ya tiene el aspect ratio correcto */
   display: block;
+  background: #000;
 }
 
 #player-close {

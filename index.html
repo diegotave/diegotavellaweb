@@ -8,6 +8,20 @@
 </head>
 <body>
 
+  <!-- Pantalla de acceso -->
+  <div id="gate">
+    <div id="gate-box">
+      <div id="gate-label">enter password motherfucker</div>
+      <div id="gate-field">
+        <input id="gate-input" type="password" placeholder="·····" autocomplete="off" />
+        <button id="gate-btn">
+          <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div id="gate-err">acceso incorrecto</div>
+    </div>
+  </div>
+
   <div id="stage">
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
@@ -29,32 +43,46 @@
       btn.classList.add("visible");
     }
 
-    const returning = new URLSearchParams(window.location.search).get("r") === "1";
+    // Password gate
+    const gate      = document.getElementById("gate");
+    const gateInput = document.getElementById("gate-input");
+    const gateBtn   = document.getElementById("gate-btn");
+    const gateErr   = document.getElementById("gate-err");
+    const PASS      = "promo";
 
-    if (returning) {
-      // Volvemos de works — ir directo al último frame sin reproducir
-      v.addEventListener("loadedmetadata", () => {
-        v.currentTime = v.duration - 0.04;
-      });
-      v.addEventListener("seeked", activate, { once: true });
-    } else {
-      // Primera visita — reproducir normalmente
-      v.addEventListener("loadedmetadata", () => {
-        const stopAt = v.duration - 0.04;
-        v.addEventListener("timeupdate", () => {
-          if (!frozen && v.currentTime >= stopAt) {
-            v.pause();
-            activate();
-          }
-        });
-      });
-
-      v.addEventListener("ended", () => {
-        if (!frozen) { v.pause(); activate(); }
-      });
-
-      v.play().catch(() => {});
+    function tryPass() {
+      if (gateInput.value === PASS) {
+        gate.style.opacity = "0";
+        gate.style.pointerEvents = "none";
+        setTimeout(() => { gate.style.display = "none"; startVideo(); }, 400);
+      } else {
+        gateErr.classList.add("visible");
+        gateInput.value = "";
+        gateInput.focus();
+      }
     }
+
+    function startVideo() {
+      if (returning) {
+        v.addEventListener("loadedmetadata", () => { v.currentTime = v.duration - 0.04; });
+        v.addEventListener("seeked", activate, { once: true });
+      } else {
+        v.addEventListener("loadedmetadata", () => {
+          const stopAt = v.duration - 0.04;
+          v.addEventListener("timeupdate", () => {
+            if (!frozen && v.currentTime >= stopAt) { v.pause(); activate(); }
+          });
+        });
+        v.addEventListener("ended", () => { if (!frozen) { v.pause(); activate(); } });
+        v.play().catch(() => {});
+      }
+    }
+
+    gateBtn.addEventListener("click", tryPass);
+    gateInput.addEventListener("keydown", e => { if (e.key === "Enter") tryPass(); });
+    gateInput.focus();
+
+    const returning = new URLSearchParams(window.location.search).get("r") === "1";
 
     // Hover
     btn.addEventListener("mouseenter", () => {
