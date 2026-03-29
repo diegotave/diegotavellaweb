@@ -1,6 +1,6 @@
 /* ── RESET ───────────────────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { border-radius: 10px; overflow: hidden; }
+html { border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(2.222vw, 32px) min(2.222vw, 32px); overflow: hidden; }
 
 /* ── BODY ────────────────────────────────────────────────────────────────── */
 body {
@@ -282,9 +282,9 @@ body {
   position: absolute;
   inset: 10px;
   border: 2px solid #000;
-  border-radius: 6px;
+  border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(2.222vw, 32px) min(2.222vw, 32px);
   background: transparent;
-  box-shadow: 0 0 0 20px #fff;   /* cubre los 10px de margen (con holgura) */
+  box-shadow: 0 0 0 20px #fff;
   pointer-events: none;
   z-index: 500;
   animation: frame-in 200ms ease forwards;
