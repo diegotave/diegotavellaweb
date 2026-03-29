@@ -1,5 +1,6 @@
 /* ── RESET ───────────────────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html { border-radius: 10px; overflow: hidden; }
 
 /* ── BODY ────────────────────────────────────────────────────────────────── */
 body {
@@ -89,7 +90,6 @@ body {
   width: var(--card-size);
   height: var(--card-size);
   border-radius: 50%;
-  overflow: hidden;
   background: rgba(255,255,255,0.15);
   cursor: pointer;
   outline: min(0.105vw, 2px) solid #000;
@@ -98,8 +98,16 @@ body {
     height        480ms cubic-bezier(0.34, 1.45, 0.64, 1),
     margin        480ms cubic-bezier(0.34, 1.45, 0.64, 1),
     border-radius 480ms cubic-bezier(0.34, 1.45, 0.64, 1),
+    outline-width 480ms cubic-bezier(0.34, 1.45, 0.64, 1),
     transform     480ms cubic-bezier(0.34, 1.45, 0.64, 1);
   z-index: 1;
+}
+
+.card__clip {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
 }
 
 .card.expanded {
@@ -107,7 +115,72 @@ body {
   height: var(--card-exp-h);
   border-radius: min(1.4vw, 18px);
   margin: var(--card-margin-v) var(--card-margin-h);
+  outline-width: min(0.21vw, 4px);
   z-index: 2;
+}
+
+/* ── OVERLAY ─────────────────────────────────────────────────────────────── */
+.card__overlay {
+  position: absolute;
+  left: min(0.52vw, 8px);
+  right: min(0.52vw, 8px);
+  bottom: min(0.52vw, 8px);
+  height: 33%;
+  border-radius: min(0.42vw, 6px);
+  background: rgba(255,255,255,0.5);
+  opacity: 0;
+  transition: opacity 180ms ease 200ms;
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 0 min(0.52vw, 8px);
+}
+
+.card.expanded .card__overlay { opacity: 1; }
+
+.card__title {
+  font-family: "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: min(1vw, 13px);
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.01em;
+}
+
+/* ── RIBBON — banda diagonal esquina superior izquierda ──────────────────── */
+.card__ribbon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: min(6vw, 96px);
+  height: min(6vw, 96px);
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 160ms ease 200ms;
+}
+
+.card.expanded .card__ribbon { opacity: 1; }
+
+.card__ribbon::before {
+  content: "NEW!";
+  position: absolute;
+  top: min(1.8vw, 26px);
+  left: min(-2.5vw, -36px);
+  width: min(9vw, 130px);
+  background: #e00;
+  color: #fff;
+  font-family: "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: min(1vw, 13px);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: min(0.35vw, 5px) 0;
+  transform: rotate(-45deg);
+  transform-origin: center center;
 }
 
 .card__thumb {
@@ -139,29 +212,7 @@ body {
   color: #fff;
 }
 
-.card__tag {
-  position: absolute;
-  top: min(1.1vw, 14px);
-  left: min(1.25vw, 16px);
-  font-size: min(1.4vw, 11px);
-  font-weight: 500;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  padding: min(0.3vw, 3px) min(0.7vw, 9px);
-  border-radius: min(0.4vw, 4px);
-  background: #D85A30;
-  color: #fff;
-  opacity: 0;
-  transform: translateY(3px);
-  transition: opacity 160ms ease 240ms, transform 160ms ease 240ms;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.card.expanded .card__tag {
-  opacity: 1;
-  transform: translateY(0);
-}
+.card.expanded .card__tag { opacity: 1; transform: translateY(0); }
 
 /* ── PLAYER ──────────────────────────────────────────────────────────────── */
 #player {
