@@ -168,14 +168,14 @@ body {
   display: none;
   position: fixed;
   overflow: hidden;
-  background: #000;
-  z-index: 800;   /* encima de todo */
+  background: transparent;
+  z-index: 800;
 }
 
 #player-v {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: fill;   /* llena exactamente el player, que ya tiene el aspect ratio correcto */
   display: block;
 }
 
