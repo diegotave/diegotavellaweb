@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>test-boton</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  #boton {
+    cursor: pointer;
+    display: block;
+    position: relative;
+    max-width: 400px;
+    width: 100%;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  /* Thumbnail — recortado por la silueta sólida */
+  #boton-thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    -webkit-user-drag: none;
+
+    -webkit-mask-image: url('assets/IMAGES/boton/siluetavideo_20.png');
+    mask-image:         url('assets/IMAGES/boton/siluetavideo_20.png');
+    -webkit-mask-size:  100% 100%;
+    mask-size:          100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat:         no-repeat;
+  }
+
+  /* Frame PNG con alfa — encima del thumbnail, define el tamaño del div */
+  #boton-img {
+    display: block;
+    position: relative;
+    width: 100%;
+    z-index: 1;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="boton">
+  <!-- thumbv4.png está en assets/images/ (raíz de images, no en boton/) -->
+  <img id="boton-thumb" src="assets/images/thumbv4.png" alt="" draggable="false">
+  <img id="boton-img"   src="assets/IMAGES/boton/BOTON VIDEO 20.png" alt="boton video" draggable="false">
+</div>
+
+<script>
+  const img   = document.getElementById('boton-img');
+  const thumb = document.getElementById('boton-thumb');
+
+  const BASE_FRAME = 'assets/IMAGES/boton/BOTON VIDEO ';
+  const BASE_SIL   = 'assets/IMAGES/boton/siluetavideo_';
+  const EXT        = '.png';
+
+  const FRAMES_IN  = [21, 22, 23, 24];
+  const FRAMES_OUT = [23, 22, 21, 20];
+  const FRAME_MS   = 60;
+
+  let currentFrame = 20;
+  let animTimer    = null;
+
+  function setFrame(n) {
+    currentFrame = n;
+    img.src = BASE_FRAME + n + EXT;
+
+    const silUrl = `url('${BASE_SIL}${n}${EXT}')`;
+    thumb.style.webkitMaskImage = silUrl;
+    thumb.style.maskImage       = silUrl;
+  }
+
+  function runQueue(queue, idx = 0) {
+    if (animTimer) clearTimeout(animTimer);
+    if (idx >= queue.length) return;
+    setFrame(queue[idx]);
+    animTimer = setTimeout(() => runQueue(queue, idx + 1), FRAME_MS);
+  }
+
+  function hoverIn() {
+    const resumeFrom = FRAMES_IN.indexOf(currentFrame);
+    const startIdx   = resumeFrom >= 0 ? resumeFrom + 1 : 0;
+    runQueue(FRAMES_IN, startIdx);
+  }
+
+  function hoverOut() {
+    const resumeFrom = FRAMES_OUT.indexOf(currentFrame);
+    const startIdx   = resumeFrom >= 0 ? resumeFrom + 1 : 0;
+    runQueue(FRAMES_OUT, startIdx);
+  }
+
+  const boton = document.getElementById('boton');
+  boton.addEventListener('mouseenter', hoverIn);
+  boton.addEventListener('mouseleave', hoverOut);
+
+  boton.addEventListener('touchstart', (e) => { e.preventDefault(); hoverIn();  }, { passive: false });
+  boton.addEventListener('touchend',   (e) => { e.preventDefault(); hoverOut(); }, { passive: false });
+</script>
+
+</body>
+</html>

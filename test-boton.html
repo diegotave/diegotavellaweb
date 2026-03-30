@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>test-boton</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  #boton {
+    cursor: pointer;
+    max-width: 400px;
+    width: 100%;
+    aspect-ratio: 488 / 353;
+    user-select: none;
+  }
+
+  /*
+    Divs ocultos: EXACTAMENTE 488×353px — mismo tamaño que el JSON.
+    Así Lottie no agrega ningún transform de escala interno al SVG.
+    Las coordenadas del innerHTML van a coincidir 1:1 con el viewBox final.
+  */
+  #lottie-forma-hidden,
+  #lottie-btn-hidden {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    width:  488px;
+    height: 353px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="boton"></div>
+<div id="lottie-forma-hidden"></div>
+<div id="lottie-btn-hidden"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+<script>
+  const W = 488, H = 353;
+
+  const animForma = lottie.loadAnimation({
+    container: document.getElementById('lottie-forma-hidden'),
+    renderer: 'svg',
+    loop: false,
+    autoplay: false,
+    path: 'assets/json/FORMAVIDEO.json',
+    rendererSettings: { preserveAspectRatio: 'xMidYMid meet' }
+  });
+
+  const animBtn = lottie.loadAnimation({
+    container: document.getElementById('lottie-btn-hidden'),
+    renderer: 'svg',
+    loop: false,
+    autoplay: false,
+    path: 'assets/json/btnvdo.json',
+    rendererSettings: { preserveAspectRatio: 'xMidYMid meet' }
+  });
+
+  let formaReady = false, btnReady = false;
+  animForma.addEventListener('DOMLoaded', () => { formaReady = true; tryInit(); });
+  animBtn.addEventListener('DOMLoaded',   () => { btnReady   = true; tryInit(); });
+
+  function tryInit() {
+    if (!formaReady || !btnReady) return;
+
+    const NS = 'http://www.w3.org/2000/svg';
+
+    const formaSvgEl = document.querySelector('#lottie-forma-hidden svg');
+    const btnSvgEl   = document.querySelector('#lottie-btn-hidden svg');
+
+    // Confirmar que Lottie no metió transforms de escala
+    // (si width/height del SVG interno ≠ 488/353 hay un problema)
+    console.log('forma svg size:', formaSvgEl.getAttribute('width'), formaSvgEl.getAttribute('height'));
+    console.log('btn svg size:',   btnSvgEl.getAttribute('width'),   btnSvgEl.getAttribute('height'));
+
+    // ── SVG final ──────────────────────────────────────────────────────────
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width',   '100%');
+    svg.setAttribute('height',  '100%');
+    svg.style.display = 'block';
+
+    // ── pattern: thumbv4 en el espacio 0 0 488 353 ─────────────────────────
+    const defs = document.createElementNS(NS, 'defs');
+
+    const pattern = document.createElementNS(NS, 'pattern');
+    pattern.setAttribute('id',           'thumb-fill');
+    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+    pattern.setAttribute('x',      '0');
+    pattern.setAttribute('y',      '0');
+    pattern.setAttribute('width',   W);
+    pattern.setAttribute('height',  H);
+
+    const patImg = document.createElementNS(NS, 'image');
+    patImg.setAttribute('href',                'assets/images/thumbv4.png');
+    patImg.setAttribute('x',                   '0');
+    patImg.setAttribute('y',                   '0');
+    patImg.setAttribute('width',                W);
+    patImg.setAttribute('height',               H);
+    patImg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    pattern.appendChild(patImg);
+    defs.appendChild(pattern);
+    svg.appendChild(defs);
+
+    // ── Grupo FORMAVIDEO (con fill reemplazado por el pattern) ─────────────
+    const formaGroup = document.createElementNS(NS, 'g');
+    svg.appendChild(formaGroup);
+
+    // ── Grupo btnvdo encima ────────────────────────────────────────────────
+    const btnGroup = document.createElementNS(NS, 'g');
+    svg.appendChild(btnGroup);
+
+    document.getElementById('boton').appendChild(svg);
+
+    // ── Sync ───────────────────────────────────────────────────────────────
+    function syncFrame() {
+      formaGroup.innerHTML = formaSvgEl.innerHTML;
+      // Reemplazar fill rojo → pattern, quitar stroke
+      formaGroup.querySelectorAll('[fill]:not([fill="none"])').forEach(el => {
+        el.setAttribute('fill', 'url(#thumb-fill)');
+      });
+      formaGroup.querySelectorAll('[stroke]:not([stroke="none"])').forEach(el => {
+        el.setAttribute('stroke', 'none');
+      });
+
+      btnGroup.innerHTML = btnSvgEl.innerHTML;
+    }
+
+    animBtn.addEventListener('enterFrame', () => {
+      animForma.goToAndStop(animBtn.currentFrame, true);
+      syncFrame();
+    });
+
+    animForma.goToAndStop(0, true);
+    animBtn.goToAndStop(0, true);
+    syncFrame();
+
+    // ── Hover ──────────────────────────────────────────────────────────────
+    const boton = document.getElementById('boton');
+    function hoverIn()  { animBtn.setDirection(1);  animBtn.play(); }
+    function hoverOut() { animBtn.setDirection(-1); animBtn.play(); }
+
+    boton.addEventListener('mouseenter', hoverIn);
+    boton.addEventListener('mouseleave', hoverOut);
+    boton.addEventListener('touchstart', (e) => { e.preventDefault(); hoverIn();  }, { passive: false });
+    boton.addEventListener('touchend',   (e) => { e.preventDefault(); hoverOut(); }, { passive: false });
+  }
+</script>
+
+</body>
+</html>
