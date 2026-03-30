@@ -324,3 +324,47 @@ body {
   height: 62.5%;
   display: block;
 }
+
+/* ── RESPONSIVE / ORIENTATION ────────────────────────────────────────────── */
+
+/* Landscape mobile: stage ocupa todo el viewport sin letterbox */
+@media (max-height: 500px) and (orientation: landscape) {
+  #stage {
+    width:  100vw;
+    height: 100dvh;
+  }
+
+  /* cards más chicas en landscape mobile */
+  :root {
+    --card-size:    min(12vh, 80px);
+    --card-gap:     min(1.5vh, 10px);
+    --card-exp-w:   min(18vh, 130px);
+    --card-exp-h:   min(14.6vh, 105px);
+  }
+
+  /* label más chico */
+  .card__label {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}
+
+/* Portrait mobile */
+@media (max-width: 600px) and (orientation: portrait) {
+  #stage {
+    width:  100vw;
+    height: 100dvh;
+  }
+
+  :root {
+    --card-size:    min(22vw, 120px);
+    --card-gap:     min(3vw, 14px);
+    --card-exp-w:   min(33vw, 180px);
+    --card-exp-h:   min(26.8vw, 146px);
+  }
+
+  .card__label {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}
