@@ -75,36 +75,71 @@
       const cards = Array.from(grid.querySelectorAll(".card"));
       function getPos(i) { return { row: Math.floor(i / 3), col: i % 3 }; }
 
-      cards.forEach((card, i) => {
-        card.addEventListener("mouseenter", () => {
-          const PUSH = card.offsetWidth * 0.22;
-          const { row: ar, col: ac } = getPos(i);
-          cards.forEach((other, j) => {
-            other.classList.remove("expanded");
-            if (i === j) {
-              other.classList.add("expanded");
-              other.style.transform = "";
+      // ── Detectar touch device ──
+      const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      let expandedIndex = -1; // solo para touch: índice de la card expandida
+
+      function expandCard(i) {
+        const card = cards[i];
+        const PUSH = card.offsetWidth * 0.22;
+        const { row: ar, col: ac } = getPos(i);
+        cards.forEach((other, j) => {
+          other.classList.remove("expanded");
+          if (i === j) {
+            other.classList.add("expanded");
+            other.style.transform = "";
+          } else {
+            const { row: br, col: bc } = getPos(j);
+            const dr = br - ar, dc = bc - ac;
+            const len = Math.sqrt(dr * dr + dc * dc);
+            other.style.transform = `translate(${(dc / len) * PUSH}px, ${(dr / len) * PUSH}px)`;
+          }
+        });
+      }
+
+      function collapseAll() {
+        cards.forEach(c => { c.classList.remove("expanded"); c.style.transform = ""; });
+        expandedIndex = -1;
+      }
+
+      if (isTouch) {
+        // ── TOUCH: primer tap expande, segundo tap abre player ──
+        cards.forEach((card, i) => {
+          card.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (expandedIndex === i) {
+              // Ya está expandida → abrir player
+              const src = card.dataset.video;
+              if (!src) return;
+              const ratio = card.dataset.ratio || "16/9";
+              openPlayer(card, R2 + "/" + src, ratio);
             } else {
-              const { row: br, col: bc } = getPos(j);
-              const dr = br - ar, dc = bc - ac;
-              const len = Math.sqrt(dr * dr + dc * dc);
-              other.style.transform = `translate(${(dc / len) * PUSH}px, ${(dr / len) * PUSH}px)`;
+              // Expandir esta card
+              expandCard(i);
+              expandedIndex = i;
             }
           });
         });
-        card.addEventListener("mouseleave", () => {
-          cards.forEach(c => { c.classList.remove("expanded"); c.style.transform = ""; });
-        });
 
-        // Click → player (solo si ya está expandido, es decir, el hover ya morfó el círculo)
-        card.addEventListener("click", () => {
-          if (!card.classList.contains("expanded")) return;
-          const src = card.dataset.video;
-          if (!src) return;
-          const ratio = card.dataset.ratio || "16/9";
-          openPlayer(card, R2 + "/" + src, ratio);
+        // Tap fuera de cualquier card → colapsar
+        stage.addEventListener("click", (e) => {
+          if (!e.target.closest(".card")) collapseAll();
         });
-      });
+      } else {
+        // ── DESKTOP: hover expande, click abre player ──
+        cards.forEach((card, i) => {
+          card.addEventListener("mouseenter", () => expandCard(i));
+          card.addEventListener("mouseleave", () => collapseAll());
+
+          card.addEventListener("click", () => {
+            if (!card.classList.contains("expanded")) return;
+            const src = card.dataset.video;
+            if (!src) return;
+            const ratio = card.dataset.ratio || "16/9";
+            openPlayer(card, R2 + "/" + src, ratio);
+          });
+        });
+      }
 
       // Player
       const player   = document.getElementById("player");
