@@ -23,6 +23,9 @@
   </div>
 
   <div id="stage">
+    <video id="vhs" muted playsinline loop preload="auto">
+      <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
+    </video>
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -32,6 +35,7 @@
 
   <script>
     const v     = document.getElementById("v");
+    const vhs   = document.getElementById("vhs");
     const btn   = document.getElementById("logo-btn");
     const stage = document.getElementById("stage");
     let frozen   = false;
@@ -41,6 +45,7 @@
       frozen   = true;
       btnReady = true;
       btn.classList.add("visible");
+      vhs.play().catch(() => {});
     }
 
     // Password gate
@@ -80,9 +85,17 @@
 
     gateBtn.addEventListener("click", tryPass);
     gateInput.addEventListener("keydown", e => { if (e.key === "Enter") tryPass(); });
-    gateInput.focus();
 
-    const returning = new URLSearchParams(window.location.search).get("r") === "1";
+    const params    = new URLSearchParams(window.location.search);
+    const returning = params.get("r") === "1";
+
+    // Bypass: ?p saltea el gate
+    if (params.has("p")) {
+      gate.style.display = "none";
+      startVideo();
+    } else {
+      gateInput.focus();
+    }
 
     // Hover
     btn.addEventListener("mouseenter", () => {

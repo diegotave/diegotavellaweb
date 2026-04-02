@@ -100,9 +100,10 @@ body {
   height: min(100dvh, 1080px);
   overflow: hidden;
   line-height: 0;
-  transform: scale(1);
+  background: inherit;        /* hereda el fondo del body/html */
   transform-origin: center center;
   transition: transform 180ms ease;
+  transform: scale(1);
 }
 
 #stage.hovered {
@@ -125,12 +126,25 @@ body {
 /* ── VIDEO ───────────────────────────────────────────────────────────────── */
 #v {
   position: absolute;
-  top: 50%;
+  bottom: 10px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  height: auto;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
   display: block;
+  z-index: 2;
+}
+
+#vhs {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
+  display: block;
+  z-index: 1;
+  mix-blend-mode: exclusion;
 }
 
 /* ── FRAME ───────────────────────────────────────────────────────────────── */
