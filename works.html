@@ -33,16 +33,16 @@
       <div class="card" data-video="WORKS/video9/video9.mp4" data-ratio="1/1"><div class="card__clip"><img class="card__thumb" src="https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video9/thumbv9.png" alt=""></div><span class="card__label">Visita</span><div class="card__badge card__badge--social"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='163px' height='163px'%3E%3Cimage x='0px' y='0px' width='163px' height='163px' xlink:href='data:img/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKMAAACjCAMAAADRsl6yAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAh1BMVEUA/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8A/P8AqKoAi40AAAAAQUIAwsUAmpwAtbgAz9EAamsAV1gA5ukA8fQA2t0AJiYAe33///9Na0iCAAAAHHRSTlMACir1ogQQ8/x/Awb+bCb2gKbOagWG0Tp1jOAvxPFdsAAAAAFiS0dELLrdcasAAAAHdElNRQfqAx4LMyamXscUAAAEiklEQVR42u2ZaXPcIAyGSdM26X3fxsa7vtb8///XNfgQmMM2na4yo/dDpwkIPQhxWGGM3T27x6vndy8YYy8f7jO8enx49Zq9ebg1RkRv37H3H24NEdNHdmuCDWKYk5EYiRGhiJEYMYkYiRGTiJEYMYkYiRGTiJEYMYkYiRGTiJEYMYkYiRGTiJEYMYkYiRGTiJEYMenJMvK8uErw0tNSnLjXquDn/8DIi1mi8rUU54AVmFs9/MIYRf2mMY3XvcKMeVG4UdrGaKm7zNuW+723usclhZEXpubBOmG1gFis2k5e79zqcICx61Uchhhx9V9pjFPIYaSytqIllzaucSuf914z9gmMJXB+UaONS3o2lp4bIEZb18Cp2d5LZz7vY+TQvgGLLcwVUpGrYb+5re3B1Gzvg53oge1RxmkRS35Vu8S0X7ZJC2Jst0ng0fKuzPhp+LdNW+siv9j9uJGbU+zK9bwsWd5V11ZNivt7RRizaYdax7S0hz0t65vbbX7vQq/yMEFxnLGCJ0hpjgLvHRC8kAezrRqznVsWe8/wqgeU80XT2KOcl02znVGOp05nZc5exvmIM84IdxzlPsZuzg8Jtv4hxutgfLkR2zkCvnyUq/POw8jns6w0hzvCOOii75kx507Ofc0X1+By4wDA8G7dmMtlepRxCpDef5XzfHSfnRLkBfReFZZmql2MlRkuFUkQA889I4yVayEy9J7bjPOZuotRjz//KJafdt7X+dp719uMc+z3rbURrhJmjX4hwnfPEm/QdhYgCwzvME3HoJ7XvTYw6gDVg3HLjdC1q/cjyE67bUYB3hvIrudfw17rA8/DmDVWd+EDaQLvcNepcoFQ2Zjrl0OMnelNwOfJyYmxanN/z+SWc3DA7mU0SWRntu3+LpwZjVflIHia7Wa8etOYkrcZBj3ZGgAyESMxYtKKsbaP6LH4UTs6LarcbQ1ffWD67mZXqSrC2Ni/OMQ42LUuBytGZ6kqwjj37oo0xhWPm9FZqooxTu+dxssY/xLkjTFUwNZdqooxjrNviwTGaRXiNTJ3qSrE2C+pMTjpd9W51l/95nZ12XpKVSFGMdUT9FJLcZxRfwt2EVtPqSrIWE7jqAmWCYx6M1QRW0+pKsioPuHycYJ95mb0HC8WQ20npIPRV6oKMqqH/fBGblRipjDmGxh9paowo5pZqZf6ks4Yrod6S1VhRoUlVfBFlsQo43H0lqoijMpOfSNyH+O2PQPr/h5bb6kqwqjPgfHASmCEtX2Prb9UFWE07sAExjx+R/lLVTHG6S3BkxjNSpbTNlCqijFOb7IugbHKHQlm2wZKVTHG6W+AWbZhX8O9uGrrw2+zQKkqyqifS2UyYx9+44ZKVVFGlSc6NVIYY98KoVJVlFFZ6y12mFFEv7mCpSofI0IRIzFiEjESIyYRIzFiEjESIyYRIzFiEjESIyYRIzFiEjESIyYRIzFiEjESIyYRIzFiEjESIyYR4z9ivDXAFsZPj7dGiOkzwx/IL+zrt1szRPT9B2Ps569bYwT0++cf9hd3H2sXFSCeqwAAAABJRU5ErkJggg==' /%3E%3C/svg%3E" alt="Social Media"></div></div>
     </div>
 
+    <!-- Player — dentro del stage, encima de la grilla pero debajo del frame -->
+    <div id="player">
+      <video id="player-v" playsinline></video>
+      <button id="player-back" aria-label="Volver">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
     <!-- Marco dentro del stage: position:absolute se ancla al stage, overflow:hidden lo contiene -->
     <div id="frame"></div>
-  </div>
-
-  <!-- Player — se monta sobre todo al hacer click en una card -->
-  <div id="player">
-    <video id="player-v" playsinline></video>
-    <button id="player-close" aria-label="Cerrar">
-      <svg viewBox="0 0 16 16" fill="none"><path d="M2 2l12 12M14 2L2 14" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
   </div>
 
   <a id="home-btn" href="index.html?r=1" aria-label="Home">
@@ -183,71 +183,88 @@
       // Player
       const player   = document.getElementById("player");
       const playerV  = document.getElementById("player-v");
-      const playerCl = document.getElementById("player-close");
+      const playerBack = document.getElementById("player-back");
       let   playerAnim = null;
       let   activeCard = null;
-      let   activeRect = null;
 
       function openPlayer(card, src, ratio) {
         const [rw, rh] = ratio.split("/").map(Number);
-        const rect = card.getBoundingClientRect();
+        const cardRect  = card.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
         activeCard = card;
-        activeRect = rect;
 
-        const vw = window.innerWidth, vh = window.innerHeight;
+        // Coordenadas del card relativas al stage
+        const cardCX = (cardRect.left + cardRect.width / 2) - stageRect.left;
+        const cardCY = (cardRect.top + cardRect.height / 2) - stageRect.top;
+
+        // Área disponible del player (stage menos inset de 10px)
+        const pw = stageRect.width  - 20;
+        const ph = stageRect.height - 20;
+
+        // Tamaño final del video dentro del player respetando aspect ratio
         let tw, th;
-        if (vw / vh > rw / rh) { th = vh; tw = th * rw / rh; }
-        else                    { tw = vw; th = tw * rh / rw; }
+        if (pw / ph > rw / rh) { th = ph; tw = th * rw / rh; }
+        else                    { tw = pw; th = tw * rh / rw; }
 
         if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
-        // Player cubre todo el viewport
+        // Ocultar grilla
+        const grid = document.getElementById("works-grid");
+        grid.classList.remove("visible");
+
+        // Ocultar home button
+        document.getElementById("home-btn").style.opacity = "0";
+
+        // Player visible pero transparente
         player.classList.add("open");
         player.style.opacity = "0";
+        playerBack.style.opacity = "0";
 
-        // Video arranca en la posición/tamaño del card (relativo al viewport)
+        // Video: posición inicial = centro del card (tamaño 0), relativo al player (inset 10px)
+        const startLeft = cardCX - 10;  // relativo al player
+        const startTop  = cardCY - 10;
+        // Posición final = centrado en el player
+        const endLeft = (pw - tw) / 2;
+        const endTop  = (ph - th) / 2;
+
         playerV.style.position     = "absolute";
-        playerV.style.left         = rect.left   + "px";
-        playerV.style.top          = rect.top    + "px";
-        playerV.style.width        = rect.width  + "px";
-        playerV.style.height       = rect.height + "px";
+        playerV.style.left         = startLeft + "px";
+        playerV.style.top          = startTop  + "px";
+        playerV.style.width        = "0px";
+        playerV.style.height       = "0px";
         playerV.style.borderRadius = "50%";
+        playerV.style.objectFit    = "cover";
+
         playerV.src = src;
         playerV.muted = false;
         playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
 
         card.classList.add("pressed");
         setTimeout(() => card.classList.remove("pressed"), 400);
-        playerCl.style.opacity = "0";
 
-        // Fade in del negro
+        // Fade in del fondo negro
         playerAnim = player.animate(
           [{ opacity: "0" }, { opacity: "1" }],
-          { duration: 200, easing: "ease", fill: "forwards" }
+          { duration: 250, easing: "ease", fill: "forwards" }
         );
 
-        // Video crece al tamaño correcto centrado
+        // Video crece desde el centro del thumbnail al tamaño final
         playerV.animate([
-          { left: rect.left+"px", top: rect.top+"px", width: rect.width+"px", height: rect.height+"px", borderRadius: "50%" },
-          { left: ((vw-tw)/2)+"px", top: ((vh-th)/2)+"px", width: tw+"px", height: th+"px", borderRadius: "0px" }
-        ], { duration: 550, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
+          { left: startLeft + "px", top: startTop + "px", width: "0px", height: "0px", borderRadius: "50%" },
+          { left: endLeft + "px", top: endTop + "px", width: tw + "px", height: th + "px", borderRadius: "8px" }
+        ], { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
 
         playerAnim.finished.then(() => {
           playerAnim.cancel();
           player.style.opacity = "1";
           playerAnim = null;
-          playerCl.style.opacity = "1";
-          // Fullscreen nativo — el browser maneja sizing y rotación
-          const el = playerV;
-          if      (el.requestFullscreen)       el.requestFullscreen();
-          else if (el.webkitRequestFullscreen)  el.webkitRequestFullscreen();
-          else if (el.webkitEnterFullscreen)    el.webkitEnterFullscreen(); // iOS Safari
+          playerBack.style.opacity = "1";
         }).catch(() => {});
       }
 
       function closePlayer() {
         if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
-        playerCl.style.opacity = "0";
+        playerBack.style.opacity = "0";
         playerV.pause();
         playerV.src = "";
 
@@ -264,17 +281,17 @@
           playerV.removeAttribute("style");
           playerAnim = null;
           activeCard = null;
-          activeRect = null;
+
+          // Restaurar grilla y home
+          document.getElementById("works-grid").classList.add("visible");
+          document.getElementById("home-btn").style.opacity = "";
+          collapseAll();
           vloop.currentTime = 0;
         }).catch(() => {});
       }
 
-      playerCl.addEventListener("click", e => { e.stopPropagation(); closePlayer(); });
-      player.addEventListener("click",   e => { if (e.target === player || e.target === playerV) closePlayer(); });
-
-      // Si el usuario sale del fullscreen nativo (Escape / botón del browser), cerrar el player
-      document.addEventListener("fullscreenchange",       () => { if (!document.fullscreenElement)       closePlayer(); });
-      document.addEventListener("webkitfullscreenchange", () => { if (!document.webkitFullscreenElement) closePlayer(); });
+      playerBack.addEventListener("click", e => { e.stopPropagation(); closePlayer(); });
+      player.addEventListener("click", e => { if (e.target === player) closePlayer(); });
     }
 
     // Freeze justo antes del último frame

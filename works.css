@@ -227,15 +227,17 @@ body {
 
 .card.expanded .card__tag { opacity: 1; transform: translateY(0); }
 
-/* ── PLAYER ──────────────────────────────────────────────────────────────── */
+/* ── PLAYER (dentro del stage) ────────────────────────────────────────── */
 #player {
   display: none;
-  position: fixed;
-  inset: 0;
+  position: absolute;
+  inset: 10px;
   background: #000;
-  z-index: 800;
+  z-index: 400;   /* debajo del frame (500) */
   align-items: center;
   justify-content: center;
+  border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
+  overflow: hidden;
 }
 
 #player.open {
@@ -244,17 +246,22 @@ body {
 
 #player-v {
   display: block;
+  max-width: 100%;
+  max-height: 100%;
   background: #000;
 }
 
-#player-close {
+#player-back {
   position: absolute;
-  top: min(1.111vw, 16px);
-  right: min(1.111vw, 16px);
-  width:  min(1.111vw, 20px);
-  height: min(1.111vw, 20px);
-  background: #000;
+  top: min(1.4vw, 20px);
+  left: min(1.4vw, 20px);
+  width:  min(2.2vw, 32px);
+  height: min(2.2vw, 32px);
+  min-width: 24px;
+  min-height: 24px;
+  background: rgba(0,0,0,0.5);
   border: none;
+  border-radius: 50%;
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -262,10 +269,11 @@ body {
   justify-content: center;
   transition: opacity 200ms ease;
   z-index: 2;
+  opacity: 0;
 }
 
-#player-close svg {
-  width: 60%; height: 60%;
+#player-back svg {
+  width: 50%; height: 50%;
 }
 
 /* Press en la card al hacer click */
@@ -320,6 +328,7 @@ body {
   justify-content: center;
   text-decoration: none;
   z-index: 600;   /* encima del frame */
+  transition: opacity 300ms ease;
 }
 
 #home-btn svg {
