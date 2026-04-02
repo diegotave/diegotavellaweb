@@ -188,31 +188,21 @@
       let   activeCard = null;
 
       function openPlayer(card, src, ratio) {
-        const [rw, rh] = ratio.split("/").map(Number);
         const cardRect  = card.getBoundingClientRect();
         const stageRect = stage.getBoundingClientRect();
         activeCard = card;
 
-        // Coordenadas del card relativas al stage
-        const cardCX = (cardRect.left + cardRect.width / 2) - stageRect.left;
-        const cardCY = (cardRect.top + cardRect.height / 2) - stageRect.top;
+        // Centro del card relativo al player (player tiene inset:10px respecto al stage)
+        const cardCX = (cardRect.left + cardRect.width / 2) - stageRect.left - 10;
+        const cardCY = (cardRect.top  + cardRect.height / 2) - stageRect.top  - 10;
 
-        // Área disponible del player (stage menos inset de 10px)
-        const pw = stageRect.width  - 20;
-        const ph = stageRect.height - 20;
-
-        // Tamaño final del video dentro del player respetando aspect ratio
-        let tw, th;
-        if (pw / ph > rw / rh) { th = ph; tw = th * rw / rh; }
-        else                    { tw = pw; th = tw * rh / rw; }
+        // Ancho disponible del player
+        const pw = stageRect.width - 20;
 
         if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
-        // Ocultar grilla
-        const grid = document.getElementById("works-grid");
-        grid.classList.remove("visible");
-
-        // Ocultar home button
+        // Ocultar grilla y home
+        document.getElementById("works-grid").classList.remove("visible");
         document.getElementById("home-btn").style.opacity = "0";
 
         // Player visible pero transparente
@@ -220,20 +210,13 @@
         player.style.opacity = "0";
         playerBack.style.opacity = "0";
 
-        // Video: posición inicial = centro del card (tamaño 0), relativo al player (inset 10px)
-        const startLeft = cardCX - 10;  // relativo al player
-        const startTop  = cardCY - 10;
-        // Posición final = centrado en el player
-        const endLeft = (pw - tw) / 2;
-        const endTop  = (ph - th) / 2;
-
-        playerV.style.position     = "absolute";
-        playerV.style.left         = startLeft + "px";
-        playerV.style.top          = startTop  + "px";
-        playerV.style.width        = "0px";
-        playerV.style.height       = "0px";
-        playerV.style.borderRadius = "50%";
-        playerV.style.objectFit    = "cover";
+        // Video: empieza como clip circular centrado en el thumbnail
+        // Usamos un wrapper approach: el video width=100% (CSS), pero lo
+        // animamos con clip-path desde un circulito en el centro del card
+        // hasta revelado completo.
+        playerV.style.width = "100%";
+        playerV.style.height = "auto";
+        playerV.removeAttribute("style");
 
         playerV.src = src;
         playerV.muted = false;
@@ -242,21 +225,26 @@
         card.classList.add("pressed");
         setTimeout(() => card.classList.remove("pressed"), 400);
 
+        // Calcular posición del centro del card como porcentaje del player
+        const cxPct = (cardCX / pw * 100).toFixed(1);
+        const cyPct = (cardCY / (stageRect.height - 20) * 100).toFixed(1);
+
         // Fade in del fondo negro
         playerAnim = player.animate(
           [{ opacity: "0" }, { opacity: "1" }],
-          { duration: 250, easing: "ease", fill: "forwards" }
+          { duration: 300, easing: "ease", fill: "forwards" }
         );
 
-        // Video crece desde el centro del thumbnail al tamaño final
-        playerV.animate([
-          { left: startLeft + "px", top: startTop + "px", width: "0px", height: "0px", borderRadius: "50%" },
-          { left: endLeft + "px", top: endTop + "px", width: tw + "px", height: th + "px", borderRadius: "8px" }
+        // El player entero se revela con un clip-path circular desde el centro del thumbnail
+        player.animate([
+          { clipPath: `circle(0% at ${cxPct}% ${cyPct}%)` },
+          { clipPath: `circle(150% at 50% 50%)` }
         ], { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
 
         playerAnim.finished.then(() => {
           playerAnim.cancel();
           player.style.opacity = "1";
+          player.style.clipPath = "none";
           playerAnim = null;
           playerBack.style.opacity = "1";
         }).catch(() => {});
@@ -278,6 +266,7 @@
           anim.cancel();
           player.classList.remove("open");
           player.style.opacity = "";
+          player.style.clipPath = "";
           playerV.removeAttribute("style");
           playerAnim = null;
           activeCard = null;
