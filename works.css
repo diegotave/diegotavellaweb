@@ -98,15 +98,17 @@ body {
   background: rgba(255,255,255,0.15);
   cursor: pointer;
   transition:
-    width         480ms cubic-bezier(0.34, 1.45, 0.64, 1),
-    height        480ms cubic-bezier(0.34, 1.45, 0.64, 1),
-    margin        480ms cubic-bezier(0.34, 1.45, 0.64, 1),
-    border-radius 480ms cubic-bezier(0.34, 1.45, 0.64, 1),
-    transform     480ms cubic-bezier(0.34, 1.45, 0.64, 1);
+    width         320ms cubic-bezier(0.34, 1.2, 0.64, 1),
+    height        320ms cubic-bezier(0.34, 1.2, 0.64, 1),
+    margin        320ms cubic-bezier(0.34, 1.2, 0.64, 1),
+    border-radius 320ms cubic-bezier(0.34, 1.2, 0.64, 1),
+    transform     280ms cubic-bezier(0.34, 1.2, 0.64, 1);
   overflow: visible;
   z-index: 1;
   /* inactivo: 85% */
   transform: scale(0.85);
+  will-change: transform, width, height, border-radius;
+  -webkit-transform: translateZ(0);
 }
 
 .card__clip {
@@ -195,7 +197,8 @@ body {
   object-fit: cover;
   display: block;
   filter: grayscale(100%);
-  transition: filter 480ms cubic-bezier(0.34, 1.45, 0.64, 1);
+  transition: filter 320ms cubic-bezier(0.34, 1.2, 0.64, 1);
+  will-change: filter;
 }
 
 .card.expanded .card__thumb {
@@ -347,6 +350,8 @@ body {
     font-size: 11px;
     padding: 3px 8px;
   }
+
+  #works-grid { touch-action: none; }
 }
 
 /* Portrait mobile */
@@ -367,4 +372,6 @@ body {
     font-size: 11px;
     padding: 3px 8px;
   }
+
+  #works-grid { touch-action: none; }
 }
