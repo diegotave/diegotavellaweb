@@ -9,9 +9,6 @@
 <body>
 
   <div id="stage">
-    <video id="vloop" muted playsinline loop preload="auto">
-      <source src="assets/videos/loopfondoworks.webm" type='video/webm; codecs="vp9"'>
-    </video>
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/introwork.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -57,14 +54,12 @@
   <script>
     const R2    = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
     const v     = document.getElementById("v");
-    const vloop = document.getElementById("vloop");
     const stage = document.getElementById("stage");
     let frozen = false;
 
     function activate() {
       frozen = true;
       stage.classList.add("frozen");
-      vloop.style.display = "none";
 
       // Mostrar grilla (sin opacity transition, las cards entran individualmente)
       const grid = document.getElementById("works-grid");
