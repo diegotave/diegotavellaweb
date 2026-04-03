@@ -106,23 +106,6 @@ body {
   transform: scale(1);
 }
 
-#stage.hovered {
-  transform: scale(1.15);
-}
-
-@keyframes press {
-  0%   { transform: scale(1.15); }
-  30%  { transform: scale(0.97); }
-  65%  { transform: scale(1.02); }
-  85%  { transform: scale(0.99); }
-  100% { transform: scale(1);    }
-}
-
-#stage.pressed {
-  transition: none;
-  animation: press 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
-}
-
 /* ── VIDEO ───────────────────────────────────────────────────────────────── */
 #v {
   position: absolute;
@@ -147,6 +130,17 @@ body {
   mix-blend-mode: exclusion;
 }
 
+#vtrans {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
+  display: block;
+  z-index: 999;
+}
+
 /* ── FRAME ───────────────────────────────────────────────────────────────── */
 @keyframes frame-in {
   from { opacity: 0; }
@@ -165,15 +159,18 @@ body {
   animation: frame-in 200ms ease forwards;
 }
 
-/* ── BOTÓN — área de click = zona del logo ───────────────────────────────── */
-#logo-btn {
+/* ── BOTÓN — área de click = flechita magenta ────────────────────────────── */
+#arrow-btn {
   position: absolute;
-  left:   39.2%;
-  top:    38.0%;
-  width:  21.8%;
-  height: 23.9%;
+  left: 50%;
+  top: 23.5%;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  margin-top: -20px;
   background: transparent;
   border: none;
+  border-radius: 50%;
   cursor: pointer;
   padding: 0;
   opacity: 0;
@@ -181,7 +178,7 @@ body {
   z-index: 600;
 }
 
-#logo-btn.visible {
+#arrow-btn.visible {
   opacity: 1;
   pointer-events: auto;
 }

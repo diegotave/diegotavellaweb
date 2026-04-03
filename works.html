@@ -64,16 +64,24 @@
     function activate() {
       frozen = true;
       stage.classList.add("frozen");
-      vloop.play().catch(() => {});
-      v.style.opacity = "0";
+      vloop.style.display = "none";
 
-      // Mostrar botonera con fade
+      // Mostrar grilla (sin opacity transition, las cards entran individualmente)
       const grid = document.getElementById("works-grid");
       grid.classList.add("visible");
 
       // Interacción de las cards
       const cards = Array.from(grid.querySelectorAll(".card"));
       function getPos(i) { return { row: Math.floor(i / 3), col: i % 3 }; }
+
+      // ── Entrada escalonada: izq→der, fila por fila, ~250ms entre cada card ──
+      // Orden: [0,1,2, 3,4,5, 6,7,8] = fila0 izq→der, fila1 izq→der, fila2 izq→der
+      const enterOrder = [0,1,2, 3,4,5, 6,7,8];
+      enterOrder.forEach((cardIdx, step) => {
+        setTimeout(() => {
+          cards[cardIdx].classList.add("entered");
+        }, step * 250);
+      });
 
       // ── Detectar touch device ──
       const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -275,7 +283,6 @@
           document.getElementById("works-grid").classList.add("visible");
           document.getElementById("home-btn").style.opacity = "";
           collapseAll();
-          vloop.currentTime = 0;
         }).catch(() => {});
       }
 
@@ -283,21 +290,26 @@
       player.addEventListener("click", e => { if (e.target === player) closePlayer(); });
     }
 
-    // Freeze justo antes del último frame
+    // El video tiene una barrida con alfa al final.
+    // Cuando falta ~1s para terminar, empezamos a meter las cards.
+    // El video sigue reproduciéndose y se oculta solo al terminar.
+    let cardsTriggered = false;
+
     v.addEventListener("loadedmetadata", () => {
-      const stopAt = v.duration - 0.04;
+      const triggerAt = Math.max(v.duration - 1.0, 0);
 
       v.addEventListener("timeupdate", () => {
-        if (!frozen && v.currentTime >= stopAt) {
-          v.pause();
+        if (!cardsTriggered && v.currentTime >= triggerAt) {
+          cardsTriggered = true;
           activate();
         }
       });
     });
 
-    // Fallback por si timeupdate se lo pierde
+    // Cuando el video termina, ocultarlo
     v.addEventListener("ended", () => {
-      if (!frozen) activate();
+      if (!cardsTriggered) activate();
+      v.style.display = "none";
     });
 
     v.play().catch(() => {});
