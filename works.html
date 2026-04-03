@@ -77,10 +77,11 @@
       // ── Entrada escalonada: izq→der, fila por fila, ~250ms entre cada card ──
       // Orden: [0,1,2, 3,4,5, 6,7,8] = fila0 izq→der, fila1 izq→der, fila2 izq→der
       const enterOrder = [0,1,2, 3,4,5, 6,7,8];
+      const enterDelay = 333; // 10 frames de espera inicial
       enterOrder.forEach((cardIdx, step) => {
         setTimeout(() => {
           cards[cardIdx].classList.add("entered");
-        }, step * 250);
+        }, enterDelay + step * 250);
       });
 
       // ── Detectar touch device ──

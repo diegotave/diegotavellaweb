@@ -106,7 +106,7 @@ body {
   overflow: visible;
   z-index: 1;
   /* inactivo: 85%, empieza oculto hasta la animación de entrada */
-  transform: scale(0.85) translateY(60px);
+  transform: scale(0.85) translateY(300px);
   opacity: 0;
   will-change: transform, width, height, border-radius, opacity;
   -webkit-transform: translateZ(0);
@@ -114,7 +114,8 @@ body {
 
 /* Animación de entrada con desaceleración elegante */
 @keyframes card-enter {
-  0%   { opacity: 0; transform: scale(0.85) translateY(60px); }
+  0%   { opacity: 0; transform: scale(0.85) translateY(300px); }
+  20%  { opacity: 1; }
   100% { opacity: 1; transform: scale(0.85) translateY(0); }
 }
 
