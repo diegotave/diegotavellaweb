@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella</title>
   <link rel="stylesheet" href="index.css">
+  <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
 </head>
 <body>
 
@@ -141,11 +142,8 @@
       setTimeout(() => {
         vtrans.style.display = "block";
         vtrans.play().catch(() => {});
-      }, 233);
-
-      vtrans.addEventListener("ended", () => {
         window.location.href = "works.html";
-      }, { once: true });
+      }, 233);
     }
 
     // Click en la flechita
