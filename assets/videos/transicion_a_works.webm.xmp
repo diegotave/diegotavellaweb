@@ -1,5 +1,5 @@
 <?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
-<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 9.0-c001 152.deb9585, 2024/02/06-08:36:10        " rdfhash="00E2527DE4DC1A93F1F42F180C0A6BD5" merged="0">
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 9.0-c001 152.deb9585, 2024/02/06-08:36:10        " rdfhash="A2172C9978565073542566B856D56240" merged="0">
  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
   <rdf:Description rdf:about=""
     xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"
@@ -11,13 +11,13 @@
     xmlns:dc="http://purl.org/dc/elements/1.1/"
     xmlns:bodymovin="bodymovin"
     xmlns:stDim="http://ns.adobe.com/xap/1.0/sType/Dimensions#"
-   xmpMM:InstanceID="xmp.iid:5e100551-465a-4dae-94ed-89fb731408cb"
-   xmpMM:DocumentID="0dc30106-5e7d-98d9-ed88-e40800000059"
-   xmpMM:OriginalDocumentID="xmp.did:b83616e4-df55-46d4-8984-262bcf2bc098"
-   xmp:MetadataDate="2026-04-02T22:25:04-03:00"
-   xmp:ModifyDate="2026-04-02T22:25:04-03:00"
+   xmpMM:InstanceID="xmp.iid:04dcecf7-c29d-47da-be20-656cbf21dbc3"
+   xmpMM:DocumentID="680ba911-2f91-6e61-f013-457400000059"
+   xmpMM:OriginalDocumentID="xmp.did:80ed9d63-36ac-44fe-94ac-0fc6d6cfd78a"
+   xmp:MetadataDate="2026-04-02T23:13:51-03:00"
+   xmp:ModifyDate="2026-04-02T23:13:51-03:00"
    xmp:CreatorTool="Adobe After Effects 2025 (Macintosh)"
-   xmp:CreateDate="2026-04-02T22:24:32-03:00"
+   xmp:CreateDate="2026-04-02T23:13:19-03:00"
    dc:format="WebM"
    bodymovin:project_id="gxzkf5ndj1vihd2oy26z"
    xmpDM:videoFrameRate="30.000000"
@@ -32,8 +32,8 @@
     <rdf:Seq>
      <rdf:li
       stEvt:action="saved"
-      stEvt:instanceID="728eae01-f8b4-4b66-2308-057f00000086"
-      stEvt:when="2026-04-02T22:25:04-03:00"
+      stEvt:instanceID="3a9b6597-4a34-25fc-50da-282000000086"
+      stEvt:when="2026-04-02T23:13:51-03:00"
       stEvt:softwareAgent="Adobe Adobe Media Encoder 2025.0 (Macintosh)"
       stEvt:changed="/"/>
      <rdf:li
@@ -154,26 +154,26 @@
       stEvt:changed="/"/>
      <rdf:li
       stEvt:action="saved"
-      stEvt:instanceID="xmp.iid:45898c86-e87e-45ee-86dd-6d213ea19de5"
-      stEvt:when="2026-04-02T22:25:04-03:00"
+      stEvt:instanceID="xmp.iid:5ce6c96b-fdce-4c92-92f2-bedb61abe222"
+      stEvt:when="2026-04-02T23:13:51-03:00"
       stEvt:softwareAgent="Adobe Adobe Media Encoder 2025.0 (Macintosh)"
       stEvt:changed="/"/>
      <rdf:li
       stEvt:action="saved"
-      stEvt:instanceID="xmp.iid:5e100551-465a-4dae-94ed-89fb731408cb"
-      stEvt:when="2026-04-02T22:25:04-03:00"
+      stEvt:instanceID="xmp.iid:04dcecf7-c29d-47da-be20-656cbf21dbc3"
+      stEvt:when="2026-04-02T23:13:51-03:00"
       stEvt:softwareAgent="Adobe Adobe Media Encoder 2025.0 (Macintosh)"
       stEvt:changed="/metadata"/>
     </rdf:Seq>
    </xmpMM:History>
    <xmpMM:DerivedFrom
-    stRef:instanceID="xmp.iid:8b14911b-bdea-4a7e-8650-f9662be0d613"
-    stRef:documentID="xmp.did:8b14911b-bdea-4a7e-8650-f9662be0d613"
+    stRef:instanceID="xmp.iid:9c57caa4-ff2e-4e93-9966-30249d1411bb"
+    stRef:documentID="xmp.did:9c57caa4-ff2e-4e93-9966-30249d1411bb"
     stRef:originalDocumentID="xmp.did:ba5ccac1-4370-44ea-8299-c2ac87e8607d"/>
    <xmpMM:Ingredients>
     <rdf:Bag>
      <rdf:li
-      stRef:instanceID="xmp.iid:0df8990f-250e-49db-8958-80e6f1cf11e3"
+      stRef:instanceID="xmp.iid:b8e65b54-9e92-4a1d-96ae-ca99c38d4d39"
       stRef:fromPart="time:0d12605440f30720"
       stRef:toPart="time:0d12605440f30720"
       stRef:maskMarkers="None"/>
@@ -207,38 +207,8 @@
      </rdf:li>
      <rdf:li>
       <rdf:Description
-       dc:format="application/vnd.adobe.aftereffects.comp"
-       xmpMM:InstanceID="xmp.iid:0df8990f-250e-49db-8958-80e6f1cf11e3">
-      <dc:title>
-       <rdf:Alt>
-        <rdf:li xml:lang="x-default">transicion a works</rdf:li>
-       </rdf:Alt>
-      </dc:title>
-      <xmpMM:Ingredients>
-       <rdf:Bag>
-        <rdf:li
-         stRef:instanceID="xmp.iid:138d02a3-5e6e-4e23-bea7-384e05ffa188"
-         stRef:fromPart="time:0d12605440f30720"
-         stRef:toPart="time:0d12605440f30720"
-         stRef:maskMarkers="None"/>
-        <rdf:li
-         stRef:instanceID="xmp.iid:3e236daf-cebe-4f30-a6d4-bb35bee890d9"
-         stRef:fromPart="time:141312f30720d306176f30720"
-         stRef:toPart="time:141312f30720d306176f30720"
-         stRef:maskMarkers="None"/>
-        <rdf:li
-         stRef:instanceID="xmp.iid:bb83e74f-4538-454f-a5b9-3639c52ff24b"
-         stRef:fromPart="time:54272f30720d304128f30720"
-         stRef:toPart="time:141312f30720d304128f30720"
-         stRef:maskMarkers="None"/>
-       </rdf:Bag>
-      </xmpMM:Ingredients>
-      </rdf:Description>
-     </rdf:li>
-     <rdf:li>
-      <rdf:Description
        dc:format="application/vnd.adobe.aftereffects.layer"
-       xmpMM:InstanceID="xmp.iid:138d02a3-5e6e-4e23-bea7-384e05ffa188">
+       xmpMM:InstanceID="xmp.iid:0b598e18-c61c-45c3-94c5-262c15121013">
       <dc:title>
        <rdf:Alt>
         <rdf:li xml:lang="x-default">Null 32</rdf:li>
@@ -249,7 +219,7 @@
      <rdf:li>
       <rdf:Description
        dc:format="application/vnd.adobe.aftereffects.layer"
-       xmpMM:InstanceID="xmp.iid:3e236daf-cebe-4f30-a6d4-bb35bee890d9">
+       xmpMM:InstanceID="xmp.iid:19ab6d41-53b3-4caa-9d76-590f6f6757db">
       <dc:title>
        <rdf:Alt>
         <rdf:li xml:lang="x-default">Adjustment Layer 1</rdf:li>
@@ -260,7 +230,7 @@
      <rdf:li>
       <rdf:Description
        dc:format="application/vnd.adobe.aftereffects.layer"
-       xmpMM:InstanceID="xmp.iid:bb83e74f-4538-454f-a5b9-3639c52ff24b">
+       xmpMM:InstanceID="xmp.iid:1d803960-0bb9-4567-ab38-87bbc5c0a9b7">
       <dc:title>
        <rdf:Alt>
         <rdf:li xml:lang="x-default">VHStape 6</rdf:li>
@@ -278,11 +248,38 @@
       </xmpMM:Ingredients>
       </rdf:Description>
      </rdf:li>
+     <rdf:li>
+      <rdf:Description
+       dc:format="application/vnd.adobe.aftereffects.comp"
+       xmpMM:InstanceID="xmp.iid:b8e65b54-9e92-4a1d-96ae-ca99c38d4d39">
+      <dc:title>
+       <rdf:Alt>
+        <rdf:li xml:lang="x-default">transicion a works</rdf:li>
+       </rdf:Alt>
+      </dc:title>
+      <xmpMM:Ingredients>
+       <rdf:Bag>
+        <rdf:li
+         stRef:instanceID="xmp.iid:0b598e18-c61c-45c3-94c5-262c15121013"
+         stRef:fromPart="time:0d12605440f30720"
+         stRef:toPart="time:0d12605440f30720"
+         stRef:maskMarkers="None"/>
+        <rdf:li
+         stRef:instanceID="xmp.iid:19ab6d41-53b3-4caa-9d76-590f6f6757db"
+         stRef:fromPart="time:141312f30720d306176f30720"
+         stRef:toPart="time:141312f30720d306176f30720"
+         stRef:maskMarkers="None"/>
+        <rdf:li
+         stRef:instanceID="xmp.iid:1d803960-0bb9-4567-ab38-87bbc5c0a9b7"
+         stRef:fromPart="time:54272f30720d304128f30720"
+         stRef:toPart="time:141312f30720d304128f30720"
+         stRef:maskMarkers="None"/>
+       </rdf:Bag>
+      </xmpMM:Ingredients>
+      </rdf:Description>
+     </rdf:li>
     </rdf:Bag>
    </xmpMM:Pantry>
-   <xmpDM:startTimecode
-    xmpDM:timeFormat="30Timecode"
-    xmpDM:timeValue="00:00:04:18"/>
    <xmpDM:videoFrameSize
     stDim:w="1920"
     stDim:h="1080"
@@ -290,6 +287,9 @@
    <xmpDM:duration
     xmpDM:value="29"
     xmpDM:scale="1/30"/>
+   <xmpDM:startTimecode
+    xmpDM:timeFormat="30Timecode"
+    xmpDM:timeValue="00:00:04:18"/>
    <xmpDM:altTimecode
     xmpDM:timeValue="00:00:04:18"
     xmpDM:timeFormat="30Timecode"/>
