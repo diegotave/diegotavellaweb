@@ -139,9 +139,9 @@
       }
       requestAnimationFrame(wipeFrame);
 
+      // Marcar que venimos con transición y navegar
+      sessionStorage.setItem("playTransicion", "1");
       setTimeout(() => {
-        vtrans.style.display = "block";
-        vtrans.play().catch(() => {});
         window.location.href = "works.html";
       }, 233);
     }

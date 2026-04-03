@@ -15,7 +15,6 @@
 
     <!-- Botonera — oculta hasta activate() -->
     <div id="works-grid">
-      <div id="grid-bg"></div>
       <div class="card" data-video="WORKS/video1/video1reel.mp4" data-ratio="16/9">
         <div class="card__clip"><img class="card__thumb card__thumb--contain" src="https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video1/thumbv1.png" alt=""></div>
         <div class="card__badge"></div>
@@ -41,17 +40,6 @@
 
     <!-- Marco dentro del stage: position:absolute se ancla al stage, overflow:hidden lo contiene -->
     <div id="frame"></div>
-  </div>
-
-  <!-- Overlay de transición desde index -->
-  <!-- Overlay de transición desde index -->
-  <!-- Overlay de transición desde index -->
-  <div id="trans-overlay" style="display:none;position:fixed;inset:0;z-index:499;pointer-events:none;align-items:center;justify-content:center;">
-    <div style="position:relative;width:min(100vw,1920px);height:min(100dvh,1080px);overflow:hidden;flex-shrink:0;">
-      <video id="vtrans" muted playsinline preload="auto" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);height:calc(100% - 20px);width:auto;">
-        <source src="assets/videos/transicion_a_works.webm" type='video/webm; codecs="vp9"'>
-      </video>
-    </div>
   </div>
 
   <a id="home-btn" href="index.html?r=1" aria-label="Home">
@@ -98,23 +86,6 @@
       // Promover cards a capas GPU
       cards.forEach(c => { c.style.willChange = "transform, width, height, border-radius"; });
 
-      const gridBg = document.getElementById("grid-bg");
-      const bigR   = "calc(var(--card-size) / 2 + 50px)";
-      const smallR = "calc(min(1.4vw, 18px) + 50px)";
-
-      function updateBgRadius(i) {
-        if (i === -1) {
-          gridBg.style.borderRadius = `${bigR} ${bigR} ${bigR} ${bigR}`;
-          return;
-        }
-        const { row, col } = getPos(i);
-        const tl = (row === 0 && col === 0) ? smallR : bigR;
-        const tr = (row === 0 && col === 2) ? smallR : bigR;
-        const br = (row === 2 && col === 2) ? smallR : bigR;
-        const bl = (row === 2 && col === 0) ? smallR : bigR;
-        gridBg.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
-      }
-
       function expandCard(i) {
         if (i === currentExpanded) return; // ya expandida, no recalcular
         currentExpanded = i;
@@ -133,14 +104,12 @@
             other.style.transform = `translate3d(${(dc / len) * PUSH}px, ${(dr / len) * PUSH}px, 0)`;
           }
         });
-        updateBgRadius(i);
       }
 
       function collapseAll() {
         if (currentExpanded === -1) return;
         cards.forEach(c => { c.classList.remove("expanded"); c.style.transform = ""; });
         currentExpanded = -1;
-        updateBgRadius(-1);
       }
 
       // Encontrar qué card está bajo un punto (x, y)
@@ -339,21 +308,7 @@
       v.style.display = "none";
     });
 
-    setTimeout(() => { v.play().catch(() => {}); }, 333);
-
-    // Reproducir transicion_a_works por encima de todo si venimos de index
-    if (sessionStorage.getItem("playTransicion") === "1") {
-      sessionStorage.removeItem("playTransicion");
-      const overlay = document.getElementById("trans-overlay");
-      const vtrans  = document.getElementById("vtrans");
-      overlay.style.display = "flex";
-      vtrans.play().catch(() => {});
-      vtrans.addEventListener("ended", () => {
-        overlay.style.transition = "opacity 0.3s";
-        overlay.style.opacity = "0";
-        setTimeout(() => { overlay.style.display = "none"; }, 300);
-      }, { once: true });
-    }
+    v.play().catch(() => {});
   </script>
 
 </body>
