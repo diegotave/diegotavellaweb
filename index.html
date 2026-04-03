@@ -100,10 +100,10 @@
       gateInput.focus();
     }
 
-    // Click → transición a works
+    // Transición a works
     const vtrans = document.getElementById("vtrans");
 
-    btn.addEventListener("click", () => {
+    function goToWorks() {
       if (!btnReady) return;
       btnReady = false;
 
@@ -111,13 +111,9 @@
       btn.style.display = "none";
 
       // Wipe de abajo hacia arriba con 200px de feather para logointro3 y vhsindex
-      // Duración igual que transicion_a_works (~967ms)
       const wipeDuration = 967;
       const feather = 200;
 
-      // Máscara: negro arriba (visible) → transparente abajo (se borra)
-      // Tamaño: alto del elemento + feather extra
-      // Posición inicial: abajo del todo (todo visible)
       [v, vhs].forEach(el => {
         el.style.maskImage = `linear-gradient(to bottom, black calc(100% - ${feather}px), transparent 100%)`;
         el.style.webkitMaskImage = `linear-gradient(to bottom, black calc(100% - ${feather}px), transparent 100%)`;
@@ -129,7 +125,6 @@
         el.style.webkitMaskRepeat = `no-repeat`;
       });
 
-      // Animar: subir la máscara para que la parte inferior se borre primero
       const wipeStart = performance.now();
       const stageH = stage.offsetHeight;
       function wipeFrame(now) {
@@ -143,17 +138,31 @@
       }
       requestAnimationFrame(wipeFrame);
 
-      // Mostrar y reproducir transición 7 frames después del wipe (~233ms)
       setTimeout(() => {
         vtrans.style.display = "block";
         vtrans.play().catch(() => {});
       }, 233);
 
-      // Al terminar la transición, navegar a works
       vtrans.addEventListener("ended", () => {
         window.location.href = "works.html";
       }, { once: true });
-    });
+    }
+
+    // Click en la flechita
+    btn.addEventListener("click", goToWorks);
+
+    // Swipe hacia arriba en touch
+    let touchStartY = 0;
+    stage.addEventListener("touchstart", (e) => {
+      if (!btnReady) return;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    stage.addEventListener("touchend", (e) => {
+      if (!btnReady) return;
+      const dy = touchStartY - e.changedTouches[0].clientY;
+      if (dy > 50) goToWorks(); // swipe arriba de al menos 50px
+    }, { passive: true });
   </script>
 
 </body>
