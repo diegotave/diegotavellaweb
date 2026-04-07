@@ -55,15 +55,14 @@
       renderer:  "svg",
       loop:      false,
       autoplay:  false,
-      path:      "assets/json/playdemo.json"
+      path:      "assets/json/playdemo.json",
+      rendererSettings: {
+        preserveAspectRatio: 'xMidYMid meet',
+        progressiveLoad: true
+      }
     });
     botonAnim.addEventListener("DOMLoaded", () => {
       botonAnim.goToAndStop(0, true);
-      const svg = document.querySelector("#boton-demo svg");
-      if (svg) {
-        svg.removeAttribute("clip-path");
-        svg.style.clipPath = "none";
-      }
       const hit = document.getElementById("boton-hit");
       let isHovered = false;
       hit.addEventListener("mouseenter", () => {
