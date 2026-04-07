@@ -1,10 +1,11 @@
-image.png<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella</title>
   <link rel="stylesheet" href="index.css">
+  <script src="assets/lottie.min.js"></script>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
 </head>
 <body>
@@ -24,6 +25,8 @@ image.png<!DOCTYPE html>
   </div>
 
   <div id="stage">
+    <div id="vhs-frame"><div id="boton-demo"></div></div>
+    <button id="boton-hit" aria-label="Demo Reel"></button>
     <video id="vhs" muted playsinline loop preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -45,11 +48,27 @@ image.png<!DOCTYPE html>
     let frozen   = false;
     let btnReady = false;
 
+    const botonAnim = lottie.loadAnimation({
+      container: document.getElementById("boton-demo"),
+      renderer:  "svg",
+      loop:      false,
+      autoplay:  false,
+      path:      "assets/json/playdemo.json"
+    });
+    botonAnim.addEventListener("DOMLoaded", () => {
+      botonAnim.goToAndStop(0, true);
+
+    });
+
     function activate() {
       frozen   = true;
       btnReady = true;
       btn.classList.add("visible");
       vhs.play().catch(() => {});
+      v.style.transition = "opacity 300ms ease";
+      v.style.opacity    = "0";
+      document.getElementById("boton-demo").style.opacity = "1";
+      document.getElementById("boton-hit").classList.add("visible");
     }
 
     // Password gate
@@ -148,6 +167,12 @@ image.png<!DOCTYPE html>
 
     // Click en la flechita
     btn.addEventListener("click", goToWorks);
+
+    // Click en el boton demo reel
+    document.getElementById("boton-hit").addEventListener("click", () => {
+      sessionStorage.setItem("autoplayVideo1", "1");
+      goToWorks();
+    });
 
     // Swipe hacia arriba en touch
     let touchStartY = 0;

@@ -9,6 +9,9 @@
 <body>
 
   <div id="stage">
+    <video id="vhs-botonera" muted playsinline loop preload="auto">
+      <source src="assets/videos/vhs_botonera.webm" type='video/webm; codecs="vp9"'>
+    </video>
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/introwork.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -99,8 +102,8 @@
       cards.forEach(c => { c.style.willChange = "transform, width, height, border-radius"; });
 
       const gridBg = document.getElementById("grid-bg");
-      const bigR   = "calc(var(--card-size) / 2 + 50px)";
-      const smallR = "calc(min(1.4vw, 18px) + 50px)";
+      const bigR   = "calc(var(--card-size) / 2 + 15px)";
+      const smallR = "calc(min(1.4vw, 18px) + 15px)";
 
       function updateBgRadius(i) {
         if (i === -1) {
@@ -118,6 +121,7 @@
       function expandCard(i) {
         if (i === currentExpanded) return; // ya expandida, no recalcular
         currentExpanded = i;
+        gridBg.classList.add("has-expanded");
         const card = cards[i];
         const PUSH = card.offsetWidth * 0.22;
         const { row: ar, col: ac } = getPos(i);
@@ -140,6 +144,7 @@
         if (currentExpanded === -1) return;
         cards.forEach(c => { c.classList.remove("expanded"); c.style.transform = ""; });
         currentExpanded = -1;
+        gridBg.classList.remove("has-expanded");
         updateBgRadius(-1);
       }
 
@@ -315,17 +320,32 @@
 
       playerBack.addEventListener("click", e => { e.stopPropagation(); closePlayer(); });
       player.addEventListener("click", e => { if (e.target === player) closePlayer(); });
+
+      if (sessionStorage.getItem("autoplayVideo1") === "1") {
+        sessionStorage.removeItem("autoplayVideo1");
+        const card1 = cards[0];
+        if (card1 && card1.dataset.video) {
+          openPlayer(card1, R2 + "/" + card1.dataset.video, card1.dataset.ratio || "16/9");
+        }
+      }
     }
 
     // El video tiene una barrida con alfa al final.
     // Cuando falta ~1s para terminar, empezamos a meter las cards.
     // El video sigue reproduciéndose y se oculta solo al terminar.
     let cardsTriggered = false;
+    let vhsTriggered   = false;
+    const vhsBotonera  = document.getElementById("vhs-botonera");
 
     v.addEventListener("loadedmetadata", () => {
-      const triggerAt = Math.max(v.duration - 1.0, 0);
+      const triggerAt    = Math.max(v.duration - 1.0, 0);
+      const vhsTriggerAt = Math.max(v.duration - (10 / 30), 0);
 
       v.addEventListener("timeupdate", () => {
+        if (!vhsTriggered && v.currentTime >= vhsTriggerAt) {
+          vhsTriggered = true;
+          vhsBotonera.play().catch(() => {});
+        }
         if (!cardsTriggered && v.currentTime >= triggerAt) {
           cardsTriggered = true;
           activate();

@@ -107,6 +107,52 @@ body {
 }
 
 /* ── VIDEO ───────────────────────────────────────────────────────────────── */
+#vhs-frame {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
+  aspect-ratio: 16 / 9;
+  z-index: 0;
+}
+
+#boton-demo {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+
+#boton-demo svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+
+#boton-hit {
+  position: absolute;
+  left: 76%;
+  top:  53%;
+  width:  10.2vh;
+  height: 10.2vh;
+  transform: translate(-50%, -50%);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+#boton-hit.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 #v {
   position: absolute;
   bottom: 10px;
@@ -128,6 +174,7 @@ body {
   display: block;
   z-index: 1;
   mix-blend-mode: exclusion;
+  pointer-events: none;
 }
 
 #vtrans {
