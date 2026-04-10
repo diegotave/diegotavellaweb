@@ -25,9 +25,18 @@
   </div>
 
   <div id="stage">
+    <div id="boton-demo"><div id="boton-circulo"></div><svg id="boton-circulo-negro" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <mask id="mask-negro">
+            <rect width="100" height="100" fill="white"/>
+            <text x="100" y="50" text-anchor="end" dominant-baseline="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="19.2" fill="black"><tspan font-weight="400">play</tspan><tspan font-weight="700" font-style="italic">demo</tspan></text>
+          </mask>
+        </defs>
+        <circle cx="50" cy="50" r="49" fill="black" mask="url(#mask-negro)"/>
+      </svg><div id="boton-cuadrado"><video id="boton-cuadrado-video" muted playsinline loop></video></div></div>
     <div id="vhs-frame">
-      <div id="boton-demo"></div>
       <button id="boton-hit" aria-label="Demo Reel"></button>
+      <button id="boton-hit-cuadrado" aria-label="Works"></button>
     </div>
     <video id="vhs" muted playsinline loop preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
@@ -50,42 +59,16 @@
     let frozen   = false;
     let btnReady = false;
 
-    const botonAnim = lottie.loadAnimation({
-      container: document.getElementById("boton-demo"),
-      renderer:  "svg",
-      loop:      false,
-      autoplay:  false,
-      path:      "assets/json/playdemo.json"
-    });
-    botonAnim.addEventListener("DOMLoaded", () => {
-      botonAnim.goToAndStop(0, true);
-      const svg = document.querySelector("#boton-demo svg");
-      if (svg) {
-        svg.removeAttribute("clip-path");
-        svg.style.clipPath = "none";
-      }
-      const hit = document.getElementById("boton-hit");
-      let isHovered = false;
-      hit.addEventListener("mouseenter", () => {
-        isHovered = true;
-        botonAnim.setDirection(1);
-        botonAnim.play();
-      });
-      hit.addEventListener("mouseleave", () => {
-        isHovered = false;
-      });
-      botonAnim.addEventListener("complete", () => {
-        if (!isHovered) {
-          botonAnim.setDirection(-1);
-          botonAnim.play();
-        }
-      });
-      botonAnim.addEventListener("enterFrame", () => {
-        if (!isHovered && botonAnim.currentFrame <= 0.1 && botonAnim.playDirection === -1) {
-          botonAnim.goToAndStop(0, true);
-        }
-      });
-    });
+    const hit = document.getElementById("boton-hit");
+    const circulo = document.getElementById("boton-circulo");
+    const circuloNegro = document.getElementById("boton-circulo-negro");
+    const botonDemo = document.getElementById("boton-demo");
+    const hitCuadrado = document.getElementById("boton-hit-cuadrado");
+    const cuadrado = document.getElementById("boton-cuadrado");
+    hit.addEventListener("mouseenter", () => { circulo.classList.add("hovered"); circuloNegro.classList.add("hovered"); botonDemo.classList.add("hovered"); });
+    hit.addEventListener("mouseleave", () => { circulo.classList.remove("hovered"); circuloNegro.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
+    hitCuadrado.addEventListener("mouseenter", () => { cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered"); });
+    hitCuadrado.addEventListener("mouseleave", () => { cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
 
     function activate() {
       frozen   = true;
@@ -95,6 +78,7 @@
       v.style.transition = "opacity 300ms ease";
       v.style.opacity    = "0";
       document.getElementById("boton-hit").classList.add("visible");
+      document.getElementById("boton-hit-cuadrado").classList.add("visible");
       document.getElementById("boton-demo").style.opacity = "1";
     }
 
