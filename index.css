@@ -176,19 +176,48 @@ body {
   width:  2.707%;
   height: 4.813%;
   transform: translate(-50%, -50%);
-  background: magenta;
   border-radius: 8px;
   overflow: visible;
+  z-index: 0;
+}
+
+#boton-video-wrap {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  z-index: 0;
+  transition: width 300ms ease;
+  background: transparent;
 }
 
 #boton-cuadrado-video {
   position: absolute;
-  inset: 0;
-  width: 100%;
+  left: 0;
+  top: 0;
+  width: min(26.56vw, 510px);
   height: 100%;
-  object-fit: cover;
+}
+
+#boton-video-negro {
+  position: absolute;
+  inset: 0;
+  background: black;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#boton-cuadrado::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: magenta;
   border-radius: 8px;
-  z-index: -1;
+  z-index: 1;
+  pointer-events: none;
 }
 
 #boton-cuadrado::before {
@@ -203,6 +232,11 @@ body {
   transition: width 300ms ease;
   pointer-events: none;
   box-sizing: border-box;
+  z-index: 2;
+}
+
+#boton-cuadrado.hovered #boton-video-wrap {
+  width: 1000%;
 }
 
 #boton-cuadrado.hovered::before {

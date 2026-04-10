@@ -33,7 +33,7 @@
           </mask>
         </defs>
         <circle cx="50" cy="50" r="49" fill="black" mask="url(#mask-negro)"/>
-      </svg><div id="boton-cuadrado"><video id="boton-cuadrado-video" muted playsinline loop></video></div></div>
+      </svg><div id="boton-cuadrado"><div id="boton-video-wrap"><video id="boton-cuadrado-video" muted playsinline><source src="assets/videos/barridacabezalesmini.webm" type='video/webm; codecs="vp9"'></video><div id="boton-video-negro"></div></div></div></div>
     <div id="vhs-frame">
       <button id="boton-hit" aria-label="Demo Reel"></button>
       <button id="boton-hit-cuadrado" aria-label="Works"></button>
@@ -65,10 +65,25 @@
     const botonDemo = document.getElementById("boton-demo");
     const hitCuadrado = document.getElementById("boton-hit-cuadrado");
     const cuadrado = document.getElementById("boton-cuadrado");
+    let btnVideo, videoNegro, hoverPlays = 0, videoHovering = false;
+
     hit.addEventListener("mouseenter", () => { circulo.classList.add("hovered"); circuloNegro.classList.add("hovered"); botonDemo.classList.add("hovered"); });
     hit.addEventListener("mouseleave", () => { circulo.classList.remove("hovered"); circuloNegro.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
-    hitCuadrado.addEventListener("mouseenter", () => { cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered"); });
-    hitCuadrado.addEventListener("mouseleave", () => { cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
+
+    hitCuadrado.addEventListener("mouseenter", () => {
+      cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered");
+      if (!btnVideo) return;
+      videoHovering = true; hoverPlays = 0;
+      videoNegro.style.opacity = "0";
+      btnVideo.currentTime = 0; btnVideo.play().catch(() => {});
+    });
+    hitCuadrado.addEventListener("mouseleave", () => {
+      cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered");
+      if (!btnVideo) return;
+      videoHovering = false; hoverPlays = 0;
+      videoNegro.style.opacity = "0";
+      if (btnVideo.paused) { btnVideo.currentTime = 0; btnVideo.play().catch(() => {}); }
+    });
 
     function activate() {
       frozen   = true;
@@ -79,6 +94,16 @@
       v.style.opacity    = "0";
       document.getElementById("boton-hit").classList.add("visible");
       document.getElementById("boton-hit-cuadrado").classList.add("visible");
+      btnVideo = document.getElementById("boton-cuadrado-video");
+      videoNegro = document.getElementById("boton-video-negro");
+      btnVideo.addEventListener("ended", () => {
+        if (videoHovering) {
+          hoverPlays++;
+          if (hoverPlays >= 2) { videoNegro.style.opacity = "1"; return; }
+        }
+        btnVideo.currentTime = 0; btnVideo.play().catch(() => {});
+      });
+      btnVideo.play().catch(() => {});
       document.getElementById("boton-demo").style.opacity = "1";
     }
 
