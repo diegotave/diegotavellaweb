@@ -338,21 +338,23 @@ body {
 /* Cuando el viewport se angosta, el contenedor 16:9 desborda el stage.
    Topamos el left para que el círculo (y su hit area) se desplacen a la
    izquierda en lugar de quedar cortados por overflow:hidden del stage.
-   Fórmula: min(left natural en vh, máximo permitido = 50vw + mitad-contenedor - radio) */
+   Usamos min(100dvh, 1080px) para reflejar la altura real del stage
+   (que tiene min-height 1080px) y usar dvh (dinámico, sin chrome del browser)
+   en lugar de vh para que coincida con cómo el stage y boton-demo se dimensionan. */
 @media (max-aspect-ratio: 16/9) {
   #boton-circulo,
   #boton-circulo-negro,
   #boton-hit {
     left: min(
-      calc((100vh - 20px) * 1.3511),
-      calc(44vw + (100vh - 20px) * 0.8209 - 8px)
+      calc((min(100dvh, 1080px) - 20px) * 1.3511),
+      calc(44vw + (min(100dvh, 1080px) - 20px) * 0.8209 - 8px)
     );
   }
   #boton-cuadrado,
   #boton-hit-cuadrado {
     left: max(
-      calc((100vh - 20px) * 0.4435),
-      calc((100vh - 20px) * 0.9130 - 50vw + 38px)
+      calc((min(100dvh, 1080px) - 20px) * 0.4435),
+      calc((min(100dvh, 1080px) - 20px) * 0.9130 - 50vw + 38px)
     );
   }
 }
