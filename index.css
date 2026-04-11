@@ -175,10 +175,13 @@ body {
   top:    calc(30px + 2.406%);
   width:  2.707%;
   height: 4.813%;
-  transform: translate(-50%, -50%);
-  border-radius: 8px;
+  transform: translate(-50%, -50%) translateZ(0);
+  border-radius: 24px;
   overflow: visible;
   z-index: 0;
+  will-change: transform;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 #boton-video-wrap {
@@ -188,18 +191,30 @@ body {
   bottom: 0;
   width: 100%;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 24px;
   z-index: 0;
-  transition: width 300ms ease;
+  transition: width 300ms ease, clip-path 400ms ease-in-out;
   background: transparent;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  clip-path: inset(0 0 0 0px round 24px);
+  will-change: width, clip-path;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 #boton-cuadrado-video {
   position: absolute;
   left: 0;
   top: 0;
-  width: min(26.56vw, 510px);
+  width: auto;
   height: 100%;
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 #boton-video-negro {
@@ -208,17 +223,74 @@ body {
   background: black;
   opacity: 0;
   pointer-events: none;
+  transition: opacity 500ms ease;
 }
 
-#boton-cuadrado::after {
-  content: '';
+#boton-texto {
   position: absolute;
   inset: 0;
-  background: magenta;
-  border-radius: 8px;
-  z-index: 1;
+  display: flex;
+  align-items: center;
+  padding-left: calc(var(--bt-pad, 14%) - 10px);
+  white-space: nowrap;
+  z-index: 3;
   pointer-events: none;
+  color: #fff;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: min(2.04vh, 22pt);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  transform: translateX(-220%) translateZ(0);
+  transition: transform 700ms cubic-bezier(0.2, 0, 0.05, 1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  will-change: transform;
 }
+
+#boton-texto.visible {
+  transform: translateX(0) translateZ(0);
+}
+
+#bt-inner { display: inline-flex; align-items: baseline; }
+#bt-w  { font-weight: 100; }
+#bt-s  { font-weight: 300; }
+#bt-ws { font-weight: 700; }
+
+#boton-cuadrado.played #boton-video-wrap,
+#boton-cuadrado.played::before {
+  width: min(var(--played-w, 1000%), 60vw);
+}
+
+#boton-bolita {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--square-w, 100%);
+  background: magenta;
+  border: 2px solid black;
+  border-radius: 24px;
+  z-index: 5;
+  pointer-events: none;
+  transition: left 400ms ease-in-out;
+  transform: translateZ(0);
+  will-change: left;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+#boton-cuadrado.closing #boton-bolita {
+  left: calc(min(var(--played-w, 100%), 60vw) - var(--square-w, 100%));
+}
+
+#boton-cuadrado.closing #boton-video-wrap {
+  clip-path: inset(0 0 0 calc(min(var(--played-w, 100%), 60vw) - var(--square-w, 100%)) round 24px);
+}
+
+#boton-cuadrado.closing::before {
+  clip-path: inset(0 0 0 calc(min(var(--played-w, 100%), 60vw) - var(--square-w, 100%)) round 24px);
+}
+
 
 #boton-cuadrado::before {
   content: '';
@@ -227,20 +299,18 @@ body {
   top: 0;
   width: 100%;
   height: 100%;
-  border: var(--frame-border-width) solid black;
-  border-radius: 8px;
-  transition: width 300ms ease;
+  border: 2px solid black;
+  border-radius: 24px;
+  clip-path: inset(0 0 0 0px round 24px);
+  transition: width 300ms ease, clip-path 400ms ease-in-out;
   pointer-events: none;
   box-sizing: border-box;
   z-index: 2;
 }
 
-#boton-cuadrado.hovered #boton-video-wrap {
-  width: 1000%;
-}
-
+#boton-cuadrado.hovered #boton-video-wrap,
 #boton-cuadrado.hovered::before {
-  width: 1000%;
+  width: min(var(--played-w, 1000%), 60vw);
 }
 
 #boton-hit-cuadrado {

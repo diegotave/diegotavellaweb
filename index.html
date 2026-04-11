@@ -33,7 +33,7 @@
           </mask>
         </defs>
         <circle cx="50" cy="50" r="49" fill="black" mask="url(#mask-negro)"/>
-      </svg><div id="boton-cuadrado"><div id="boton-video-wrap"><video id="boton-cuadrado-video" muted playsinline><source src="assets/videos/barridacabezalesmini.webm" type='video/webm; codecs="vp9"'></video><div id="boton-video-negro"></div></div></div></div>
+      </svg><div id="boton-cuadrado"><div id="boton-bolita"></div><div id="boton-video-wrap"><video id="boton-cuadrado-video" muted playsinline><source src="assets/videos/barridacabezalesmini.webm" type='video/webm; codecs="vp9"'></video><div id="boton-video-negro"></div><div id="boton-texto"><span id="bt-inner"><span id="bt-w">watch&nbsp;</span><span id="bt-s">some&nbsp;</span><span id="bt-ws">work</span></span></div></div></div></div>
     <div id="vhs-frame">
       <button id="boton-hit" aria-label="Demo Reel"></button>
       <button id="boton-hit-cuadrado" aria-label="Works"></button>
@@ -44,7 +44,6 @@
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
     </video>
-    <button id="arrow-btn" aria-label="Entrar a Works"></button>
     <video id="vtrans" muted playsinline preload="auto" style="display:none">
       <source src="assets/videos/transicion_a_works.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -54,7 +53,6 @@
   <script>
     const v     = document.getElementById("v");
     const vhs   = document.getElementById("vhs");
-    const btn   = document.getElementById("arrow-btn");
     const stage = document.getElementById("stage");
     let frozen   = false;
     let btnReady = false;
@@ -72,14 +70,14 @@
 
     hitCuadrado.addEventListener("mouseenter", () => {
       cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered");
-      if (!btnVideo) return;
+      if (!btnVideo || cuadrado.classList.contains("played")) return;
       videoHovering = true; hoverPlays = 0;
       videoNegro.style.opacity = "0";
       btnVideo.currentTime = 0; btnVideo.play().catch(() => {});
     });
     hitCuadrado.addEventListener("mouseleave", () => {
       cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered");
-      if (!btnVideo) return;
+      if (!btnVideo || cuadrado.classList.contains("played")) return;
       videoHovering = false; hoverPlays = 0;
       videoNegro.style.opacity = "0";
       if (btnVideo.paused) { btnVideo.currentTime = 0; btnVideo.play().catch(() => {}); }
@@ -88,7 +86,6 @@
     function activate() {
       frozen   = true;
       btnReady = true;
-      btn.classList.add("visible");
       vhs.play().catch(() => {});
       v.style.transition = "opacity 300ms ease";
       v.style.opacity    = "0";
@@ -96,15 +93,29 @@
       document.getElementById("boton-hit-cuadrado").classList.add("visible");
       btnVideo = document.getElementById("boton-cuadrado-video");
       videoNegro = document.getElementById("boton-video-negro");
+      const squareW = cuadrado.offsetWidth;
+      const textW = ["bt-w","bt-s","bt-ws"].reduce((sum, id) => {
+        const el = document.getElementById(id);
+        return sum + (el ? el.offsetWidth : 0);
+      }, 0);
+      const gap = squareW;
+      cuadrado.style.setProperty("--square-w", squareW + "px");
+      cuadrado.style.setProperty("--played-w", (squareW + gap + textW + gap) + "px");
+      cuadrado.style.setProperty("--bt-pad", (squareW + gap) + "px");
       btnVideo.addEventListener("ended", () => {
-        if (videoHovering) {
-          hoverPlays++;
-          if (hoverPlays >= 2) { videoNegro.style.opacity = "1"; return; }
-        }
-        btnVideo.currentTime = 0; btnVideo.play().catch(() => {});
-      });
-      btnVideo.play().catch(() => {});
+        videoNegro.style.opacity = "1";
+        cuadrado.classList.add("played");
+        setTimeout(() => {
+          document.getElementById("boton-texto").classList.add("visible");
+        }, 50);
+      }, { once: true });
       document.getElementById("boton-demo").style.opacity = "1";
+
+      hitCuadrado.addEventListener("click", () => {
+        if (!cuadrado.classList.contains("played")) return;
+        cuadrado.classList.add("closing");
+        setTimeout(goToWorks, 400);
+      });
     }
 
     // Password gate
@@ -163,8 +174,6 @@
       if (!btnReady) return;
       btnReady = false;
 
-      btn.style.display = "none";
-
       const wipeDuration = 967;
       const feather = 200;
 
@@ -197,8 +206,6 @@
         window.location.href = "works.html";
       }, 233);
     }
-
-    btn.addEventListener("click", goToWorks);
 
     document.getElementById("boton-hit").addEventListener("click", () => {
       sessionStorage.setItem("autoplayVideo1", "1");
