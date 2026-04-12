@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="index.css?v=3">
   <link rel="preload" href="assets/videos/logointro3.webm" as="video" type="video/webm">
   <link rel="preload" href="assets/videos/vhsindex.webm" as="video" type="video/webm">
+  <link rel="preload" href="assets/images/etiquetavhs2.png" as="image">
+  <link rel="preload" href="assets/images/logodtvfixed.png" as="image">
+  <link rel="prefetch" href="home.html">
 </head>
 <body>
 
@@ -25,96 +28,31 @@
   </div>
 
   <div id="stage">
-    <div id="boton-demo"><div id="boton-circulo"></div><svg id="boton-circulo-negro" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <mask id="mask-negro">
-            <rect width="100" height="100" fill="white"/>
-            <text x="100" y="50" text-anchor="end" dominant-baseline="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="19.2" fill="black"><tspan font-weight="400">play</tspan><tspan font-weight="700" font-style="italic">demo</tspan></text>
-          </mask>
-        </defs>
-        <circle cx="50" cy="50" r="49" fill="black" mask="url(#mask-negro)"/>
-      </svg><div id="boton-cuadrado"><div id="boton-fondo"></div><svg id="boton-figura" viewBox="0 0 222.3876 214.063" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <mask id="play-mask">
-      <rect width="222.3876" height="214.063" fill="white"/>
-      <path id="play-mask-path" fill="black" transform="translate(67.76,48.26) scale(0.72)" d="M17.3353,2.0513l98.7013,70.2095c6.1132,4.3485,6.1583,13.4121.0887,17.8213L18.2873,161.1548c-7.2294,5.2517-17.3692.1237-17.4238-8.8117L.0002,11.0609C-.0544,2.1141,10.0447-3.1347,17.3353,2.0513Z"/>
-    </mask>
-  </defs>
-  <rect width="222.3876" height="214.063" rx="22.2965" ry="22.2965" fill="black" mask="url(#play-mask)"/>
-</svg><div id="boton-texto-watch">watch <span style="font-weight:400">some </span><span style="font-weight:700">work</span></div></div></div>
-    <div id="vhs-frame">
-      <div id="vhs-label"></div>
-      <button id="boton-hit" aria-label="Demo Reel"></button>
-      <button id="boton-hit-cuadrado" aria-label="Works"></button>
-    </div>
-    <video id="vhs" muted playsinline loop preload="auto">
-      <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
-    </video>
-    <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.png" alt="">
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
     </video>
-    <video id="vtrans" muted playsinline preload="auto" style="display:none">
-      <source src="assets/videos/transicion_a_works.webm" type='video/webm; codecs="vp9"'>
-    </video>
-    <img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="">
     <div id="frame"></div>
   </div>
 
   <script>
-    const v     = document.getElementById("v");
-    const vhs   = document.getElementById("vhs");
-    const stage = document.getElementById("stage");
-    let frozen   = false;
-    let btnReady = false;
+    const v   = document.getElementById("v");
+    let navigated = false;
 
-    const hit = document.getElementById("boton-hit");
-    const circulo = document.getElementById("boton-circulo");
-    const circuloNegro = document.getElementById("boton-circulo-negro");
-    const botonDemo = document.getElementById("boton-demo");
-    const hitCuadrado = document.getElementById("boton-hit-cuadrado");
-    const cuadrado = document.getElementById("boton-cuadrado");
-    hit.addEventListener("mouseenter", () => { circulo.classList.add("hovered"); circuloNegro.classList.add("hovered"); botonDemo.classList.add("hovered"); });
-    hit.addEventListener("mouseleave", () => { circulo.classList.remove("hovered"); circuloNegro.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
+    function goHome() {
+      if (navigated) return;
+      navigated = true;
+      window.location.href = "home.html";
+    }
 
-    const vhsFrame = document.getElementById("vhs-frame");
-
-    hitCuadrado.addEventListener("mouseenter", () => {
-      cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered");
-      const pct = parseFloat(stage.style.getPropertyValue("--fondo-hover-w")) || 257.65;
-      const fondoW = cuadrado.offsetWidth * pct / 100;
-      const vhsFrameW = vhsFrame.offsetWidth;
-      hitCuadrado.style.width = (fondoW / vhsFrameW * 100) + "%";
-      hitCuadrado.style.left = (cuadrado.getBoundingClientRect().left - vhsFrame.getBoundingClientRect().left) / vhsFrameW * 100 + "%";
-      hitCuadrado.style.transform = "translateY(-50%)";
-    });
-    hitCuadrado.addEventListener("mouseleave", () => {
-      cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered");
-      hitCuadrado.style.width = "";
-      hitCuadrado.style.left = "";
-      hitCuadrado.style.transform = "";
-    });
-
-    function activate() {
-      frozen   = true;
-      btnReady = true;
-      vhs.play().catch(() => {});
-      v.style.transition = "opacity 300ms ease";
-      v.style.opacity    = "0";
-      document.getElementById("boton-hit").classList.add("visible");
-      document.getElementById("boton-hit-cuadrado").classList.add("visible");
-      document.getElementById("boton-demo").style.opacity = "1";
-      document.getElementById("logo-dtv").style.opacity = "1";
-      hitCuadrado.addEventListener("click", goToWorks);
-
-      const textoWatch = document.getElementById("boton-texto-watch");
-      function setFondoWidth() {
-        const cuadradoW = cuadrado.offsetWidth;
-        const pct = 120 + (textoWatch.scrollWidth / cuadradoW * 100);
-        stage.style.setProperty("--fondo-hover-w", pct.toFixed(2) + "%");
-      }
-      document.fonts.ready.then(setFondoWidth);
-      window.addEventListener("resize", setFondoWidth);
+    function startVideo() {
+      v.addEventListener("loadedmetadata", () => {
+        const stopAt = v.duration - 0.04;
+        v.addEventListener("timeupdate", () => {
+          if (!navigated && v.currentTime >= stopAt) goHome();
+        });
+      });
+      v.addEventListener("ended", goHome);
+      v.play().catch(() => {});
     }
 
     // Password gate
@@ -136,112 +74,16 @@
       }
     }
 
-    function startVideo() {
-      if (returning) {
-        function doSeek() {
-          v.currentTime = v.duration - 0.04;
-          v.addEventListener("seeked", activate, { once: true });
-        }
-        if (v.readyState >= 1) {
-          doSeek();
-        } else {
-          v.addEventListener("loadedmetadata", doSeek, { once: true });
-        }
-      } else {
-        v.addEventListener("loadedmetadata", () => {
-          const stopAt = v.duration - 0.04;
-          v.addEventListener("timeupdate", () => {
-            if (!frozen && v.currentTime >= stopAt) { v.pause(); activate(); }
-          });
-        });
-        v.addEventListener("ended", () => { if (!frozen) { v.pause(); activate(); } });
-        v.play().catch(() => {});
-      }
-    }
-
     gateBtn.addEventListener("click", tryPass);
     gateInput.addEventListener("keydown", e => { if (e.key === "Enter") tryPass(); });
 
-    const params    = new URLSearchParams(window.location.search);
-    const returning = params.get("r") === "1";
-
-    // Bypass: ?p o ?r=1 saltean el gate
-    if (params.has("p") || returning) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("p")) {
       gate.style.display = "none";
       startVideo();
     } else {
       gateInput.focus();
     }
-
-    // Transición a works
-    const vtrans = document.getElementById("vtrans");
-
-    const useFade = navigator.userAgent.includes("Firefox") || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-
-    function goToWorks() {
-      if (!btnReady) return;
-      btnReady = false;
-
-      sessionStorage.setItem("playTransicion", "1");
-
-      if (useFade) {
-        [v, vhs].forEach(el => {
-          el.style.transition = "opacity 233ms ease";
-          el.style.opacity = "0";
-        });
-        setTimeout(() => { window.location.href = "works.html"; }, 233);
-        return;
-      }
-
-      const wipeDuration = 967;
-      const feather = 200;
-
-      [v, vhs].forEach(el => {
-        el.style.maskImage = `linear-gradient(to bottom, black calc(100% - ${feather}px), transparent 100%)`;
-        el.style.webkitMaskImage = `linear-gradient(to bottom, black calc(100% - ${feather}px), transparent 100%)`;
-        el.style.maskSize = `100% calc(100% + ${feather}px)`;
-        el.style.webkitMaskSize = `100% calc(100% + ${feather}px)`;
-        el.style.maskPosition = `0 ${feather}px`;
-        el.style.webkitMaskPosition = `0 ${feather}px`;
-        el.style.maskRepeat = `no-repeat`;
-        el.style.webkitMaskRepeat = `no-repeat`;
-      });
-
-      const wipeStart = performance.now();
-      const stageH = stage.offsetHeight;
-      function wipeFrame(now) {
-        const t = Math.min((now - wipeStart) / wipeDuration, 1);
-        const offset = feather - t * (stageH + feather);
-        [v, vhs].forEach(el => {
-          el.style.maskPosition = `0 ${offset}px`;
-          el.style.webkitMaskPosition = `0 ${offset}px`;
-        });
-        if (t < 1) requestAnimationFrame(wipeFrame);
-      }
-      requestAnimationFrame(wipeFrame);
-
-      setTimeout(() => {
-        window.location.href = "works.html";
-      }, 233);
-    }
-
-    document.getElementById("boton-hit").addEventListener("click", () => {
-      sessionStorage.setItem("autoplayVideo1", "1");
-      goToWorks();
-    });
-
-    // Swipe hacia arriba en touch
-    let touchStartY = 0;
-    stage.addEventListener("touchstart", (e) => {
-      if (!btnReady) return;
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-
-    stage.addEventListener("touchend", (e) => {
-      if (!btnReady) return;
-      const dy = touchStartY - e.changedTouches[0].clientY;
-      if (dy > 50) goToWorks();
-    }, { passive: true });
   </script>
 
 </body>
