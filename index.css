@@ -107,8 +107,6 @@ body {
   line-height: 0;
   background: inherit;        /* hereda el fondo del body/html */
   transform-origin: center center;
-  transition: transform 180ms ease;
-  transform: scale(1);
 }
 
 /* ── VIDEO ───────────────────────────────────────────────────────────────── */
