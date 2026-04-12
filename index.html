@@ -33,7 +33,15 @@
           </mask>
         </defs>
         <circle cx="50" cy="50" r="49" fill="black" mask="url(#mask-negro)"/>
-      </svg><div id="boton-cuadrado"><div id="boton-bolita"></div><div id="boton-video-wrap"><video id="boton-cuadrado-video" muted playsinline><source src="assets/videos/barridacabezalesmini.webm" type='video/webm; codecs="vp9"'></video><div id="boton-video-negro"></div><div id="boton-texto"><span id="bt-inner"><span id="bt-w">watch&nbsp;</span><span id="bt-s">some&nbsp;</span><span id="bt-ws">work</span></span></div></div></div></div>
+      </svg><div id="boton-cuadrado"><div id="boton-fondo"></div><svg id="boton-figura" viewBox="0 0 222.3876 214.063" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="play-mask">
+      <rect width="222.3876" height="214.063" fill="white"/>
+      <path id="play-mask-path" fill="black" transform="translate(67.76,48.26) scale(0.72)" d="M17.3353,2.0513l98.7013,70.2095c6.1132,4.3485,6.1583,13.4121.0887,17.8213L18.2873,161.1548c-7.2294,5.2517-17.3692.1237-17.4238-8.8117L.0002,11.0609C-.0544,2.1141,10.0447-3.1347,17.3353,2.0513Z"/>
+    </mask>
+  </defs>
+  <rect width="222.3876" height="214.063" rx="22.2965" ry="22.2965" fill="black" mask="url(#play-mask)"/>
+</svg><div id="boton-texto-watch">watch <span style="font-weight:400">some </span><span style="font-weight:700">work</span></div></div></div>
     <div id="vhs-frame">
       <div id="vhs-label"></div>
       <button id="boton-hit" aria-label="Demo Reel"></button>
@@ -66,24 +74,25 @@
     const botonDemo = document.getElementById("boton-demo");
     const hitCuadrado = document.getElementById("boton-hit-cuadrado");
     const cuadrado = document.getElementById("boton-cuadrado");
-    let btnVideo, videoNegro, hoverPlays = 0, videoHovering = false;
-
     hit.addEventListener("mouseenter", () => { circulo.classList.add("hovered"); circuloNegro.classList.add("hovered"); botonDemo.classList.add("hovered"); });
     hit.addEventListener("mouseleave", () => { circulo.classList.remove("hovered"); circuloNegro.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
 
+    const vhsFrame = document.getElementById("vhs-frame");
+
     hitCuadrado.addEventListener("mouseenter", () => {
       cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered");
-      if (!btnVideo || cuadrado.classList.contains("played")) return;
-      videoHovering = true; hoverPlays = 0;
-      videoNegro.style.opacity = "0";
-      btnVideo.currentTime = 0; btnVideo.play().catch(() => {});
+      const pct = parseFloat(stage.style.getPropertyValue("--fondo-hover-w")) || 257.65;
+      const fondoW = cuadrado.offsetWidth * pct / 100;
+      const vhsFrameW = vhsFrame.offsetWidth;
+      hitCuadrado.style.width = (fondoW / vhsFrameW * 100) + "%";
+      hitCuadrado.style.left = (cuadrado.getBoundingClientRect().left - vhsFrame.getBoundingClientRect().left) / vhsFrameW * 100 + "%";
+      hitCuadrado.style.transform = "translateY(-50%)";
     });
     hitCuadrado.addEventListener("mouseleave", () => {
       cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered");
-      if (!btnVideo || cuadrado.classList.contains("played")) return;
-      videoHovering = false; hoverPlays = 0;
-      videoNegro.style.opacity = "0";
-      if (btnVideo.paused) { btnVideo.currentTime = 0; btnVideo.play().catch(() => {}); }
+      hitCuadrado.style.width = "";
+      hitCuadrado.style.left = "";
+      hitCuadrado.style.transform = "";
     });
 
     function activate() {
@@ -94,32 +103,18 @@
       v.style.opacity    = "0";
       document.getElementById("boton-hit").classList.add("visible");
       document.getElementById("boton-hit-cuadrado").classList.add("visible");
-      btnVideo = document.getElementById("boton-cuadrado-video");
-      videoNegro = document.getElementById("boton-video-negro");
-      const squareW = cuadrado.offsetWidth;
-      const textW = ["bt-w","bt-s","bt-ws"].reduce((sum, id) => {
-        const el = document.getElementById(id);
-        return sum + (el ? el.offsetWidth : 0);
-      }, 0);
-      const gap = squareW;
-      cuadrado.style.setProperty("--square-w", squareW + "px");
-      cuadrado.style.setProperty("--played-w", (squareW + gap + textW + gap) + "px");
-      cuadrado.style.setProperty("--bt-pad", (squareW + gap) + "px");
-      btnVideo.addEventListener("ended", () => {
-        videoNegro.style.opacity = "1";
-        cuadrado.classList.add("played");
-        setTimeout(() => {
-          document.getElementById("boton-texto").classList.add("visible");
-        }, 50);
-      }, { once: true });
       document.getElementById("boton-demo").style.opacity = "1";
       document.getElementById("logo-dtv").style.opacity = "1";
+      hitCuadrado.addEventListener("click", goToWorks);
 
-      hitCuadrado.addEventListener("click", () => {
-        if (!cuadrado.classList.contains("played")) return;
-        cuadrado.classList.add("closing");
-        setTimeout(goToWorks, 400);
-      });
+      const textoWatch = document.getElementById("boton-texto-watch");
+      function setFondoWidth() {
+        const cuadradoW = cuadrado.offsetWidth;
+        const pct = 120 + (textoWatch.scrollWidth / cuadradoW * 100);
+        stage.style.setProperty("--fondo-hover-w", pct.toFixed(2) + "%");
+      }
+      document.fonts.ready.then(setFondoWidth);
+      window.addEventListener("resize", setFondoWidth);
     }
 
     // Password gate
