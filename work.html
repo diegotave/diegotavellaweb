@@ -45,17 +45,6 @@
     <div id="frame"></div>
   </div>
 
-  <!-- Overlay de transición desde index -->
-  <!-- Overlay de transición desde index -->
-  <!-- Overlay de transición desde index -->
-  <div id="trans-overlay" style="display:none;position:fixed;inset:0;z-index:499;pointer-events:none;align-items:center;justify-content:center;">
-    <div style="position:relative;width:min(100vw,1920px);height:min(100dvh,1080px);overflow:hidden;flex-shrink:0;">
-      <video id="vtrans" muted playsinline preload="auto" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);height:calc(100% - 20px);width:auto;">
-        <source src="assets/videos/transicion_a_works.webm" type='video/webm; codecs="vp9"'>
-      </video>
-    </div>
-  </div>
-
   <a id="home-btn" href="hom3dtv.html" aria-label="Home">
     <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M8 2L2 7.5V14h4v-4h4v4h4V7.5L8 2Z" fill="white"/>
@@ -237,17 +226,16 @@
 
     setTimeout(() => { v.play().catch(() => {}); }, 333);
 
-    if (sessionStorage.getItem("playTransicion") === "1") {
-      sessionStorage.removeItem("playTransicion");
-      const overlay = document.getElementById("trans-overlay");
-      const vtrans  = document.getElementById("vtrans");
-      overlay.style.display = "flex";
-      vtrans.play().catch(() => {});
-      vtrans.addEventListener("ended", () => {
-        overlay.style.transition = "opacity 0.3s";
-        overlay.style.opacity = "0";
-        setTimeout(() => { overlay.style.display = "none"; }, 300);
-      }, { once: true });
+    // Push-in desde abajo cuando venimos de hom3dtv
+    if (sessionStorage.getItem("pushIn") === "1") {
+      sessionStorage.removeItem("pushIn");
+      stage.style.transition = "none";
+      stage.style.transform  = "translateY(100%)";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        stage.style.transition = "transform 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+        stage.style.transform  = "";
+        setTimeout(() => { stage.style.transition = ""; }, 230);
+      }));
     }
   </script>
 

@@ -93,47 +93,12 @@
 
     vhs.play().catch(() => {});
 
-    // Transición a works
-    const useFade = navigator.userAgent.includes("Firefox") || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-
     function goToWorks() {
       if (!btnReady) return;
       btnReady = false;
-
-      sessionStorage.setItem("playTransicion", "1");
-
-      if (useFade) {
-        vhs.style.transition = "opacity 233ms ease";
-        vhs.getBoundingClientRect(); // fuerza reflow para que la transition se aplique
-        vhs.style.opacity = "0";
-        setTimeout(() => { window.location.href = "work.html"; }, 233);
-        return;
-      }
-
-      const wipeDuration = 967;
-      const feather = 200;
-
-      vhs.style.maskImage = `linear-gradient(to bottom, black calc(100% - ${feather}px), transparent 100%)`;
-      vhs.style.webkitMaskImage = `linear-gradient(to bottom, black calc(100% - ${feather}px), transparent 100%)`;
-      vhs.style.maskSize = `100% calc(100% + ${feather}px)`;
-      vhs.style.webkitMaskSize = `100% calc(100% + ${feather}px)`;
-      vhs.style.maskPosition = `0 ${feather}px`;
-      vhs.style.webkitMaskPosition = `0 ${feather}px`;
-      vhs.style.maskRepeat = `no-repeat`;
-      vhs.style.webkitMaskRepeat = `no-repeat`;
-
-      const wipeStart = performance.now();
-      const stageH = stage.offsetHeight;
-      function wipeFrame(now) {
-        const t = Math.min((now - wipeStart) / wipeDuration, 1);
-        const offset = feather - t * (stageH + feather);
-        vhs.style.maskPosition = `0 ${offset}px`;
-        vhs.style.webkitMaskPosition = `0 ${offset}px`;
-        if (t < 1) requestAnimationFrame(wipeFrame);
-      }
-      requestAnimationFrame(wipeFrame);
-
-      setTimeout(() => { window.location.href = "work.html"; }, 233);
+      sessionStorage.setItem("pushIn", "1");
+      stage.style.transform = "translateY(-100%)";
+      setTimeout(() => { window.location.href = "work.html"; }, 180);
     }
 
     if (!isTouch) {
@@ -203,12 +168,9 @@
     // Restaurar estado cuando el browser vuelve desde bfcache (Chrome, Firefox)
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) {
-        vhs.style.transition = "";
-        vhs.style.opacity    = "";
-        vhs.style.maskImage  = "";
-        vhs.style.webkitMaskImage = "";
-        vhs.style.maskPosition = "";
-        vhs.style.webkitMaskPosition = "";
+        stage.style.transform = "";
+        vhs.style.transition  = "";
+        vhs.style.opacity     = "";
         btnReady = true;
         vhs.play().catch(() => {});
       }
