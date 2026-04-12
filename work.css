@@ -54,7 +54,7 @@ body {
   height: calc(100% - 20px);
   object-fit: cover;
   object-position: center center;
-  display: block;
+  display: none;
   z-index: 0;
 }
 
@@ -117,7 +117,8 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
-  opacity: 0.5;
+  opacity: 0.8
+  ;
   transition: opacity 200ms ease;
 }
 
@@ -201,6 +202,7 @@ body {
 }
 
 #player.open { display: flex; }
+
 
 #player-v {
   display: block;
