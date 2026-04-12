@@ -238,13 +238,16 @@
       swipeStartY = e.touches[0].clientY;
     }, { passive: true });
     stage.addEventListener("touchend", e => {
+      if (window.matchMedia("(max-width: 600px) and (orientation: portrait)").matches) return;
       const grid = document.getElementById("works-grid");
-      if (grid && grid.scrollTop > 5) return; // solo si el scroll está arriba del todo
+      if (grid && grid.scrollTop > 5) return;
       const dy = e.changedTouches[0].clientY - swipeStartY;
       if (dy > 80) goBack();
     }, { passive: true });
 
     function goBack() {
+      v.style.display = "none";
+      vhsBotonera.style.display = "none";
       sessionStorage.setItem("pushBack", "1");
       document.body.style.background = "#000";
       stage.style.transition = "transform 200ms ease-in";

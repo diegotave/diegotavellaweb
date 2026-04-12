@@ -291,10 +291,15 @@ body {
   #stage { width: 100vw; height: 100dvh; }
 }
 
-/* Phone portrait: 1 columna siempre */
+/* Phone portrait: 1 columna, 3.5 cards visibles */
 @media (max-width: 600px) and (orientation: portrait) {
   #works-grid {
     grid-template-columns: 1fr;
+    grid-auto-rows: calc(100% / 3.5);
+  }
+  #works-grid.strip {
+    padding-inline: 0;
+    grid-auto-rows: calc(100% / 3.5);
   }
   .card__label { font-size: 11px; bottom: 8px; left: 8px; }
 }
