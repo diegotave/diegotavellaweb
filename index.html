@@ -169,7 +169,7 @@
     // Transición a works
     const vtrans = document.getElementById("vtrans");
 
-    const isFirefox = navigator.userAgent.includes("Firefox");
+    const useFade = navigator.userAgent.includes("Firefox") || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
     function goToWorks() {
       if (!btnReady) return;
@@ -177,7 +177,7 @@
 
       sessionStorage.setItem("playTransicion", "1");
 
-      if (isFirefox) {
+      if (useFade) {
         [v, vhs].forEach(el => {
           el.style.transition = "opacity 233ms ease";
           el.style.opacity = "0";
