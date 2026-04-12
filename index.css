@@ -121,6 +121,17 @@ body {
   overflow: visible;
 }
 
+#vhs-label {
+  position: absolute;
+  left: 38%;
+  top: 85%;
+  width: 23%;
+  height: 20%;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  pointer-events: none;
+}
+
 #boton-demo {
   position: absolute;
   bottom: 10px;
@@ -405,6 +416,18 @@ body {
   pointer-events: none;
 }
 
+#vhs-etiqueta {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+}
+
 #vtrans {
   position: absolute;
   bottom: 10px;
@@ -414,6 +437,21 @@ body {
   width: auto;
   display: block;
   z-index: 999;
+}
+
+/* ── LOGO DTV ────────────────────────────────────────────────────────────── */
+#logo-dtv {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
+  max-width: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+  z-index: 600;
 }
 
 /* ── FRAME ───────────────────────────────────────────────────────────────── */

@@ -35,18 +35,21 @@
         <circle cx="50" cy="50" r="49" fill="black" mask="url(#mask-negro)"/>
       </svg><div id="boton-cuadrado"><div id="boton-bolita"></div><div id="boton-video-wrap"><video id="boton-cuadrado-video" muted playsinline><source src="assets/videos/barridacabezalesmini.webm" type='video/webm; codecs="vp9"'></video><div id="boton-video-negro"></div><div id="boton-texto"><span id="bt-inner"><span id="bt-w">watch&nbsp;</span><span id="bt-s">some&nbsp;</span><span id="bt-ws">work</span></span></div></div></div></div>
     <div id="vhs-frame">
+      <div id="vhs-label"></div>
       <button id="boton-hit" aria-label="Demo Reel"></button>
       <button id="boton-hit-cuadrado" aria-label="Works"></button>
     </div>
     <video id="vhs" muted playsinline loop preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
     </video>
+    <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.png" alt="">
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
     </video>
     <video id="vtrans" muted playsinline preload="auto" style="display:none">
       <source src="assets/videos/transicion_a_works.webm" type='video/webm; codecs="vp9"'>
     </video>
+    <img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="">
     <div id="frame"></div>
   </div>
 
@@ -110,6 +113,7 @@
         }, 50);
       }, { once: true });
       document.getElementById("boton-demo").style.opacity = "1";
+      document.getElementById("logo-dtv").style.opacity = "1";
 
       hitCuadrado.addEventListener("click", () => {
         if (!cuadrado.classList.contains("played")) return;
