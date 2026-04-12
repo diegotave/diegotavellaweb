@@ -31,7 +31,7 @@
       <button id="boton-hit" class="visible" aria-label="Demo Reel"></button>
       <button id="boton-hit-cuadrado" class="visible" aria-label="Works"></button>
     </div>
-    <video id="vhs" muted playsinline loop preload="auto">
+    <video id="vhs" muted autoplay playsinline loop preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
     </video>
     <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.png" alt="">
@@ -104,6 +104,7 @@
 
       if (useFade) {
         vhs.style.transition = "opacity 233ms ease";
+        vhs.getBoundingClientRect(); // fuerza reflow para que la transition se aplique
         vhs.style.opacity = "0";
         setTimeout(() => { window.location.href = "work.html"; }, 233);
         return;
@@ -201,6 +202,19 @@
         }
       }, { passive: false });
     }
+    // Restaurar estado cuando el browser vuelve desde bfcache (Chrome, Firefox)
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted) {
+        vhs.style.transition = "";
+        vhs.style.opacity    = "";
+        vhs.style.maskImage  = "";
+        vhs.style.webkitMaskImage = "";
+        vhs.style.maskPosition = "";
+        vhs.style.webkitMaskPosition = "";
+        btnReady = true;
+        vhs.play().catch(() => {});
+      }
+    });
   </script>
 
 </body>
