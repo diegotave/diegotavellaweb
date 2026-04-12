@@ -286,22 +286,15 @@ body {
   #works-grid { touch-action: none; }
 }
 
-/* Tablet portrait: 2 columnas */
+/* Tablet y phone portrait: 3 columnas igual, o 1 si strip */
 @media (max-width: 1024px) and (orientation: portrait) {
   #stage { width: 100vw; height: 100dvh; }
-  #works-grid {
-    grid-template-columns: repeat(2, 1fr);
-    column-gap: 4px;
-    row-gap: 4px;
-  }
 }
 
-/* Phone portrait: 1 columna */
+/* Phone portrait: 1 columna siempre */
 @media (max-width: 600px) and (orientation: portrait) {
   #works-grid {
     grid-template-columns: 1fr;
-    column-gap: 4px;
-    row-gap: 4px;
   }
   .card__label { font-size: 11px; bottom: 8px; left: 8px; }
 }
