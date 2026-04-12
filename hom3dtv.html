@@ -97,6 +97,7 @@
       if (!btnReady) return;
       btnReady = false;
       sessionStorage.setItem("pushIn", "1");
+      document.body.style.background = "#000";
       stage.style.transform = "translateY(-100%)";
       setTimeout(() => { window.location.href = "work.html"; }, 180);
     }
@@ -168,9 +169,10 @@
     // Restaurar estado cuando el browser vuelve desde bfcache (Chrome, Firefox)
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) {
-        stage.style.transform = "";
-        vhs.style.transition  = "";
-        vhs.style.opacity     = "";
+        stage.style.transform        = "";
+        document.body.style.background = "";
+        vhs.style.transition         = "";
+        vhs.style.opacity            = "";
         btnReady = true;
         vhs.play().catch(() => {});
       }

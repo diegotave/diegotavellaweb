@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella — Works</title>
   <link rel="stylesheet" href="work.css">
+  <script>if(sessionStorage.getItem("pushIn")==="1"){document.documentElement.dataset.pushIn="1"}</script>
 </head>
 <body>
 
@@ -226,11 +227,12 @@
 
     setTimeout(() => { v.play().catch(() => {}); }, 333);
 
-    // Push-in desde abajo cuando venimos de hom3dtv
-    if (sessionStorage.getItem("pushIn") === "1") {
+    // Push-in desde abajo: el stage ya está en translateY(100%) vía CSS (data-push-in).
+    // Bloqueamos esa posición inline, eliminamos el atributo, luego animamos.
+    if (document.documentElement.dataset.pushIn) {
       sessionStorage.removeItem("pushIn");
-      stage.style.transition = "none";
-      stage.style.transform  = "translateY(100%)";
+      stage.style.transform = "translateY(100%)"; // bloquea posición inline
+      delete document.documentElement.dataset.pushIn; // limpia regla CSS
       requestAnimationFrame(() => requestAnimationFrame(() => {
         stage.style.transition = "transform 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
         stage.style.transform  = "";

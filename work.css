@@ -1,3 +1,7 @@
+/* ── PUSH-IN: stage empieza debajo del viewport, sin primer paint en posición 0 ── */
+html[data-push-in] body   { background: #000; }
+html[data-push-in] #stage { transform: translateY(100%); }
+
 /* ── RESET ───────────────────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px); overflow: hidden; }
