@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella — Works</title>
-  <link rel="stylesheet" href="works.css">
+  <link rel="stylesheet" href="work.css">
 </head>
 <body>
 
@@ -18,7 +18,6 @@
 
     <!-- Botonera — oculta hasta activate() -->
     <div id="works-grid">
-      <div id="grid-bg"></div>
       <div class="card" data-video="WORKS/video1/video1reel.mp4" data-ratio="16/9">
         <div class="card__clip"><img class="card__thumb card__thumb--contain" src="https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video1/thumbv1.png" alt=""></div>
         <div class="card__badge"></div>
@@ -63,219 +62,59 @@
     </svg>
   </a>
 
-  <!-- El contenido de works se monta acá después del freeze -->
-  <div id="works-content" hidden></div>
-
   <script>
     const R2    = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
     const v     = document.getElementById("v");
     const stage = document.getElementById("stage");
-    let frozen = false;
 
     function activate() {
-      frozen = true;
-      stage.classList.add("frozen");
-
-      // Mostrar grilla (sin opacity transition, las cards entran individualmente)
-      const grid = document.getElementById("works-grid");
+      const grid  = document.getElementById("works-grid");
+      const cards = Array.from(grid.querySelectorAll(".card"));
       grid.classList.add("visible");
 
-      // Interacción de las cards
-      const cards = Array.from(grid.querySelectorAll(".card"));
-      function getPos(i) { return { row: Math.floor(i / 3), col: i % 3 }; }
-
-      // ── Entrada escalonada: izq→der, fila por fila, ~250ms entre cada card ──
-      // Orden: [0,1,2, 3,4,5, 6,7,8] = fila0 izq→der, fila1 izq→der, fila2 izq→der
-      const enterOrder = [0,1,2, 3,4,5, 6,7,8];
-      const enterDelay = 233; // espera inicial
-      enterOrder.forEach((cardIdx, step) => {
-        setTimeout(() => {
-          cards[cardIdx].classList.add("entered");
-        }, enterDelay + step * 175);
+      // Entrada escalonada izq→der, fila por fila
+      cards.forEach((card, i) => {
+        setTimeout(() => card.classList.add("entered"), 233 + i * 100);
       });
 
-      // ── Detectar touch device ──
       const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-      let currentExpanded = -1;
 
-      // Promover cards a capas GPU
-      cards.forEach(c => { c.style.willChange = "transform, width, height, border-radius"; });
-
-      const gridBg = document.getElementById("grid-bg");
-      const bigR   = "calc(var(--card-size) / 2 + 15px)";
-      const smallR = "calc(min(1.4vw, 18px) + 15px)";
-
-      function updateBgRadius(i) {
-        if (i === -1) {
-          gridBg.style.borderRadius = `${bigR} ${bigR} ${bigR} ${bigR}`;
-          return;
-        }
-        const { row, col } = getPos(i);
-        const tl = (row === 0 && col === 0) ? smallR : bigR;
-        const tr = (row === 0 && col === 2) ? smallR : bigR;
-        const br = (row === 2 && col === 2) ? smallR : bigR;
-        const bl = (row === 2 && col === 0) ? smallR : bigR;
-        gridBg.style.borderRadius = `${tl} ${tr} ${br} ${bl}`;
-      }
-
-      function expandCard(i) {
-        if (i === currentExpanded) return; // ya expandida, no recalcular
-        currentExpanded = i;
-        gridBg.classList.add("has-expanded");
-        const card = cards[i];
-        const PUSH = card.offsetWidth * 0.22;
-        const { row: ar, col: ac } = getPos(i);
-        cards.forEach((other, j) => {
-          other.classList.remove("expanded");
-          if (i === j) {
-            other.classList.add("expanded");
-            other.style.transform = "translate3d(0,0,0)";
-          } else {
-            const { row: br, col: bc } = getPos(j);
-            const dr = br - ar, dc = bc - ac;
-            const len = Math.sqrt(dr * dr + dc * dc);
-            other.style.transform = `translate3d(${(dc / len) * PUSH}px, ${(dr / len) * PUSH}px, 0)`;
-          }
-        });
-        updateBgRadius(i);
-      }
-
-      function collapseAll() {
-        if (currentExpanded === -1) return;
-        cards.forEach(c => { c.classList.remove("expanded"); c.style.transform = ""; });
-        currentExpanded = -1;
-        gridBg.classList.remove("has-expanded");
-        updateBgRadius(-1);
-      }
-
-      // Encontrar qué card está bajo un punto (x, y)
-      function cardAtPoint(x, y) {
-        for (let i = 0; i < cards.length; i++) {
-          const r = cards[i].getBoundingClientRect();
-          if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return i;
-        }
-        return -1;
-      }
-
-      if (isTouch) {
-        // ── TOUCH: deslizar el dedo expande cards, levantar el dedo abre player ──
-        let touchMoved = false;
-        let lastTouchCard = -1;
-
-        grid.addEventListener("touchstart", (e) => {
-          touchMoved = false;
-          const t = e.touches[0];
-          const i = cardAtPoint(t.clientX, t.clientY);
-          if (i !== -1) {
-            expandCard(i);
-            lastTouchCard = i;
-          }
-        }, { passive: true });
-
-        grid.addEventListener("touchmove", (e) => {
-          touchMoved = true;
-          const t = e.touches[0];
-          const i = cardAtPoint(t.clientX, t.clientY);
-          if (i !== -1) {
-            expandCard(i);
-            lastTouchCard = i;
-          } else {
-            collapseAll();
-            lastTouchCard = -1;
-          }
-        }, { passive: true });
-
-        grid.addEventListener("touchend", (e) => {
-          const cardIdx = lastTouchCard;
-          // Pequeño delay para que se vea la expansión antes de abrir
-          if (cardIdx !== -1 && cards[cardIdx].dataset.video) {
-            const card = cards[cardIdx];
-            const src = card.dataset.video;
-            const ratio = card.dataset.ratio || "16/9";
-            // Si no se movió mucho = tap directo → abrir
-            // Si se movió y soltó encima → también abrir
-            setTimeout(() => openPlayer(card, R2 + "/" + src, ratio), touchMoved ? 150 : 80);
-          } else {
-            collapseAll();
-          }
-          lastTouchCard = -1;
-        }, { passive: true });
-
-        // Prevenir que el click se dispare también (doble acción)
-        grid.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); }, true);
-
-      } else {
-        // ── DESKTOP: hover expande, click abre player ──
-        cards.forEach((card, i) => {
-          card.addEventListener("mouseenter", () => expandCard(i));
-          card.addEventListener("mouseleave", () => collapseAll());
-
-          card.addEventListener("click", () => {
-            if (!card.classList.contains("expanded")) return;
-            const src = card.dataset.video;
-            if (!src) return;
-            const ratio = card.dataset.ratio || "16/9";
-            openPlayer(card, R2 + "/" + src, ratio);
-          });
-        });
-      }
-
-      // Player
-      const player   = document.getElementById("player");
-      const playerV  = document.getElementById("player-v");
+      const player     = document.getElementById("player");
+      const playerV    = document.getElementById("player-v");
       const playerBack = document.getElementById("player-back");
       let   playerAnim = null;
-      let   activeCard = null;
 
-      function openPlayer(card, src, ratio) {
+      function openPlayer(card, src) {
         const cardRect  = card.getBoundingClientRect();
         const stageRect = stage.getBoundingClientRect();
-        activeCard = card;
-
-        // Centro del card relativo al player (player tiene inset:10px respecto al stage)
-        const cardCX = (cardRect.left + cardRect.width / 2) - stageRect.left - 10;
+        const cardCX = (cardRect.left + cardRect.width  / 2) - stageRect.left - 10;
         const cardCY = (cardRect.top  + cardRect.height / 2) - stageRect.top  - 10;
-
-        // Ancho disponible del player
-        const pw = stageRect.width - 20;
+        const pw     = stageRect.width  - 20;
+        const ph     = stageRect.height - 20;
 
         if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
-        // Ocultar grilla y home
-        document.getElementById("works-grid").classList.remove("visible");
+        grid.classList.remove("visible");
         document.getElementById("home-btn").style.opacity = "0";
 
-        // Player visible pero transparente
         player.classList.add("open");
         player.style.opacity = "0";
         playerBack.style.opacity = "0";
-
-        // Video: empieza como clip circular centrado en el thumbnail
-        // Usamos un wrapper approach: el video width=100% (CSS), pero lo
-        // animamos con clip-path desde un circulito en el centro del card
-        // hasta revelado completo.
-        playerV.style.width = "100%";
-        playerV.style.height = "auto";
-        playerV.removeAttribute("style");
 
         playerV.src = src;
         playerV.muted = false;
         playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
 
         card.classList.add("pressed");
-        setTimeout(() => card.classList.remove("pressed"), 400);
+        setTimeout(() => card.classList.remove("pressed"), 350);
 
-        // Calcular posición del centro del card como porcentaje del player
-        const cxPct = (cardCX / pw * 100).toFixed(1);
-        const cyPct = (cardCY / (stageRect.height - 20) * 100).toFixed(1);
+        const cxPct = (cardCX / pw  * 100).toFixed(1);
+        const cyPct = (cardCY / ph  * 100).toFixed(1);
 
-        // Fade in del fondo negro
         playerAnim = player.animate(
           [{ opacity: "0" }, { opacity: "1" }],
           { duration: 300, easing: "ease", fill: "forwards" }
         );
-
-        // El player entero se revela con un clip-path circular desde el centro del thumbnail
         player.animate([
           { clipPath: `circle(0% at ${cxPct}% ${cyPct}%)` },
           { clipPath: `circle(150% at 50% 50%)` }
@@ -301,38 +140,77 @@
           { duration: 300, easing: "ease", fill: "forwards" }
         );
         playerAnim = anim;
-
         anim.finished.then(() => {
           anim.cancel();
           player.classList.remove("open");
           player.style.opacity = "";
           player.style.clipPath = "";
-          playerV.removeAttribute("style");
           playerAnim = null;
-          activeCard = null;
-
-          // Restaurar grilla y home
-          document.getElementById("works-grid").classList.add("visible");
+          grid.classList.add("visible");
           document.getElementById("home-btn").style.opacity = "";
-          collapseAll();
         }).catch(() => {});
       }
 
       playerBack.addEventListener("click", e => { e.stopPropagation(); closePlayer(); });
       player.addEventListener("click", e => { if (e.target === player) closePlayer(); });
 
+      if (isTouch) {
+        let touchActive = null;
+        let touchStartY = 0;
+        let didScroll   = false;
+
+        function setTouchHover(card) {
+          if (touchActive && touchActive !== card) touchActive.classList.remove("touch-hover");
+          touchActive = card;
+          card.classList.add("touch-hover");
+        }
+        function clearTouchHover() {
+          if (touchActive) { touchActive.classList.remove("touch-hover"); touchActive = null; }
+        }
+
+        grid.addEventListener("touchstart", e => {
+          touchStartY = e.touches[0].clientY;
+          didScroll = false;
+        }, { passive: true });
+
+        grid.addEventListener("touchmove", e => {
+          if (Math.abs(e.touches[0].clientY - touchStartY) > 8) {
+            didScroll = true;
+            clearTouchHover();
+          }
+        }, { passive: true });
+
+        grid.addEventListener("scroll", clearTouchHover, { passive: true });
+
+        cards.forEach(card => {
+          card.addEventListener("touchend", e => {
+            if (didScroll) return;
+            e.preventDefault();
+            if (touchActive === card) {
+              const src = card.dataset.video;
+              if (src) { clearTouchHover(); openPlayer(card, R2 + "/" + src); }
+            } else {
+              setTouchHover(card);
+            }
+          }, { passive: false });
+        });
+
+      } else {
+        cards.forEach(card => {
+          card.addEventListener("click", () => {
+            const src = card.dataset.video;
+            if (src) openPlayer(card, R2 + "/" + src);
+          });
+        });
+      }
+
       if (sessionStorage.getItem("autoplayVideo1") === "1") {
         sessionStorage.removeItem("autoplayVideo1");
         const card1 = cards[0];
-        if (card1 && card1.dataset.video) {
-          openPlayer(card1, R2 + "/" + card1.dataset.video, card1.dataset.ratio || "16/9");
-        }
+        if (card1 && card1.dataset.video) openPlayer(card1, R2 + "/" + card1.dataset.video);
       }
     }
 
-    // El video tiene una barrida con alfa al final.
-    // Cuando falta ~1s para terminar, empezamos a meter las cards.
-    // El video sigue reproduciéndose y se oculta solo al terminar.
     let cardsTriggered = false;
     let vhsTriggered   = false;
     const vhsBotonera  = document.getElementById("vhs-botonera");
@@ -340,7 +218,6 @@
     v.addEventListener("loadedmetadata", () => {
       const triggerAt    = Math.max(v.duration - 1.0, 0);
       const vhsTriggerAt = Math.max(v.duration - (10 / 30), 0);
-
       v.addEventListener("timeupdate", () => {
         if (!vhsTriggered && v.currentTime >= vhsTriggerAt) {
           vhsTriggered = true;
@@ -353,7 +230,6 @@
       });
     });
 
-    // Cuando el video termina, ocultarlo
     v.addEventListener("ended", () => {
       if (!cardsTriggered) activate();
       v.style.display = "none";
@@ -361,7 +237,6 @@
 
     setTimeout(() => { v.play().catch(() => {}); }, 333);
 
-    // Reproducir transicion_a_works por encima de todo si venimos de index
     if (sessionStorage.getItem("playTransicion") === "1") {
       sessionStorage.removeItem("playTransicion");
       const overlay = document.getElementById("trans-overlay");

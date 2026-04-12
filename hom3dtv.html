@@ -52,10 +52,15 @@
     const cuadrado     = document.getElementById("boton-cuadrado");
     const vhsFrame     = document.getElementById("vhs-frame");
 
-    hit.addEventListener("mouseenter", () => { circulo.classList.add("hovered"); circuloNegro.classList.add("hovered"); botonDemo.classList.add("hovered"); });
-    hit.addEventListener("mouseleave", () => { circulo.classList.remove("hovered"); circuloNegro.classList.remove("hovered"); botonDemo.classList.remove("hovered"); });
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
-    hitCuadrado.addEventListener("mouseenter", () => {
+    function activateHit() {
+      circulo.classList.add("hovered"); circuloNegro.classList.add("hovered"); botonDemo.classList.add("hovered");
+    }
+    function deactivateHit() {
+      circulo.classList.remove("hovered"); circuloNegro.classList.remove("hovered"); botonDemo.classList.remove("hovered");
+    }
+    function activateCuadrado() {
       cuadrado.classList.add("hovered"); botonDemo.classList.add("hovered");
       const pct = parseFloat(stage.style.getPropertyValue("--fondo-hover-w")) || 257.65;
       const fondoW = cuadrado.offsetWidth * pct / 100;
@@ -63,13 +68,18 @@
       hitCuadrado.style.width = (fondoW / vhsFrameW * 100) + "%";
       hitCuadrado.style.left = (cuadrado.getBoundingClientRect().left - vhsFrame.getBoundingClientRect().left) / vhsFrameW * 100 + "%";
       hitCuadrado.style.transform = "translateY(-50%)";
-    });
-    hitCuadrado.addEventListener("mouseleave", () => {
+    }
+    function deactivateCuadrado() {
       cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered");
-      hitCuadrado.style.width = "";
-      hitCuadrado.style.left = "";
-      hitCuadrado.style.transform = "";
-    });
+      hitCuadrado.style.width = ""; hitCuadrado.style.left = ""; hitCuadrado.style.transform = "";
+    }
+
+    if (!isTouch) {
+      hit.addEventListener("mouseenter", activateHit);
+      hit.addEventListener("mouseleave", deactivateHit);
+      hitCuadrado.addEventListener("mouseenter", activateCuadrado);
+      hitCuadrado.addEventListener("mouseleave", deactivateCuadrado);
+    }
 
     // Calcular ancho del fondo hover
     const textoWatch = document.getElementById("boton-texto-watch");
@@ -95,7 +105,7 @@
       if (useFade) {
         vhs.style.transition = "opacity 233ms ease";
         vhs.style.opacity = "0";
-        setTimeout(() => { window.location.href = "works.html"; }, 233);
+        setTimeout(() => { window.location.href = "work.html"; }, 233);
         return;
       }
 
@@ -122,25 +132,75 @@
       }
       requestAnimationFrame(wipeFrame);
 
-      setTimeout(() => { window.location.href = "works.html"; }, 233);
+      setTimeout(() => { window.location.href = "work.html"; }, 233);
     }
 
-    hit.addEventListener("click", () => {
-      sessionStorage.setItem("autoplayVideo1", "1");
-      goToWorks();
-    });
-    hitCuadrado.addEventListener("click", goToWorks);
+    if (!isTouch) {
+      hit.addEventListener("click", () => {
+        sessionStorage.setItem("autoplayVideo1", "1");
+        goToWorks();
+      });
+      hitCuadrado.addEventListener("click", goToWorks);
+    }
 
-    // Swipe hacia arriba en touch
-    let touchStartY = 0;
-    stage.addEventListener("touchstart", (e) => {
-      touchStartY = e.touches[0].clientY;
-    }, { passive: true });
+    if (isTouch) {
+      let touchActive = null; // 'hit' | 'cuadrado' | null
+      let touchStartY = 0;
+      let didSlide    = false;
 
-    stage.addEventListener("touchend", (e) => {
-      const dy = touchStartY - e.changedTouches[0].clientY;
-      if (dy > 50) goToWorks();
-    }, { passive: true });
+      function clearTouchHover() {
+        if (touchActive === "hit")     deactivateHit();
+        if (touchActive === "cuadrado") deactivateCuadrado();
+        touchActive = null;
+      }
+
+      stage.addEventListener("touchstart", e => {
+        touchStartY = e.touches[0].clientY;
+        didSlide = false;
+      }, { passive: true });
+
+      stage.addEventListener("touchmove", e => {
+        if (Math.abs(e.touches[0].clientY - touchStartY) > 15) {
+          didSlide = true;
+          clearTouchHover();
+        }
+      }, { passive: true });
+
+      // Swipe up largo → navega
+      stage.addEventListener("touchend", e => {
+        const dy = touchStartY - e.changedTouches[0].clientY;
+        if (dy > 50) goToWorks();
+      }, { passive: true });
+
+      hit.addEventListener("touchend", e => {
+        if (didSlide) return;
+        e.stopPropagation();
+        e.preventDefault();
+        if (touchActive === "hit") {
+          clearTouchHover();
+          sessionStorage.setItem("autoplayVideo1", "1");
+          goToWorks();
+        } else {
+          clearTouchHover();
+          touchActive = "hit";
+          activateHit();
+        }
+      }, { passive: false });
+
+      hitCuadrado.addEventListener("touchend", e => {
+        if (didSlide) return;
+        e.stopPropagation();
+        e.preventDefault();
+        if (touchActive === "cuadrado") {
+          clearTouchHover();
+          goToWorks();
+        } else {
+          clearTouchHover();
+          touchActive = "cuadrado";
+          activateCuadrado();
+        }
+      }, { passive: false });
+    }
   </script>
 
 </body>
