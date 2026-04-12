@@ -175,7 +175,6 @@
 
       hit.addEventListener("touchend", e => {
         if (didSlide) return;
-        e.stopPropagation();
         e.preventDefault();
         if (touchActive === "hit") {
           clearTouchHover();
@@ -190,7 +189,6 @@
 
       hitCuadrado.addEventListener("touchend", e => {
         if (didSlide) return;
-        e.stopPropagation();
         e.preventDefault();
         if (touchActive === "cuadrado") {
           clearTouchHover();
