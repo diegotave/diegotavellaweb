@@ -169,9 +169,22 @@
     // Transición a works
     const vtrans = document.getElementById("vtrans");
 
+    const isFirefox = navigator.userAgent.includes("Firefox");
+
     function goToWorks() {
       if (!btnReady) return;
       btnReady = false;
+
+      sessionStorage.setItem("playTransicion", "1");
+
+      if (isFirefox) {
+        [v, vhs].forEach(el => {
+          el.style.transition = "opacity 233ms ease";
+          el.style.opacity = "0";
+        });
+        setTimeout(() => { window.location.href = "works.html"; }, 233);
+        return;
+      }
 
       const wipeDuration = 967;
       const feather = 200;
@@ -200,7 +213,6 @@
       }
       requestAnimationFrame(wipeFrame);
 
-      sessionStorage.setItem("playTransicion", "1");
       setTimeout(() => {
         window.location.href = "works.html";
       }, 233);
