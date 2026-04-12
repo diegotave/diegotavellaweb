@@ -138,8 +138,15 @@
 
     function startVideo() {
       if (returning) {
-        v.addEventListener("loadedmetadata", () => { v.currentTime = v.duration - 0.04; });
-        v.addEventListener("seeked", activate, { once: true });
+        function doSeek() {
+          v.currentTime = v.duration - 0.04;
+          v.addEventListener("seeked", activate, { once: true });
+        }
+        if (v.readyState >= 1) {
+          doSeek();
+        } else {
+          v.addEventListener("loadedmetadata", doSeek, { once: true });
+        }
       } else {
         v.addEventListener("loadedmetadata", () => {
           const stopAt = v.duration - 0.04;
