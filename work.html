@@ -227,16 +227,40 @@
 
     setTimeout(() => { v.play().catch(() => {}); }, 333);
 
+    // Swipe hacia abajo para volver a hom3dtv
+    let swipeStartY = 0;
+    stage.addEventListener("touchstart", e => {
+      swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+    stage.addEventListener("touchend", e => {
+      const grid = document.getElementById("works-grid");
+      if (grid && grid.scrollTop > 5) return; // solo si el scroll está arriba del todo
+      const dy = e.changedTouches[0].clientY - swipeStartY;
+      if (dy > 80) goBack();
+    }, { passive: true });
+
+    function goBack() {
+      sessionStorage.setItem("pushBack", "1");
+      document.body.style.background = "#000";
+      stage.style.transition = "transform 200ms ease-in";
+      stage.style.transform  = "translateY(100%)";
+      setTimeout(() => { window.location.href = "hom3dtv.html"; }, 190);
+    }
+
     // Push-in desde abajo: el stage ya está en translateY(100%) vía CSS (data-push-in).
     // Bloqueamos esa posición inline, eliminamos el atributo, luego animamos.
     if (document.documentElement.dataset.pushIn) {
       sessionStorage.removeItem("pushIn");
-      stage.style.transform = "translateY(100%)"; // bloquea posición inline
-      delete document.documentElement.dataset.pushIn; // limpia regla CSS
+      stage.style.transform          = "translateY(100%)"; // bloquea posición inline
+      document.body.style.background = "#000";             // mantiene negro mientras anima
+      delete document.documentElement.dataset.pushIn;      // libera regla CSS (body sigue negro por inline)
       requestAnimationFrame(() => requestAnimationFrame(() => {
         stage.style.transition = "transform 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
         stage.style.transform  = "";
-        setTimeout(() => { stage.style.transition = ""; }, 230);
+        setTimeout(() => {
+          stage.style.transition        = "";
+          document.body.style.background = ""; // restaura al terminar — el stage ya cubre todo
+        }, 230);
       }));
     }
   </script>
