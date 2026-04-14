@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diego Tavella — Works</title>
+  <link rel="stylesheet" href="workka.css">
+</head>
+<body>
+
+  <div id="stage">
+
+    <!-- Videoteca -->
+    <div id="shelf-wrap">
+      <div id="shelf-rail"></div>
+    </div>
+
+    <!-- Player -->
+    <div id="player">
+      <video id="player-v" playsinline></video>
+      <button id="player-back" aria-label="Volver">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+
+    <div id="vhs-ruler">
+      <span id="ruler-left"><span class="ruler-dashes"></span><span class="ruler-title"></span><span class="ruler-arrow"> &gt;</span></span>
+      <span id="ruler-gap"></span>
+      <span id="ruler-right"><span class="ruler-arrow"> &lt;</span><span class="ruler-title"></span><span class="ruler-dashes"></span></span>
+    </div>
+
+    <div id="frame"></div>
+  </div>
+
+  <a id="home-btn" href="hom3dtv.html" aria-label="Home">
+    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 2L2 7.5V14h4v-4h4v4h4V7.5L8 2Z" fill="currentColor"/>
+    </svg>
+  </a>
+
+  <button id="theme-btn" aria-label="Toggle theme">◐</button>
+
+  <script>
+    const R2 = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
+
+    const works = [
+      { title: "Demo Reel",            thumb: R2+"/WORKS/video1/thumbv1.png",  video: R2+"/WORKS/video1/video1reel.mp4",    ratio:"16/9" },
+      { title: "Multideportes · ESPN", thumb: R2+"/WORKS/video2/THUMBV2.png",  video: R2+"/WORKS/video2/Multideportes.mp4", ratio:"16/9" },
+      { title: "Video 03",             thumb: "",                               video: "",                                    ratio:"16/9" },
+      { title: "El Escuerzo",          thumb: R2+"/WORKS/video4/thumbv4.png",  video: R2+"/WORKS/video4/video4.mp4",         ratio:"16/9", png:"assets/images/vhslomo2.png" },
+      { title: "Video 05",             thumb: "",                               video: "",                                    ratio:"16/9" },
+      { title: "Video 06",             thumb: "",                               video: "",                                    ratio:"16/9" },
+      { title: "Highlight Fox",        thumb: R2+"/WORKS/video6/THUMBV6.png",  video: R2+"/WORKS/video6/hltfoxviejo.mp4",   ratio:"16/9" },
+      { title: "Video 08",             thumb: "",                               video: "",                                    ratio:"16/9" },
+      { title: "Visita",               thumb: R2+"/WORKS/video9/thumbv9.png",  video: R2+"/WORKS/video9/video9.mp4",         ratio:"1/1"  },
+    ];
+
+    const stage = document.getElementById("stage");
+
+    const VHS_PNG = "assets/images/vhslomo1.png"; // overlay del lomo VHS
+
+    // precargar el PNG para que todos los lomos lo reciban ya cacheado
+    const _preload = new Image(); _preload.src = VHS_PNG;
+
+    // ── BUILD ─────────────────────────────────────────────────────────────────
+    (function buildShelf() {
+      const rail = document.getElementById("shelf-rail");
+      works.forEach((work, i) => {
+        const spine = document.createElement("div");
+        spine.className = "vhs-spine";
+        spine.dataset.index = i;
+
+        // contenedor visual (escala en hover)
+        const visual = document.createElement("div");
+        visual.className = "vhs-visual";
+
+        // cover art detrás
+        const cover = document.createElement("img");
+        cover.className = "vhs-cover";
+        cover.src = work.thumb || "";
+        cover.alt = "";
+        visual.appendChild(cover);
+
+        // overlay PNG del lomo VHS (encima)
+        const png = document.createElement("img");
+        png.className = "vhs-png";
+        png.src = work.png || VHS_PNG;
+        png.alt = "";
+        visual.appendChild(png);
+
+        // label vertical
+        const label = document.createElement("span");
+        label.className = "vhs-label";
+        label.textContent = work.title;
+        visual.appendChild(label);
+
+        spine.appendChild(visual);
+
+        rail.appendChild(spine);
+
+        // entrada escalonada
+        setTimeout(() => spine.classList.add("entered"), 80 + i * 60);
+      });
+    })();
+
+    // ── CALIBRATE ─────────────────────────────────────────────────────────────
+    // Pre-size the rail so each .vhs-visual naturally matches the frame height.
+    // Elevation then only needs translateY — no scale change.
+    function calibrateBlock() {
+      const frameR   = document.getElementById("frame").getBoundingClientRect();
+      const margin   = 12; // px gap top and bottom inside frame
+      const targetH  = frameR.height - margin * 2;
+      // .vhs-visual height is 85% of rail height (CSS: height: 85%)
+      const railH    = targetH / 0.85;
+      rail.style.height = railH + "px";
+    }
+
+    // Run after first paint so getBoundingClientRect is valid
+    requestAnimationFrame(() => requestAnimationFrame(calibrateBlock));
+
+    // ── HOVER ─────────────────────────────────────────────────────────────────
+    let activeIndex   = -1;
+    let elevatedIdx   = -1;   // índice del .vhs-visual elevado
+    let elevatedDY    = 0;    // translateY aplicado al .vhs-visual elevado
+    let elevatedScale = 1;    // scale aplicado al .vhs-visual elevado
+
+    function getVisual(idx) {
+      return rail.querySelectorAll(".vhs-spine")[idx]?.querySelector(".vhs-visual") ?? null;
+    }
+
+    function elevatedTransform(extraRotate) {
+      const t = `translateY(${elevatedDY.toFixed(1)}px) scale(${elevatedScale.toFixed(4)})`;
+      return extraRotate ? `${t} rotateZ(${extraRotate.toFixed(1)}deg)` : t;
+    }
+
+    function elevateVisual(idx) {
+      const stageR = stage.getBoundingClientRect();
+      const frameR = document.getElementById("frame").getBoundingClientRect();
+      const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+
+      // Bajar el visual anterior
+      if (elevatedIdx >= 0 && elevatedIdx !== idx) {
+        const prev = getVisual(elevatedIdx);
+        if (prev) prev.style.transform = "";
+      }
+
+      // Inactivos: se van para abajo (translateY en el spine, sin cambio de tamaño)
+      spines.forEach((spine, i) => {
+        spine.style.transform = (i !== idx) ? `translateY(${stageR.height}px)` : "";
+      });
+
+      // El bloque ya fue calibrado al tamaño del frame — solo translateY
+      const v = getVisual(idx);
+      if (!v) return;
+      const vR = v.getBoundingClientRect();
+
+      // centrar verticalmente dentro del frame y clampear
+      let dy = (frameR.top + frameR.height / 2) - (vR.top + vR.height / 2);
+      if (vR.top    + dy < frameR.top)    dy += frameR.top    - (vR.top    + dy);
+      if (vR.bottom + dy > frameR.bottom) dy -= (vR.bottom + dy) - frameR.bottom;
+
+      elevatedDY    = dy;
+      elevatedScale = 1;
+      elevatedIdx   = idx;
+      v.style.transform = `translateY(${dy.toFixed(1)}px)`;
+
+      // drop when pointer leaves the elevated visual
+      if (v._leaveHandler) v.removeEventListener("mouseleave", v._leaveHandler);
+      v._leaveHandler = () => { dropElevated(); setActive(-1); };
+      v.addEventListener("mouseleave", v._leaveHandler);
+
+      setActive(idx);
+      showRuler(idx);
+    }
+
+    // ── RULER ─────────────────────────────────────────────────────────────────
+    function showRuler(idx) {
+      const ruler   = document.getElementById("vhs-ruler");
+      const spine   = rail.querySelectorAll(".vhs-spine")[idx];
+      const visual  = spine.querySelector(".vhs-visual");
+      const visualR = visual.getBoundingClientRect();
+      const spines  = Array.from(rail.querySelectorAll(".vhs-spine"));
+      const firstR  = spines[0].getBoundingClientRect();
+      const lastR   = spines[spines.length - 1].getBoundingClientRect();
+      const railR   = rail.getBoundingClientRect();
+      const frameR  = document.getElementById("frame").getBoundingClientRect();
+      const stageR  = stage.getBoundingClientRect();
+
+      // Ruler spans from first spine left to last spine right
+      const rulerLeft0  = firstR.left;
+      const rulerRight0 = lastR.right;
+
+      const leftW  = visualR.left - rulerLeft0;    // fill-l width
+      const gapW   = visualR.width;                // gap = visual width
+      const rightW = rulerRight0 - visualR.right;  // fill-r width
+
+      const titleOnRight = rightW >= leftW;
+      const DASHES = "-".repeat(120);
+      const title  = works[idx].title;
+
+      const rulerLeft  = document.getElementById("ruler-left");
+      const rulerRight = document.getElementById("ruler-right");
+      const rulerGap   = document.getElementById("ruler-gap");
+
+      const halfExtra = gapW * 0.1;
+      const lFill = Math.max(0, leftW  - halfExtra);
+      const rFill = Math.max(0, rightW - halfExtra);
+      const gap   = gapW + (leftW - lFill) + (rightW - rFill);
+      rulerLeft.style.width  = lFill + "px";
+      rulerGap.style.width   = gap   + "px";
+      rulerRight.style.width = rFill + "px";
+
+      // Dashes fill — título del lado con más espacio, pegado a la flecha
+      const dashesL = rulerLeft.querySelector(".ruler-dashes");
+      const titleL  = rulerLeft.querySelector(".ruler-title");
+      const dashesR = rulerRight.querySelector(".ruler-dashes");
+      const titleR  = rulerRight.querySelector(".ruler-title");
+
+      if (titleOnRight) {
+        dashesL.style.direction = "ltr";
+        dashesL.textContent = DASHES;
+        titleL.textContent  = "";
+        titleR.textContent  = "-" + title + "-";
+        dashesR.textContent = DASHES;
+      } else {
+        // rtl en dashes: el texto empieza por la derecha (pegado a >)
+        dashesL.style.direction = "rtl";
+        dashesL.textContent = DASHES;
+        titleL.textContent  = "-" + title + "-";
+        titleR.textContent  = "";
+        dashesR.textContent = DASHES;
+      }
+
+      ruler.classList.add("visible");
+
+      // Position: de primer spine a último spine
+      ruler.style.left  = (rulerLeft0 - stageR.left) + "px";
+      ruler.style.width = (rulerRight0 - rulerLeft0)  + "px";
+      ruler.style.top   = (railR.top - stageR.top - 18) + "px";
+    }
+
+    function hideRuler() {
+      document.getElementById("vhs-ruler").classList.remove("visible");
+    }
+
+    function dropElevated() {
+      if (elevatedIdx < 0) return;
+      const v = getVisual(elevatedIdx);
+      if (v) {
+        if (v._leaveHandler) { v.removeEventListener("mouseleave", v._leaveHandler); delete v._leaveHandler; }
+        v.style.transform = "";
+      }
+      // Volver todos los spines a su lugar
+      rail.querySelectorAll(".vhs-spine").forEach(spine => spine.style.transform = "");
+      elevatedIdx   = -1;
+      elevatedDY    = 0;
+      elevatedScale = 1;
+      hideRuler();
+    }
+
+    function setActive(idx) {
+      if (activeIndex === idx) return;
+      activeIndex = idx;
+
+      const rail   = document.getElementById("shelf-rail");
+      const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+
+      spines.forEach((spine, i) => {
+        spine.classList.toggle("is-active", idx >= 0 && i === idx);
+      });
+    }
+
+    // ── TILT ──────────────────────────────────────────────────────────────────
+    // ── TILT (velocity-based) ─────────────────────────────────────────────────
+    let prevMouseX    = null;
+    let smoothDx      = 0;
+    let tiltTimer     = null;
+
+    function updateTilt(mouseX) {
+      const ZONE        = 20;
+      const MAX_ANGLE   = 3;
+      const SENSITIVITY = 0.35;
+
+      const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+      const idx    = activeIndex;
+
+      if (idx < 0) { prevMouseX = null; smoothDx = 0; return; }
+
+      // zona del lomo activo
+      const rect   = spines[idx].getBoundingClientRect();
+      const inZone = mouseX >= rect.left - ZONE && mouseX <= rect.right + ZONE;
+      if (!inZone) { prevMouseX = null; smoothDx = 0; clearTilt(); return; }
+
+      // velocidad suavizada (EMA) → evita jitter
+      const rawDx = prevMouseX !== null ? mouseX - prevMouseX : 0;
+      prevMouseX  = mouseX;
+      smoothDx    = smoothDx * 0.55 + rawDx * 0.45;
+
+      const angle  = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, smoothDx * SENSITIVITY));
+
+      // desplazamiento geométrico real: vértice superior del .vhs-visual recorre H×sin(θ)
+      const visual  = spines[idx].querySelector(".vhs-visual");
+      const vHeight = visual ? visual.offsetHeight : spines[idx].offsetHeight * 0.85;
+      const pushPx  = vHeight * Math.sin(Math.abs(angle) * Math.PI / 180);
+
+      spines.forEach((spine, i) => {
+        const v = spine.querySelector(".vhs-visual");
+        if (!v) return;
+        const isElev = (elevatedIdx === i);
+        if (i === idx) {
+          v.style.transform = isElev
+            ? elevatedTransform(0)
+            : `rotateZ(${angle.toFixed(1)}deg)`;
+          spine.style.transform = "";
+        } else {
+          v.style.transform = isElev ? elevatedTransform(0) : "";
+          if      (angle >  0.1 && i > idx) spine.style.transform = `translateX(${pushPx.toFixed(1)}px)`;
+          else if (angle < -0.1 && i < idx) spine.style.transform = `translateX(${(-pushPx).toFixed(1)}px)`;
+          else                              spine.style.transform = "";
+        }
+      });
+
+      // vuelve a reposo cuando el mouse se detiene
+      clearTimeout(tiltTimer);
+      tiltTimer = setTimeout(clearTilt, 110);
+    }
+
+    function clearTilt() {
+      prevMouseX = null;
+      smoothDx   = 0;
+      Array.from(rail.querySelectorAll(".vhs-spine")).forEach((spine, i) => {
+        const v = spine.querySelector(".vhs-visual");
+        if (v) v.style.transform = (elevatedIdx === i) ? elevatedTransform(0) : "";
+        spine.style.transform = "";
+      });
+    }
+
+    // ── EVENTS ────────────────────────────────────────────────────────────────
+    const rail    = document.getElementById("shelf-rail");
+    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+    if (isTouch) {
+      let touchActiveIdx = -1;
+
+      rail.addEventListener("touchstart", e => {
+        const spine = e.target.closest(".vhs-spine");
+        if (!spine) return;
+        setActive(+spine.dataset.index);
+      }, { passive: true });
+
+      rail.addEventListener("click", e => {
+        const spine = e.target.closest(".vhs-spine");
+        if (!spine) return;
+        const idx  = +spine.dataset.index;
+        const work = works[idx];
+
+        if (window.matchMedia("(orientation: portrait)").matches) {
+          if (!work.video) return;
+          setActive(-1);
+          spine.style.transition = "transform 340ms cubic-bezier(0.4, 0, 1, 1)";
+          spine.style.transform  = "translateX(110%)";
+          setTimeout(() => {
+            spine.style.transition = "";
+            spine.style.transform  = "";
+            openPlayer(spine, work.video);
+          }, 300);
+        } else {
+          if (elevatedIdx === idx) {
+            if (work.video) openPlayer(spine, work.video);
+          } else {
+            elevateVisual(idx);
+          }
+        }
+      });
+    } else {
+      let rafId = null;
+      rail.addEventListener("mousemove", e => {
+        const spine = e.target.closest(".vhs-spine");
+        const idx   = spine ? +spine.dataset.index : -1;
+        const mx    = e.clientX;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          setActive(idx);
+          updateTilt(mx);
+          rafId = null;
+        });
+      });
+      rail.addEventListener("mouseleave", () => {
+        if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+        setActive(-1);
+        clearTilt();
+      });
+      rail.addEventListener("click", e => {
+        const spine = e.target.closest(".vhs-spine");
+        if (!spine) return;
+        const idx  = +spine.dataset.index;
+        const work = works[idx];
+        if (elevatedIdx === idx) {
+          if (work.video) openPlayer(spine, work.video);
+        } else {
+          elevateVisual(idx);
+        }
+      });
+    }
+
+    // ── PLAYER ────────────────────────────────────────────────────────────────
+    const player     = document.getElementById("player");
+    const playerV    = document.getElementById("player-v");
+    const playerBack = document.getElementById("player-back");
+    let   playerAnim = null;
+
+    function openPlayer(spineEl, src) {
+      const stageRect = stage.getBoundingClientRect();
+      const rect      = spineEl.getBoundingClientRect();
+      const cx  = (rect.left + rect.width  / 2) - stageRect.left - 10;
+      const cy  = (rect.top  + rect.height / 2) - stageRect.top  - 10;
+      const pw  = stageRect.width  - 20;
+      const ph  = stageRect.height - 20;
+
+      if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
+
+      document.getElementById("shelf-wrap").style.visibility = "hidden";
+      document.getElementById("home-btn").style.opacity = "0";
+
+      player.classList.add("open");
+      player.style.opacity = "0";
+      playerBack.style.opacity = "0";
+
+      playerV.src = src;
+      playerV.muted = false;
+      playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
+
+      const cxPct = (cx / pw * 100).toFixed(1);
+      const cyPct = (cy / ph * 100).toFixed(1);
+
+      playerAnim = player.animate(
+        [{ opacity: "0" }, { opacity: "1" }],
+        { duration: 300, easing: "ease", fill: "forwards" }
+      );
+      player.animate([
+        { clipPath: `circle(0% at ${cxPct}% ${cyPct}%)` },
+        { clipPath: `circle(150% at 50% 50%)` }
+      ], { duration: 500, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" });
+
+      playerAnim.finished.then(() => {
+        playerAnim.cancel();
+        player.style.opacity = "1";
+        player.style.clipPath = "none";
+        playerAnim = null;
+        playerBack.style.opacity = "1";
+      }).catch(() => {});
+    }
+
+    function closePlayer() {
+      if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
+      playerBack.style.opacity = "0";
+      playerV.pause();
+      playerV.src = "";
+
+      const anim = player.animate(
+        [{ opacity: "1" }, { opacity: "0" }],
+        { duration: 300, easing: "ease", fill: "forwards" }
+      );
+      playerAnim = anim;
+      anim.finished.then(() => {
+        anim.cancel();
+        player.classList.remove("open");
+        player.style.opacity = "";
+        player.style.clipPath = "";
+        playerAnim = null;
+        document.getElementById("shelf-wrap").style.visibility = "";
+        document.getElementById("home-btn").style.opacity = "";
+        dropElevated();
+      }).catch(() => {});
+    }
+
+    playerBack.addEventListener("click", e => { e.stopPropagation(); closePlayer(); });
+    player.addEventListener("click",     e => { if (e.target === player) closePlayer(); });
+
+
+    // ── THEME TOGGLE ──────────────────────────────────────────────────────────
+    document.getElementById("theme-btn").addEventListener("click", () => {
+      document.body.classList.toggle("light");
+    });
+
+    // ── RESIZE: recalibrar bloque y recalcular elevación ─────────────────────
+    window.addEventListener("resize", () => {
+      calibrateBlock();
+      if (elevatedIdx >= 0) elevateVisual(elevatedIdx);
+    });
+  </script>
+
+</body>
+</html>
