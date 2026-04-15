@@ -146,9 +146,10 @@
     }
 
     function elevateVisual(idx) {
-      const stageR = stage.getBoundingClientRect();
-      const frameR = document.getElementById("frame").getBoundingClientRect();
-      const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+      const stageR    = stage.getBoundingClientRect();
+      const frameR    = document.getElementById("frame").getBoundingClientRect();
+      const spines    = Array.from(rail.querySelectorAll(".vhs-spine"));
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
 
       // Bajar el visual anterior
       if (elevatedIdx >= 0 && elevatedIdx !== idx) {
@@ -156,32 +157,44 @@
         if (prev) prev.style.transform = "";
       }
 
-      // Inactivos: se van para abajo (translateY en el spine, sin cambio de tamaño)
+      // Inactivos: se van para abajo
       spines.forEach((spine, i) => {
         spine.style.transform = (i !== idx) ? `translateY(${stageR.height}px)` : "";
       });
 
-      // El bloque ya fue calibrado al tamaño del frame — solo translateY
+      elevatedIdx   = idx;
+      elevatedDY    = 0;
+      elevatedScale = 1;
+      setActive(idx);
+
+      if (isPortrait) {
+        // Portrait: expandir solo el spine activo a 75vw
+        document.getElementById("shelf-wrap").style.overflow = "visible";
+        spines[idx].style.width = "75vw";
+        // Colapsar cuando el mouse sale del spine
+        const sp = spines[idx];
+        if (sp._leaveHandler) sp.removeEventListener("mouseleave", sp._leaveHandler);
+        sp._leaveHandler = () => { dropElevated(); setActive(-1); };
+        sp.addEventListener("mouseleave", sp._leaveHandler);
+        return;
+      }
+
+      // Landscape: translateY al centro del frame
       const v = getVisual(idx);
       if (!v) return;
       const vR = v.getBoundingClientRect();
 
-      // centrar verticalmente dentro del frame y clampear
       let dy = (frameR.top + frameR.height / 2) - (vR.top + vR.height / 2);
       if (vR.top    + dy < frameR.top)    dy += frameR.top    - (vR.top    + dy);
       if (vR.bottom + dy > frameR.bottom) dy -= (vR.bottom + dy) - frameR.bottom;
 
       elevatedDY    = dy;
-      elevatedScale = 1;
-      elevatedIdx   = idx;
       v.style.transform = `translateY(${dy.toFixed(1)}px)`;
 
-      // drop when pointer leaves the elevated visual
       if (v._leaveHandler) v.removeEventListener("mouseleave", v._leaveHandler);
       v._leaveHandler = () => { dropElevated(); setActive(-1); };
       v.addEventListener("mouseleave", v._leaveHandler);
 
-      setActive(idx);
       showRuler(idx);
     }
 
@@ -264,6 +277,14 @@
       }
       // Volver todos los spines a su lugar
       rail.querySelectorAll(".vhs-spine").forEach(spine => spine.style.transform = "");
+      // Resetear spine y overflow del shelf en portrait
+      const spinesAll = Array.from(rail.querySelectorAll(".vhs-spine"));
+      spinesAll.forEach(sp => {
+        sp.style.width = "";
+        if (sp._leaveHandler) { sp.removeEventListener("mouseleave", sp._leaveHandler); delete sp._leaveHandler; }
+      });
+      // Demorar el overflow hasta que termine la transición de width (380ms)
+      setTimeout(() => { document.getElementById("shelf-wrap").style.overflow = ""; }, 630);
       elevatedIdx   = -1;
       elevatedDY    = 0;
       elevatedScale = 1;
@@ -351,6 +372,13 @@
     const rail    = document.getElementById("shelf-rail");
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
+    // Portrait: tap fuera del shelf cierra el estado elevado
+    stage.addEventListener("touchend", e => {
+      if (elevatedIdx < 0) return;
+      if (!window.matchMedia("(orientation: portrait)").matches) return;
+      if (!e.target.closest(".vhs-spine")) { dropElevated(); setActive(-1); }
+    }, { passive: true });
+
     if (isTouch) {
       let touchActiveIdx = -1;
 
@@ -367,15 +395,21 @@
         const work = works[idx];
 
         if (window.matchMedia("(orientation: portrait)").matches) {
-          if (!work.video) return;
-          setActive(-1);
-          spine.style.transition = "transform 340ms cubic-bezier(0.4, 0, 1, 1)";
-          spine.style.transform  = "translateX(110%)";
-          setTimeout(() => {
-            spine.style.transition = "";
-            spine.style.transform  = "";
-            openPlayer(spine, work.video, work.startAt, work.ratio);
-          }, 300);
+          if (elevatedIdx === idx) {
+            if (!work.video) return;
+            dropElevated();
+            setActive(-1);
+            spine.style.transition = "transform 340ms cubic-bezier(0.4, 0, 1, 1)";
+            spine.style.transform  = "translateX(110%)";
+            setTimeout(() => {
+              spine.style.transition = "";
+              spine.style.transform  = "";
+              openPlayer(spine, work.video, work.startAt, work.ratio);
+            }, 300);
+          } else {
+            dropElevated();
+            elevateVisual(idx);
+          }
         } else {
           if (elevatedIdx === idx) {
             if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
