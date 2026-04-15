@@ -1,6 +1,10 @@
+/* ── PUSH-IN ─────────────────────────────────────────────────────────────── */
+html[data-push-in] body   { background: #000; }
+html[data-push-in] #stage { transform: translateY(100%); }
+
 /* ── RESET ───────────────────────────────────────────────────────────────── */
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px); overflow: hidden; }
+html { overflow: hidden; }
 
 /* ── BODY ────────────────────────────────────────────────────────────────── */
 body {
@@ -22,6 +26,18 @@ body {
   height: min(100dvh, 1080px);
   overflow: hidden;
   background: #000;
+}
+
+/* ── INTRO VIDEO ─────────────────────────────────────────────────────────── */
+#v {
+  position: absolute;
+  top: 60px; left: 20px; right: 20px; bottom: 20px;
+  width: calc(100% - 40px);
+  height: calc(100% - 80px);
+  object-fit: cover;
+  object-position: center center;
+  display: block;
+  z-index: 5;
 }
 
 /* ── SHELF WRAP ──────────────────────────────────────────────────────────── */
@@ -108,7 +124,7 @@ body {
   display: block;
   pointer-events: none;
   z-index: 1;
-  filter: invert(1);
+  filter: none;
 }
 
 /* ── LABEL ───────────────────────────────────────────────────────────────── */
@@ -162,6 +178,14 @@ body {
   background: #000;
 }
 
+/* Video cuadrado (1:1): llena alto en landscape, ancho en portrait */
+@media (orientation: landscape) {
+  #player-v.square { width: auto; height: 100%; }
+}
+@media (orientation: portrait) {
+  #player-v.square { width: 100%; height: auto; }
+}
+
 #player-back {
   position: absolute;
   top: min(1.4vw, 20px);
@@ -185,6 +209,20 @@ body {
 
 #player-back svg { width: 50%; height: 50%; }
 
+/* ── MARGIN MASK ─────────────────────────────────────────────────────────── */
+/* Mismo position que #frame + mismo border-radius + box-shadow gigante.      */
+/* El overflow:hidden del stage recorta el shadow → esquinas externas rectas. */
+/* La curva interna sigue el border-radius → acompaña la línea blanca.        */
+#stage::before {
+  content: '';
+  position: absolute;
+  top: 60px; left: 20px; right: 20px; bottom: 20px;
+  border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
+  box-shadow: 0 0 0 100vmax #000;
+  pointer-events: none;
+  z-index: 499;
+}
+
 /* ── FRAME ───────────────────────────────────────────────────────────────── */
 #frame {
   position: absolute;
@@ -192,7 +230,6 @@ body {
   border: 2px solid #fff;
   border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
   background: transparent;
-  box-shadow: 0 0 0 20px #000;
   pointer-events: none;
   z-index: 500;
 }
@@ -220,37 +257,43 @@ body {
 
 #home-btn svg { width: 62.5%; height: 62.5%; display: block; }
 
-/* ── THEME BUTTON ────────────────────────────────────────────────────────── */
-#theme-btn {
+/* ── COLOR MODE BUTTONS ──────────────────────────────────────────────────── */
+#btn-white, #btn-orange, #btn-black {
   position: fixed;
-  top:  1.111vw;
-  right: 1.111vw;
-  width:  min(1.111vw, 20px);
-  height: min(1.111vw, 20px);
-  min-width:  12px;
-  min-height: 12px;
-  background: none;
+  top: 1.111vw;
+  width:  min(1.6vw, 22px);
+  height: min(1.6vw, 22px);
+  min-width:  14px;
+  min-height: 14px;
+  border-radius: 0;
   border: none;
   cursor: pointer;
-  color: #fff;
-  font-size: 14px;
-  line-height: 1;
   padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 600;
 }
+#btn-white  { right: 1.111vw;                                        background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+#btn-orange { right: calc(1.111vw + min(1.6vw, 22px) + 7px);        background: orange; }
+#btn-black  { right: calc(1.111vw + 2 * (min(1.6vw, 22px) + 7px));  background: #000; box-shadow: inset 0 0 0 2px #fff; }
+
+/* light mode → white active */
+body.light #btn-black  { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
+body.light #btn-white  { box-shadow: inset 0 0 0 2px #000; }
+
+/* orange mode → orange active */
+body.orange #btn-black  { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
+body.orange #btn-orange { box-shadow: inset 0 0 0 2px #000; }
 
 /* ── LIGHT MODE ──────────────────────────────────────────────────────────── */
 body.light                { background: #fff; }
 body.light #stage         { background: #fff; }
-body.light .vhs-png       { filter: none; }
 body.light .vhs-label     { color: #000; }
-body.light #frame         { border-color: #000; box-shadow: 0 0 0 20px #fff; }
+body.light #frame         { border-color: #000; }
 body.light #home-btn      { background: #000; color: #fff; }
-body.light #theme-btn     { color: #000; }
 body.light #vhs-ruler     { color: #000; }
+
+/* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
+body.orange #stage        { background: orange; }
+body.orange #vhs-ruler    { color: #000; }
 
 /* ── VHS RULER ───────────────────────────────────────────────────────────── */
 #vhs-ruler {
@@ -260,7 +303,7 @@ body.light #vhs-ruler     { color: #000; }
   pointer-events: none;
   z-index: 20;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: clamp(33px, 3vw, 42px);
+  font-size: 22px;
   font-weight: 100;
   letter-spacing: 0.03em;
   color: #fff;
@@ -277,7 +320,7 @@ body.light #vhs-ruler     { color: #000; }
 }
 #ruler-gap { flex-shrink: 0; }
 .ruler-dashes { overflow: hidden; flex: 1; min-width: 0; white-space: nowrap; }
-.ruler-title  { flex-shrink: 0; font-weight: 700; white-space: nowrap; font-size: 80%; }
+.ruler-title  { flex-shrink: 0; font-weight: 400; white-space: nowrap; font-size: 100%; }
 .ruler-arrow  { flex-shrink: 0; }
 
 /* ── RESPONSIVE ──────────────────────────────────────────────────────────── */

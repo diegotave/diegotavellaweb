@@ -5,13 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella — Works</title>
   <link rel="stylesheet" href="workka.css">
+  <script>if(sessionStorage.getItem("pushIn")==="1"){document.documentElement.dataset.pushIn="1"}</script>
 </head>
 <body>
 
   <div id="stage">
 
+    <video id="v" muted playsinline preload="auto">
+      <source src="assets/videos/introwork.webm" type='video/webm; codecs="vp9"'>
+    </video>
+
     <!-- Videoteca -->
-    <div id="shelf-wrap">
+    <div id="shelf-wrap" style="visibility:hidden">
       <div id="shelf-rail"></div>
     </div>
 
@@ -38,18 +43,20 @@
     </svg>
   </a>
 
-  <button id="theme-btn" aria-label="Toggle theme">◐</button>
+  <button id="btn-black" aria-label="Modo negro"></button>
+  <button id="btn-orange" aria-label="Modo naranja"></button>
+  <button id="btn-white" aria-label="Modo blanco"></button>
 
   <script>
     const R2 = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
 
     const works = [
-      { title: "Demo Reel",            thumb: R2+"/WORKS/video1/thumbv1.png",  video: R2+"/WORKS/video1/video1reel.mp4",    ratio:"16/9" },
+      { title: "Demo Reel",            thumb: R2+"/WORKS/video1/thumbv1.png",  video: R2+"/WORKS/video1/video1reel.mp4",    ratio:"16/9", startAt: 1 },
       { title: "Multideportes · ESPN", thumb: R2+"/WORKS/video2/THUMBV2.png",  video: R2+"/WORKS/video2/Multideportes.mp4", ratio:"16/9" },
-      { title: "Video 03",             thumb: "",                               video: "",                                    ratio:"16/9" },
+      { title: "Autocine Tenaris",      thumb: "",                               video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4", ratio:"16/9" },
       { title: "El Escuerzo",          thumb: R2+"/WORKS/video4/thumbv4.png",  video: R2+"/WORKS/video4/video4.mp4",         ratio:"16/9", png:"assets/images/vhslomo2.png" },
-      { title: "Video 05",             thumb: "",                               video: "",                                    ratio:"16/9" },
-      { title: "Video 06",             thumb: "",                               video: "",                                    ratio:"16/9" },
+      { title: "Video 05",             thumb: "",                               video: R2+"/WORKS/video5/efda.mp4", ratio:"16/9" },
+      { title: "FOX CHANNEL - HIGHLIGHT FEBRERO", thumb: "",                   video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4", ratio:"16/9" },
       { title: "Highlight Fox",        thumb: R2+"/WORKS/video6/THUMBV6.png",  video: R2+"/WORKS/video6/hltfoxviejo.mp4",   ratio:"16/9" },
       { title: "Video 08",             thumb: "",                               video: "",                                    ratio:"16/9" },
       { title: "Visita",               thumb: R2+"/WORKS/video9/thumbv9.png",  video: R2+"/WORKS/video9/video9.mp4",         ratio:"1/1"  },
@@ -97,11 +104,16 @@
         spine.appendChild(visual);
 
         rail.appendChild(spine);
-
-        // entrada escalonada
-        setTimeout(() => spine.classList.add("entered"), 80 + i * 60);
       });
     })();
+
+    function activateShelf() {
+      document.getElementById("shelf-wrap").style.visibility = "";
+      const spines = document.querySelectorAll(".vhs-spine");
+      spines.forEach((spine, i) => {
+        setTimeout(() => spine.classList.add("entered"), 80 + i * 60);
+      });
+    }
 
     // ── CALIBRATE ─────────────────────────────────────────────────────────────
     // Pre-size the rail so each .vhs-visual naturally matches the frame height.
@@ -195,7 +207,7 @@
       const rightW = rulerRight0 - visualR.right;  // fill-r width
 
       const titleOnRight = rightW >= leftW;
-      const DASHES = "-".repeat(120);
+      const DASHES = "-  ".repeat(60);
       const title  = works[idx].title;
 
       const rulerLeft  = document.getElementById("ruler-left");
@@ -236,7 +248,7 @@
       // Position: de primer spine a último spine
       ruler.style.left  = (rulerLeft0 - stageR.left) + "px";
       ruler.style.width = (rulerRight0 - rulerLeft0)  + "px";
-      ruler.style.top   = (railR.top - stageR.top - 18) + "px";
+      ruler.style.top   = (railR.top - stageR.top + railR.height * 0.075 - 50) + "px";
     }
 
     function hideRuler() {
@@ -362,11 +374,11 @@
           setTimeout(() => {
             spine.style.transition = "";
             spine.style.transform  = "";
-            openPlayer(spine, work.video);
+            openPlayer(spine, work.video, work.startAt, work.ratio);
           }, 300);
         } else {
           if (elevatedIdx === idx) {
-            if (work.video) openPlayer(spine, work.video);
+            if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
           } else {
             elevateVisual(idx);
           }
@@ -396,7 +408,7 @@
         const idx  = +spine.dataset.index;
         const work = works[idx];
         if (elevatedIdx === idx) {
-          if (work.video) openPlayer(spine, work.video);
+          if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
         } else {
           elevateVisual(idx);
         }
@@ -409,7 +421,9 @@
     const playerBack = document.getElementById("player-back");
     let   playerAnim = null;
 
-    function openPlayer(spineEl, src) {
+
+
+    function openPlayer(spineEl, src, startAt, ratio) {
       const stageRect = stage.getBoundingClientRect();
       const rect      = spineEl.getBoundingClientRect();
       const cx  = (rect.left + rect.width  / 2) - stageRect.left - 10;
@@ -426,7 +440,9 @@
       player.style.opacity = "0";
       playerBack.style.opacity = "0";
 
+      playerV.classList.toggle("square", ratio === "1/1");
       playerV.src = src;
+      if (startAt) playerV.addEventListener("loadedmetadata", () => { playerV.currentTime = startAt; }, { once: true });
       playerV.muted = false;
       playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
 
@@ -479,15 +495,72 @@
 
 
     // ── THEME TOGGLE ──────────────────────────────────────────────────────────
-    document.getElementById("theme-btn").addEventListener("click", () => {
-      document.body.classList.toggle("light");
-    });
+    document.getElementById("btn-white").addEventListener("click",  () => { document.body.classList.remove("orange"); document.body.classList.add("light"); });
+    document.getElementById("btn-orange").addEventListener("click", () => { document.body.classList.remove("light"); document.body.classList.add("orange"); });
+    document.getElementById("btn-black").addEventListener("click",  () => { document.body.classList.remove("light", "orange"); });
 
     // ── RESIZE: recalibrar bloque y recalcular elevación ─────────────────────
     window.addEventListener("resize", () => {
       calibrateBlock();
       if (elevatedIdx >= 0) elevateVisual(elevatedIdx);
     });
+
+    // ── INTRO VIDEO ───────────────────────────────────────────────────────────
+    const v = document.getElementById("v");
+    let shelfTriggered = false;
+
+    sessionStorage.removeItem("entryMode");
+
+    v.addEventListener("loadedmetadata", () => {
+      const triggerAt = Math.max(v.duration - 1.0, 0);
+      v.addEventListener("timeupdate", () => {
+        if (!shelfTriggered && v.currentTime >= triggerAt) {
+          shelfTriggered = true;
+          activateShelf();
+        }
+      });
+    });
+
+    v.addEventListener("ended", () => {
+      if (!shelfTriggered) activateShelf();
+      v.style.display = "none";
+    });
+
+    setTimeout(() => { v.play().catch(() => {}); }, 333);
+
+    // ── AUTOPLAY DEMO 1 (viene de play demo en hom3dtv) ──────────────────────
+    if (sessionStorage.getItem("autoplayVideo1") === "1") {
+      sessionStorage.removeItem("autoplayVideo1");
+      v.style.display = "none";
+      shelfTriggered  = true;
+      // Preparar spines con entered (quedan ocultos bajo visibility:hidden del shelf-wrap)
+      document.querySelectorAll(".vhs-spine").forEach((spine, i) => {
+        setTimeout(() => spine.classList.add("entered"), 80 + i * 60);
+      });
+      playerV.addEventListener("loadedmetadata", () => {
+        playerV.currentTime = 1;
+      }, { once: true });
+      setTimeout(() => {
+        const spines = document.querySelectorAll(".vhs-spine");
+        if (spines[0] && works[0].video) openPlayer(spines[0], works[0].video);
+      }, 400);
+    }
+
+    // ── PUSH-IN desde abajo (viene de hom3dtv.html) ───────────────────────────
+    if (document.documentElement.dataset.pushIn) {
+      sessionStorage.removeItem("pushIn");
+      stage.style.transform          = "translateY(100%)";
+      document.body.style.background = "#000";
+      delete document.documentElement.dataset.pushIn;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        stage.style.transition = "transform 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+        stage.style.transform  = "";
+        setTimeout(() => {
+          stage.style.transition        = "";
+          document.body.style.background = "";
+        }, 230);
+      }));
+    }
   </script>
 
 </body>

@@ -40,6 +40,10 @@
     <div id="frame"></div>
   </div>
 
+  <button id="btn-black"></button>
+  <button id="btn-orange"></button>
+  <button id="btn-white"></button>
+
   <script>
     const vhs   = document.getElementById("vhs");
     const stage = document.getElementById("stage");
@@ -184,6 +188,12 @@
         }, 230);
       }));
     }
+
+    document.getElementById("btn-white").addEventListener("click",  () => { document.body.classList.remove("dark", "orange"); });
+    document.getElementById("btn-orange").addEventListener("click", () => { document.body.classList.remove("dark"); document.body.classList.add("orange"); });
+    document.getElementById("btn-black").addEventListener("click",  () => { document.body.classList.remove("orange"); document.body.classList.add("dark"); });
+
+
 
     // Restaurar estado cuando el browser vuelve desde bfcache (Chrome, Firefox)
     window.addEventListener("pageshow", (e) => {

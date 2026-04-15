@@ -200,7 +200,7 @@ body {
   height: 100%;
   background: #fc06c8;
   border-radius: calc((min(100dvh, 1080px) - 20px) * 0.00628);
-  opacity: 0.5;
+  opacity: 1;
   transition: opacity 200ms ease, width 300ms ease;
 }
 
@@ -425,3 +425,52 @@ body {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* ── COLOR MODE BUTTONS ──────────────────────────────────────────────────── */
+#btn-white, #btn-orange, #btn-black {
+  position: fixed;
+  top: 1.111vw;
+  width:  min(1.6vw, 22px);
+  height: min(1.6vw, 22px);
+  min-width:  14px;
+  min-height: 14px;
+  border-radius: 0;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 600;
+}
+#btn-white  { right: 1.111vw;                                        background: #fff; box-shadow: inset 0 0 0 2px #000; }
+#btn-orange { right: calc(1.111vw + min(1.6vw, 22px) + 7px);        background: orange; }
+#btn-black  { right: calc(1.111vw + 2 * (min(1.6vw, 22px) + 7px));  background: #000; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
+
+/* dark mode → black active */
+body.dark #btn-white  { box-shadow: none; }
+body.dark #btn-black  { box-shadow: inset 0 0 0 2px #fff; }
+
+/* orange mode → orange active */
+body.orange #btn-white  { box-shadow: none; }
+body.orange #btn-orange { box-shadow: inset 0 0 0 2px #000; }
+
+/* ── DARK MODE ───────────────────────────────────────────────────────────── */
+body.dark                    { background: #000; }
+body.dark #gate              { background: #000; }
+body.dark #gate-box          { border-color: #fff; }
+body.dark #gate-label        { color: #fff; }
+body.dark #gate-field        { border-color: #fff; }
+body.dark #gate-input        { background: #000; color: #fff; }
+body.dark #gate-btn          { background: #fff; }
+body.dark #gate-err          { color: #fff; }
+body.dark #frame             { border-color: #fff; box-shadow: 0 0 0 20px #000; }
+body.dark #boton-texto-watch { color: #fff; }
+body.dark #logo-dtv          { filter: invert(1); }
+body.dark #vhs               { mix-blend-mode: hard-light; filter: invert(1); }
+body.dark #boton-demo        { z-index: 10; }
+body.dark #vhs-etiqueta      { z-index: 2; }
+
+/* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
+body.orange                  { background: orange; }
+body.orange #frame           { border-color: #fff; box-shadow: 0 0 0 20px #000; }
+body.orange #vhs             { mix-blend-mode: multiply; filter: invert(1); }
+body.orange #boton-fondo     { background: #fff; }
+body.orange #boton-circulo   { background: #fff; }
