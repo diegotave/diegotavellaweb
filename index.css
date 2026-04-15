@@ -298,14 +298,6 @@ body {
       calc((min(100dvh, 1080px) - 20px) * 0.9130 - 50vw + 38px)
     );
   }
-  #vhs-frame,
-  #vhs,
-  #vhs-etiqueta,
-  #boton-demo,
-  #logo-dtv {
-    left: calc(35vw - (100dvh - 20px) * 25 / 18);
-    transform: rotate(90deg);
-  }
 }
 
 #boton-hit {
@@ -478,7 +470,7 @@ body.dark #vhs-etiqueta      { z-index: 2; }
 
 /* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
 body.orange                  { background: orange; }
-body.orange #frame           { border-color: #000; box-shadow: 0 0 0 20px orange; }
+body.orange #frame           { border-color: #fff; box-shadow: 0 0 0 20px #000; }
 body.orange #vhs             { mix-blend-mode: multiply; filter: invert(1); }
 body.orange #boton-fondo     { background: #fff; }
 body.orange #boton-circulo   { background: #fff; }
