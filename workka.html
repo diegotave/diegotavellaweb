@@ -168,10 +168,8 @@
       setActive(idx);
 
       if (isPortrait) {
-        // Portrait: expandir solo el spine activo a 75vw
-        document.getElementById("shelf-wrap").style.overflow = "visible";
+        // Portrait: expandir solo el spine activo (cada spine es su propio contenedor)
         spines[idx].style.width = "75vw";
-        // Colapsar cuando el mouse sale del spine
         const sp = spines[idx];
         if (sp._leaveHandler) sp.removeEventListener("mouseleave", sp._leaveHandler);
         sp._leaveHandler = () => { dropElevated(); setActive(-1); };
@@ -277,14 +275,12 @@
       }
       // Volver todos los spines a su lugar
       rail.querySelectorAll(".vhs-spine").forEach(spine => spine.style.transform = "");
-      // Resetear spine y overflow del shelf en portrait
+      // Resetear spine activo y limpiar handlers en portrait
       const spinesAll = Array.from(rail.querySelectorAll(".vhs-spine"));
       spinesAll.forEach(sp => {
         sp.style.width = "";
         if (sp._leaveHandler) { sp.removeEventListener("mouseleave", sp._leaveHandler); delete sp._leaveHandler; }
       });
-      // Demorar el overflow hasta que termine la transición de width (380ms)
-      setTimeout(() => { document.getElementById("shelf-wrap").style.overflow = ""; }, 630);
       elevatedIdx   = -1;
       elevatedDY    = 0;
       elevatedScale = 1;

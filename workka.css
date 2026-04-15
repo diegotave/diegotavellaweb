@@ -339,15 +339,13 @@ body.orange #vhs-ruler    { color: #000; }
     right: auto;
     transform: none;
     width: 40vw;
-    overflow: hidden;
+    overflow: visible;
     align-items: stretch;
     justify-content: flex-start;
     touch-action: auto;
     padding: 6px 0;
     -webkit-overflow-scrolling: auto;
-    overflow-y: hidden;
     scrollbar-width: auto;
-    transition: width 380ms cubic-bezier(0.45, 0, 0.55, 1);
   }
 
   /* Rail vertical stack */
@@ -386,7 +384,7 @@ body.orange #vhs-ruler    { color: #000; }
     position: absolute;
     top: 50%;
     left: calc(100% - 370px);
-    width: 90px;
+    width: 80px;
     height: 650px;
     transform: translateY(-50%) rotate(-90deg);
     object-fit: cover;
