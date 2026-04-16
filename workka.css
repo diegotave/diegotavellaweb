@@ -389,8 +389,8 @@ body.orange #vhs-ruler    { color: #000; }
     inset: auto;
     position: absolute;
     top: 50%;
-    left: calc(100% - 370px);
-    width: 80px;
+    left: calc(100% - (100dvh - 80px) / 18 - 320px);
+    width: calc((100dvh - 80px) / 9 - 10px);
     height: 650px;
     transform: translateY(-50%) rotate(-90deg);
     object-fit: cover;
@@ -402,8 +402,8 @@ body.orange #vhs-ruler    { color: #000; }
   .vhs-png {
     position: absolute;
     top: 50%;
-    left: calc(100% - 370px);
-    width: 90px;
+    left: calc(100% - (100dvh - 80px) / 18 - 325px);
+    width: calc((100dvh - 80px) / 9);
     height: 650px;
     transform: translateY(-50%) rotate(-90deg);
     object-fit: fill;
