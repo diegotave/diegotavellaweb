@@ -28,6 +28,11 @@ body {
   background: #000;
 }
 
+
+
+
+
+
 /* ── INTRO VIDEO ─────────────────────────────────────────────────────────── */
 #v {
   position: absolute;
@@ -322,6 +327,7 @@ body.orange #vhs-ruler    { color: #000; }
 .ruler-dashes { overflow: hidden; flex: 1; min-width: 0; white-space: nowrap; }
 .ruler-title  { flex-shrink: 0; font-weight: 400; white-space: nowrap; font-size: 100%; }
 .ruler-arrow  { flex-shrink: 0; }
+
 
 /* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
 @media (max-height: 500px) and (orientation: landscape) {

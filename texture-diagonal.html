@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Textura diagonal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; }
+    #texture {
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        -45deg,
+        #00ff00,
+        #00ff00 2px,
+        transparent 2px,
+        transparent 2vh
+      );
+    }
+  </style>
+</head>
+<body>
+  <div id="texture"></div>
+</body>
+</html>
