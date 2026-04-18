@@ -369,6 +369,89 @@ body {
   z-index: 999;
 }
 
+/* ── VIDEO SOMEWORK — detrás del logo, z entre frame(500) y logo(600) ───── */
+#video-somework {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: calc(100% - 20px);
+  width: auto;
+  display: block;
+  pointer-events: none;
+  z-index: 550;
+  opacity: 0;
+  mix-blend-mode: normal;
+  transition: opacity 300ms ease;
+}
+#video-somework.active { opacity: 0.65; }
+
+/* logo calado sobre tagsomework en fondo blanco */
+body:not(.dark):not(.orange) #video-somework.active ~ #logo-dtv {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}
+
+/* logo naranja mientras tagsomework reproduce en fondo naranja */
+body.orange #video-somework.active ~ #logo-dtv {
+  mix-blend-mode: multiply;
+}
+
+/* logo screen mientras tagsomework reproduce en fondo negro */
+body.dark #video-somework.active ~ #logo-dtv {
+  mix-blend-mode: screen;
+}
+
+/* ── PANEL LÚDICO ────────────────────────────────────────────────────────── */
+#blend-panel {
+  position: fixed;
+  right: 16px;
+  top: 10px;
+  bottom: 10px;
+  z-index: 700;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+#blend-label {
+  display: none;
+}
+#blend-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+#blend-list li {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #000;
+  cursor: pointer;
+  opacity: 0.35;
+  padding: 2px 0;
+  transition: opacity 120ms ease, font-size 180ms ease;
+  white-space: nowrap;
+  text-align: right;
+}
+#blend-list li:hover  { opacity: 0.7; font-size: 16px; }
+#blend-list li.active { opacity: 1; font-weight: 700; }
+#blend-list li[data-theme="orange"] { color: orange; }
+#blend-list li[data-theme="dark"]   { font-weight: 700; }
+
+#blend-list li span {
+  display: inline-block;
+  transition: font-size 180ms ease;
+}
+#blend-list li:hover span        { font-size: 14px; }
+#blend-list li:hover span:hover  { font-size: 20px; }
+body.dark #blend-label,
+body.dark #blend-list li { color: #fff; }
+body.orange #blend-label,
+body.orange #blend-list li { color: #000; }
+
 /* ── LOGO DTV ────────────────────────────────────────────────────────────── */
 #logo-dtv {
   position: absolute;

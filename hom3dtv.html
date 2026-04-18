@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#000000">
   <title>Diego Tavella</title>
-  <link rel="stylesheet" href="index.css?v=3">
+  <link rel="stylesheet" href="index.css?v=4">
   <script>if(sessionStorage.getItem("pushBack")==="1"){document.documentElement.dataset.pushBack="1"}</script>
 </head>
 <body>
@@ -37,6 +37,9 @@
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
     </video>
     <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.png" alt="">
+    <video id="video-somework" muted playsinline preload="auto">
+      <source src="assets/videos/tagsomework.webm?v=2" type='video/webm; codecs="vp9"'>
+    </video>
     <img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="" style="opacity:1">
     <div id="frame"></div>
   </div>
@@ -44,6 +47,18 @@
   <button id="btn-black"></button>
   <button id="btn-orange"></button>
   <button id="btn-white"></button>
+
+  <div id="blend-panel">
+    <div id="blend-label">blend mode</div>
+    <ul id="blend-list">
+      <li>contact</li>
+      <li>about</li>
+      <li>blog</li>
+      <li data-theme="orange">orange<br>version</li>
+      <li data-theme="dark">dark<br>version</li>
+      <li data-theme="white">white<br>version</li>
+    </ul>
+  </div>
 
   <script>
     const vhs   = document.getElementById("vhs");
@@ -57,6 +72,8 @@
     const hitCuadrado  = document.getElementById("boton-hit-cuadrado");
     const cuadrado     = document.getElementById("boton-cuadrado");
     const vhsFrame     = document.getElementById("vhs-frame");
+    const videoSW      = document.getElementById("video-somework");
+    videoSW.addEventListener("ended", () => { videoSW.classList.remove("active"); });
 
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
@@ -74,10 +91,18 @@
       hitCuadrado.style.width = (fondoW / vhsFrameW * 100) + "%";
       hitCuadrado.style.left = (cuadrado.getBoundingClientRect().left - vhsFrame.getBoundingClientRect().left) / vhsFrameW * 100 + "%";
       hitCuadrado.style.transform = "translateY(-50%)";
+      // Video somework: mostrar y reproducir desde el principio una vez
+      videoSW.classList.add("active");
+      videoSW.currentTime = 0;
+      videoSW.playbackRate = 1.75;
+      videoSW.play().catch(() => {});
     }
     function deactivateCuadrado() {
       cuadrado.classList.remove("hovered"); botonDemo.classList.remove("hovered");
       hitCuadrado.style.width = ""; hitCuadrado.style.left = ""; hitCuadrado.style.transform = "";
+      // Video somework: ocultar y pausar
+      videoSW.classList.remove("active");
+      videoSW.pause();
     }
 
     if (!isTouch) {
@@ -193,6 +218,21 @@
     document.getElementById("btn-white").addEventListener("click",  () => { document.body.classList.remove("dark", "orange"); });
     document.getElementById("btn-orange").addEventListener("click", () => { document.body.classList.remove("dark"); document.body.classList.add("orange"); });
     document.getElementById("btn-black").addEventListener("click",  () => { document.body.classList.remove("orange"); document.body.classList.add("dark"); });
+
+    // ── Panel lúdico ──────────────────────────────────────────────────────────
+    document.querySelectorAll("#blend-list li").forEach(li => {
+      li.addEventListener("click", () => {
+        if (li.dataset.theme) {
+          document.body.classList.remove("dark", "orange");
+          if (li.dataset.theme === "dark")   document.body.classList.add("dark");
+          if (li.dataset.theme === "orange") document.body.classList.add("orange");
+        } else if (li.dataset.blend) {
+          document.querySelectorAll("#blend-list li").forEach(el => el.classList.remove("active"));
+          li.classList.add("active");
+          videoSW.style.mixBlendMode = li.dataset.blend;
+        }
+      });
+    });
 
 
 
