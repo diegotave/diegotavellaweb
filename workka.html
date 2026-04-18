@@ -15,6 +15,22 @@
       <source src="assets/videos/introwork.webm" type='video/webm; codecs="vp9"'>
     </video>
 
+    <!-- Home button (posicionado por JS alineado con primer spine) -->
+    <div id="home-btn">
+      <div id="home-fondo"></div>
+      <svg id="home-icon" viewBox="0 0 222.3876 214.063" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <mask id="home-mask">
+            <rect width="222.3876" height="214.063" fill="white"/>
+            <path id="home-mask-path" fill="black" transform="translate(154.63,48.26) scale(-0.72,0.72)" d="M17.3353,2.0513l98.7013,70.2095c6.1132,4.3485,6.1583,13.4121.0887,17.8213L18.2873,161.1548c-7.2294,5.2517-17.3692.1237-17.4238-8.8117L.0002,11.0609C-.0544,2.1141,10.0447-3.1347,17.3353,2.0513Z"/>
+          </mask>
+        </defs>
+        <rect width="222.3876" height="214.063" rx="22.2965" ry="22.2965" fill="black" mask="url(#home-mask)"/>
+      </svg>
+      <div id="home-texto">home</div>
+    </div>
+    <button id="home-hit" aria-label="Volver a inicio"></button>
+
     <!-- Videoteca -->
     <div id="shelf-wrap" style="visibility:hidden">
       <div id="shelf-rail"></div>
@@ -49,11 +65,6 @@
     </ul>
   </div>
 
-  <a id="home-btn" href="hom3dtv.html" aria-label="Home">
-    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M8 2L2 7.5V14h4v-4h4v4h4V7.5L8 2Z" fill="currentColor"/>
-    </svg>
-  </a>
 
 
 
@@ -124,6 +135,7 @@
       spines.forEach((spine, i) => {
         setTimeout(() => spine.classList.add("entered"), 80 + i * 60);
       });
+      requestAnimationFrame(positionHomeBtn); // sync left with first spine after layout
     }
 
     // ── CALIBRATE ─────────────────────────────────────────────────────────────
@@ -136,6 +148,7 @@
       // .vhs-visual height is 85% of rail height (CSS: height: 85%)
       const railH    = targetH / 0.85;
       rail.style.height = railH + "px";
+      positionHomeBtn();
     }
 
     // Run after first paint so getBoundingClientRect is valid
@@ -379,6 +392,78 @@
     const rail    = document.getElementById("shelf-rail");
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
+    // ── HOME BUTTON ───────────────────────────────────────────────────────────
+    const homeBtn    = document.getElementById("home-btn");
+    const homeHit    = document.getElementById("home-hit");
+    const homeFondo  = document.getElementById("home-fondo");
+    const homeTexto  = document.getElementById("home-texto");
+    let homeBtnOrigW = 0;
+    let homeTouchActive = false;
+
+    function setHomeHoverW() {
+      if (!homeBtnOrigW) return;
+      const pct = 120 + (homeTexto.scrollWidth / homeBtnOrigW * 100);
+      homeBtn.style.setProperty("--home-hover-w", pct.toFixed(2) + "%");
+    }
+
+    function positionHomeBtn() {
+      const dvh        = Math.min(window.innerHeight, 1080);
+      const btnSize    = (dvh - 20) * 0.04813;
+      homeBtnOrigW     = btnSize;
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+
+      homeBtn.style.width  = btnSize + "px";
+      homeBtn.style.height = btnSize + "px";
+      homeBtn.style.setProperty("--home-btn-size", btnSize + "px");
+      homeHit.style.width  = btnSize + "px";
+      homeHit.style.height = btnSize + "px";
+
+      if (isPortrait) {
+        // Right side aligned with first spine top, same margin as blend-panel
+        homeBtn.style.top   = "60px";
+        homeBtn.style.right = "16px";
+        homeBtn.style.left  = "";
+        homeHit.style.top   = "60px";
+        homeHit.style.right = "16px";
+        homeHit.style.left  = "";
+      } else {
+        const topPx = dvh * 0.06;
+        homeBtn.style.top   = topPx + "px";
+        homeBtn.style.right = "";
+        homeHit.style.top   = topPx + "px";
+        homeHit.style.right = "";
+        // Align left edge with first VHS spine
+        const spines = rail.querySelectorAll(".vhs-spine");
+        if (spines.length) {
+          const stageR = stage.getBoundingClientRect();
+          const spineR = spines[0].getBoundingClientRect();
+          const leftPx = spineR.left - stageR.left;
+          homeBtn.style.left = leftPx + "px";
+          homeHit.style.left = leftPx + "px";
+        }
+      }
+      setHomeHoverW();
+    }
+
+    function activateHomeBtn() {
+      homeBtn.classList.add("hovered");
+      const hoverPct = parseFloat(homeBtn.style.getPropertyValue("--home-hover-w")) || 300;
+      homeHit.style.width = (homeBtnOrigW * hoverPct / 100) + "px";
+    }
+
+    function deactivateHomeBtn() {
+      homeBtn.classList.remove("hovered");
+      homeHit.style.width = homeBtnOrigW + "px";
+      homeTouchActive = false;
+    }
+
+    function goHome() {
+      sessionStorage.setItem("pushBack", "1");
+      window.location.href = "hom3dtv.html";
+    }
+
+    document.fonts.ready.then(setHomeHoverW);
+
     // Portrait: tap fuera del shelf cierra el estado elevado
     stage.addEventListener("touchend", e => {
       if (elevatedIdx < 0) return;
@@ -456,6 +541,24 @@
       });
     }
 
+    // ── HOME HIT EVENTS ──────────────────────────────────────────────────────
+    if (!isTouch) {
+      homeHit.addEventListener("mouseenter", activateHomeBtn);
+      homeHit.addEventListener("mouseleave", deactivateHomeBtn);
+      homeHit.addEventListener("click", goHome);
+    } else {
+      homeHit.addEventListener("touchend", e => {
+        e.preventDefault();
+        if (homeTouchActive) {
+          deactivateHomeBtn();
+          goHome();
+        } else {
+          homeTouchActive = true;
+          activateHomeBtn();
+        }
+      }, { passive: false });
+    }
+
     // ── PLAYER ────────────────────────────────────────────────────────────────
     const player     = document.getElementById("player");
     const playerV    = document.getElementById("player-v");
@@ -475,7 +578,9 @@
       if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
       document.getElementById("shelf-wrap").style.visibility = "hidden";
-      document.getElementById("home-btn").style.opacity = "0";
+      homeBtn.style.opacity = "0";
+      homeHit.style.opacity = "0";
+      homeHit.style.pointerEvents = "none";
 
       player.classList.add("open");
       player.style.opacity = "0";
@@ -526,7 +631,9 @@
         player.style.clipPath = "";
         playerAnim = null;
         document.getElementById("shelf-wrap").style.visibility = "";
-        document.getElementById("home-btn").style.opacity = "";
+        homeBtn.style.opacity = "";
+        homeHit.style.opacity = "";
+        homeHit.style.pointerEvents = "";
         dropElevated();
       }).catch(() => {});
     }

@@ -251,26 +251,75 @@ body::after {
 
 /* ── HOME BUTTON ─────────────────────────────────────────────────────────── */
 #home-btn {
-  position: fixed;
-  top:  1.111vw;
-  left: 1.111vw;
-  width:  1.111vw;
-  height: 1.111vw;
-  min-width:  12px;
-  min-height: 12px;
-  max-width:  20px;
-  max-height: 20px;
-  background: #fff;
-  color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
+  position: absolute;
   z-index: 600;
+  cursor: pointer;
   transition: opacity 300ms ease;
+  /* width, height, top, left set by JS */
 }
 
-#home-btn svg { width: 62.5%; height: 62.5%; display: block; }
+#home-fondo {
+  position: absolute;
+  left: calc(14.26% - 2px);
+  top: calc(15.6% - 2px);
+  width: calc(71.48% + 4px);
+  height: calc(68.8% + 4px);
+  background: rgb(255, 170, 0);
+  border-radius: calc(var(--home-btn-size, 50px) * 0.0628);
+  transition: width 300ms ease;
+}
+
+#home-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 71.48%;
+  height: 68.8%;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+}
+
+#home-texto {
+  position: absolute;
+  left: 105%;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 200;
+  font-size: calc(var(--home-btn-size, 50px) * 0.28);
+  white-space: nowrap;
+  color: #000;
+  line-height: 1;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 300ms ease;
+}
+
+#home-mask-path {
+  animation: home-blink 0.8s linear infinite;
+}
+#home-btn.hovered #home-mask-path {
+  animation: none;
+  opacity: 1;
+}
+@keyframes home-blink {
+  0%, 49.99%  { opacity: 1; }
+  50%, 100%   { opacity: 0; }
+}
+
+#home-btn.hovered #home-fondo  { width: var(--home-hover-w, 300%); }
+#home-btn.hovered #home-texto  { clip-path: inset(0 0% 0 0); }
+
+#home-hit {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 601;
+  padding: 0;
+  /* width, height, top set by JS */
+}
 
 /* ── COLOR MODE BUTTONS ──────────────────────────────────────────────────── */
 #btn-white, #btn-orange, #btn-black {
@@ -305,8 +354,11 @@ body.light .vhs-label     { color: #000; }
 body.light::after         { border-color: #000; box-shadow: 0 0 0 20px #fff; }
 body.orange::after        { border-color: #fff; box-shadow: 0 0 0 20px rgb(255, 170, 0); }
 body.red::after           { border-color: #fff; box-shadow: 0 0 0 20px #FF2200; }
-body.light #home-btn      { background: #000; color: #fff; }
 body.light #vhs-ruler     { color: #000; }
+body.orange #home-fondo   { background: #fff; }
+body.red    #home-fondo   { background: #fff; }
+body.light  #home-fondo   { background: #000; }
+body.light  #home-texto   { color: #fff; }
 
 /* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
 body.orange               { background: rgb(255, 170, 0); }
@@ -446,7 +498,7 @@ body.light  #blend-list li          { color: #000; }
     inset: auto;
     position: absolute;
     top: 50%;
-    left: calc(100% - (100dvh - 80px) / 18 - 320px);
+    left: calc(100% - (100dvh - 80px) / 18 - 305px);
     width: calc((100dvh - 80px) / 9 - 10px);
     height: 650px;
     transform: translateY(-50%) rotate(-90deg);
@@ -459,11 +511,35 @@ body.light  #blend-list li          { color: #000; }
   .vhs-png {
     position: absolute;
     top: 50%;
-    left: calc(100% - (100dvh - 80px) / 18 - 325px);
+    left: calc(100% - (100dvh - 80px) / 18 - 310px);
     width: calc((100dvh - 80px) / 9);
     height: 650px;
     transform: translateY(-50%) rotate(-90deg);
     object-fit: fill;
+  }
+
+  /* Home button: right side, aligned with first spine, expands left */
+  #home-btn {
+    top: 60px !important;
+    left: auto !important;
+    right: 16px;
+  }
+  #home-hit {
+    top: 60px !important;
+    left: auto !important;
+    right: 16px;
+  }
+  #home-fondo {
+    left: auto;
+    right: calc(14.26% - 2px);
+  }
+  #home-texto {
+    left: auto;
+    right: 105%;
+    clip-path: inset(0 0 0 100%);
+  }
+  #home-btn.hovered #home-texto {
+    clip-path: inset(0 0 0 0%);
   }
 
   /* Label horizontal, left-aligned */
