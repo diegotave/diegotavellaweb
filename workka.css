@@ -277,7 +277,7 @@ body {
   z-index: 600;
 }
 #btn-white  { right: 1.111vw;                                        background: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
-#btn-orange { right: calc(1.111vw + min(1.6vw, 22px) + 7px);        background: orange; }
+#btn-orange { right: calc(1.111vw + min(1.6vw, 22px) + 7px);        background: rgb(255, 170, 0); }
 #btn-black  { right: calc(1.111vw + 2 * (min(1.6vw, 22px) + 7px));  background: #000; box-shadow: inset 0 0 0 2px #fff; }
 
 /* light mode → white active */
@@ -297,7 +297,7 @@ body.light #home-btn      { background: #000; color: #fff; }
 body.light #vhs-ruler     { color: #000; }
 
 /* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
-body.orange #stage        { background: orange; }
+body.orange #stage        { background: rgb(255, 170, 0); }
 body.orange #vhs-ruler    { color: #000; }
 
 /* ── VHS RULER ───────────────────────────────────────────────────────────── */

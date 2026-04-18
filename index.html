@@ -11,7 +11,7 @@
   <link rel="preload" href="assets/images/logodtvfixed.png" as="image">
   <link rel="prefetch" href="hom3dtv.html">
 </head>
-<body>
+<body style="background: rgb(255, 170, 0)">
 
   <!-- Pantalla de acceso -->
   <div id="gate">
@@ -28,10 +28,27 @@
   </div>
 
   <div id="stage">
-    <video id="v" muted playsinline preload="auto">
+    <video id="v" muted playsinline preload="auto" style="mix-blend-mode: multiply">
       <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
     </video>
     <div id="frame"></div>
+  </div>
+
+  <!-- PROVISIONAL: controles de prueba -->
+  <div id="dev-panel" style="display:none; position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:999; font-family:'Helvetica Neue',sans-serif; font-size:12px; text-align:right;">
+    <div style="display:none; margin-bottom:8px; opacity:0.5; font-size:10px; letter-spacing:.08em;">blend mode</div>
+    <ul id="opacity-list" style="display:none; list-style:none; margin:0; padding:0; flex-direction:column; gap:3px;">
+      <li data-op="normal"     style="cursor:pointer; opacity:0.4; padding:2px 0;">normal</li>
+      <li data-op="multiply"   style="cursor:pointer; opacity:0.4; padding:2px 0;">multiply</li>
+      <li data-op="screen"     style="cursor:pointer; opacity:0.4; padding:2px 0;">screen</li>
+      <li data-op="overlay"    style="cursor:pointer; opacity:0.4; padding:2px 0;">overlay</li>
+      <li data-op="hard-light" style="cursor:pointer; opacity:0.4; padding:2px 0;">hard-light</li>
+      <li data-op="soft-light" style="cursor:pointer; opacity:0.4; padding:2px 0;">soft-light</li>
+      <li data-op="difference" style="cursor:pointer; opacity:0.4; padding:2px 0;">difference</li>
+      <li data-op="exclusion"  style="cursor:pointer; opacity:0.4; padding:2px 0;">exclusion</li>
+      <li data-op="luminosity" style="cursor:pointer; opacity:0.4; padding:2px 0;">luminosity</li>
+    </ul>
+    <div id="loop-btn" style="margin-top:12px; cursor:pointer; opacity:0.4; padding:2px 0;">loop: off</div>
   </div>
 
   <script>
@@ -44,14 +61,32 @@
       window.location.href = "hom3dtv.html";
     }
 
+    // Dev panel
+    const devPanel  = document.getElementById("dev-panel");
+    const loopBtn   = document.getElementById("loop-btn");
+    document.querySelectorAll("#opacity-list li").forEach(li => {
+      li.addEventListener("click", () => {
+        document.querySelectorAll("#opacity-list li").forEach(el => el.style.fontWeight = "");
+        li.style.fontWeight = "700";
+        v.style.mixBlendMode = li.dataset.op;
+      });
+    });
+    loopBtn.addEventListener("click", () => {
+      v.loop = !v.loop;
+      loopBtn.textContent = "loop: " + (v.loop ? "on" : "off");
+      loopBtn.style.fontWeight = v.loop ? "700" : "";
+      if (v.loop) navigated = true; // evita que navegue mientras loopea
+    });
+
     function startVideo() {
+      devPanel.style.display = "block";
       v.addEventListener("loadedmetadata", () => {
         const stopAt = v.duration - 0.04;
         v.addEventListener("timeupdate", () => {
           if (!navigated && v.currentTime >= stopAt) goHome();
         });
       });
-      v.addEventListener("ended", goHome);
+      v.addEventListener("ended", () => { if (!v.loop) goHome(); });
       v.play().catch(() => {});
     }
 

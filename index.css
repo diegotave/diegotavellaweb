@@ -194,10 +194,10 @@ body {
 
 #boton-fondo {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
+  left: calc(14.26% - 2px);
+  top: calc(15.6% - 2px);
+  width: calc(71.48% + 4px);
+  height: calc(68.8% + 4px);
   background: #fc06c8;
   border-radius: calc((min(100dvh, 1080px) - 20px) * 0.00628);
   opacity: 1;
@@ -245,7 +245,6 @@ body {
 }
 
 #boton-cuadrado.hovered #boton-fondo {
-  opacity: 1;
   width: var(--fondo-hover-w, 257.65%);
 }
 
@@ -273,7 +272,6 @@ body {
 #boton-hit-cuadrado.visible {
   opacity: 1;
   pointer-events: auto;
-  transition: width 300ms ease, left 300ms ease, transform 300ms ease;
 }
 
 /* Cuando el viewport se angosta, el contenedor 16:9 desborda el stage.
@@ -438,7 +436,7 @@ body.dark #video-somework.active ~ #logo-dtv {
 }
 #blend-list li:hover  { opacity: 0.7; font-size: 16px; }
 #blend-list li.active { opacity: 1; font-weight: 700; }
-#blend-list li[data-theme="orange"] { color: orange; }
+#blend-list li[data-theme="orange"] { color: rgb(255, 170, 0); }
 #blend-list li[data-theme="dark"]   { font-weight: 700; }
 
 #blend-list li span {
@@ -524,7 +522,7 @@ body.orange #blend-list li { color: #000; }
   z-index: 600;
 }
 #btn-white  { right: 1.111vw;                                        background: #fff; box-shadow: inset 0 0 0 2px #000; }
-#btn-orange { right: calc(1.111vw + min(1.6vw, 22px) + 7px);        background: orange; }
+#btn-orange { right: calc(1.111vw + min(1.6vw, 22px) + 7px);        background: rgb(255, 170, 0); }
 #btn-black  { right: calc(1.111vw + 2 * (min(1.6vw, 22px) + 7px));  background: #000; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15); }
 
 /* dark mode → black active */
@@ -552,7 +550,7 @@ body.dark #boton-demo        { z-index: 10; }
 body.dark #vhs-etiqueta      { z-index: 2; }
 
 /* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
-body.orange                  { background: orange; }
+body.orange                  { background: rgb(255, 170, 0); }
 body.orange #frame           { border-color: #fff; box-shadow: 0 0 0 20px #000; }
 body.orange #vhs             { mix-blend-mode: multiply; filter: invert(1); }
 body.orange #boton-fondo     { background: #fff; }
