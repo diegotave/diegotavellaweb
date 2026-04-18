@@ -6,9 +6,10 @@
   <meta name="theme-color" content="rgb(255, 170, 0)">
   <title>Diego Tavella</title>
   <link rel="stylesheet" href="index.css?v=4">
+  <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
   <script>if(sessionStorage.getItem("pushBack")==="1"){document.documentElement.dataset.pushBack="1"}</script>
 </head>
-<body class="orange">
+<body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
 
   <div id="stage">
     <div id="boton-demo" style="opacity:1"><div id="boton-circulo"></div><svg id="boton-circulo-negro" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -41,20 +42,16 @@
       <source src="assets/videos/tagsomework.webm?v=2" type='video/webm; codecs="vp9"'>
     </video>
     <img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="" style="opacity:1">
-    <div id="frame"></div>
   </div>
 
-  <button id="btn-black"></button>
-  <button id="btn-orange"></button>
-  <button id="btn-white"></button>
 
   <div id="blend-panel">
     <div id="blend-label">blend mode</div>
     <ul id="blend-list">
       <li>contact</li>
       <li>about</li>
-      <li>blog</li>
       <li data-theme="orange">orange<br>version</li>
+      <li data-theme="red">red<br>version</li>
       <li data-theme="dark">dark<br>version</li>
       <li data-theme="white">white<br>version</li>
     </ul>
@@ -127,11 +124,30 @@
     function goToWorks() {
       if (!btnReady) return;
       btnReady = false;
-      sessionStorage.setItem("pushIn", "1");
-      document.body.style.background = "#000";
-      stage.style.transition = "transform 180ms ease";
-      stage.style.transform = "translateY(-100%)";
-      setTimeout(() => { window.location.href = "workka.html"; }, 180);
+
+      // Overlay de introwork sobre hom3dtv
+      const introVid = document.createElement("video");
+      introVid.muted = true;
+      introVid.setAttribute("playsinline", "");
+      const bg = document.body.classList.contains("red") ? "#FF2200"
+                : document.body.classList.contains("dark") ? "#000"
+                : document.body.classList.contains("orange") ? "rgb(255,170,0)"
+                : "#fff";
+      introVid.style.cssText = "position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:9999;background:" + bg;
+      const src = document.createElement("source");
+      src.src  = "assets/videos/introwork.webm";
+      src.type = 'video/webm; codecs="vp9"';
+      introVid.appendChild(src);
+      document.body.appendChild(introVid);
+      introVid.play().catch(() => {});
+
+      // 5 frames (~167ms) después: corte de hom3dtv
+      setTimeout(() => { stage.style.visibility = "hidden"; }, 167);
+
+      introVid.addEventListener("ended", () => {
+        sessionStorage.setItem("skipIntro", "1");
+        window.location.href = "workka.html";
+      });
     }
 
     if (!isTouch) {
@@ -215,17 +231,16 @@
       }));
     }
 
-    document.getElementById("btn-white").addEventListener("click",  () => { document.body.classList.remove("dark", "orange"); });
-    document.getElementById("btn-orange").addEventListener("click", () => { document.body.classList.remove("dark"); document.body.classList.add("orange"); });
-    document.getElementById("btn-black").addEventListener("click",  () => { document.body.classList.remove("orange"); document.body.classList.add("dark"); });
 
     // ── Panel lúdico ──────────────────────────────────────────────────────────
     document.querySelectorAll("#blend-list li").forEach(li => {
       li.addEventListener("click", () => {
         if (li.dataset.theme) {
-          document.body.classList.remove("dark", "orange");
-          if (li.dataset.theme === "dark")   document.body.classList.add("dark");
-          if (li.dataset.theme === "orange") document.body.classList.add("orange");
+          document.body.classList.remove("dark", "orange", "red");
+          if (li.dataset.theme === "dark")        { document.body.classList.add("dark");   localStorage.setItem("theme","dark"); }
+          else if (li.dataset.theme === "orange") { document.body.classList.add("orange"); localStorage.setItem("theme","orange"); }
+          else if (li.dataset.theme === "red")    { document.body.classList.add("red");    localStorage.setItem("theme","red"); }
+          else                                    { localStorage.setItem("theme","light"); }
         } else if (li.dataset.blend) {
           document.querySelectorAll("#blend-list li").forEach(el => el.classList.remove("active"));
           li.classList.add("active");

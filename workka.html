@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="workka.css">
   <script>if(sessionStorage.getItem("pushIn")==="1"){document.documentElement.dataset.pushIn="1"}</script>
 </head>
-<body class="orange">
+<body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="light"?"light":t==="dark"?"":t==="red"?"red":"orange";})()</script>
 
   <div id="stage">
 
@@ -34,8 +34,19 @@
       <span id="ruler-right"><span class="ruler-arrow"> &lt;</span><span class="ruler-title"></span><span class="ruler-dashes"></span></span>
     </div>
 
+  </div>
+  <div id="frame" style="position:fixed;inset:10px;pointer-events:none"></div>
 
-    <div id="frame"></div>
+  <div id="blend-panel">
+    <div id="blend-label">blend mode</div>
+    <ul id="blend-list">
+      <li>contact</li>
+      <li>about</li>
+      <li data-theme="orange">orange<br>version</li>
+      <li data-theme="red">red<br>version</li>
+      <li data-theme="dark">dark<br>version</li>
+      <li data-theme="light">white<br>version</li>
+    </ul>
   </div>
 
   <a id="home-btn" href="hom3dtv.html" aria-label="Home">
@@ -44,9 +55,6 @@
     </svg>
   </a>
 
-  <button id="btn-black" aria-label="Modo negro"></button>
-  <button id="btn-orange" aria-label="Modo naranja"></button>
-  <button id="btn-white" aria-label="Modo blanco"></button>
 
 
 
@@ -57,7 +65,7 @@
       { title: "Demo Reel",            thumb: R2+"/WORKS/video1/thumbv1.png",  video: R2+"/WORKS/video1/video1reel.mp4",    ratio:"16/9", startAt: 1 },
       { title: "Multideportes · ESPN", thumb: R2+"/WORKS/video2/THUMBV2.png",  video: R2+"/WORKS/video2/Multideportes.mp4", ratio:"16/9" },
       { title: "Autocine Tenaris",      thumb: "",                               video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4", ratio:"16/9" },
-      { title: "El Escuerzo",          thumb: R2+"/WORKS/video4/thumbv4.png",  video: R2+"/WORKS/video4/video4.mp4",         ratio:"16/9", png:"assets/images/vhslomo2.png" },
+      { title: "El Escuerzo",          thumb: R2+"/WORKS/video4/thumbv4.png",  video: R2+"/WORKS/video4/video4.mp4",         ratio:"16/9", png:"assets/images/vhslomo1.png" },
       { title: "Video 05",             thumb: "",                               video: R2+"/WORKS/video5/efda.mp4", ratio:"16/9" },
       { title: "FOX CHANNEL - HIGHLIGHT FEBRERO", thumb: "",                   video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4", ratio:"16/9" },
       { title: "Highlight Fox",        thumb: R2+"/WORKS/video6/THUMBV6.png",  video: R2+"/WORKS/video6/hltfoxviejo.mp4",   ratio:"16/9" },
@@ -528,9 +536,6 @@
 
 
     // ── THEME TOGGLE ──────────────────────────────────────────────────────────
-    document.getElementById("btn-white").addEventListener("click",  () => { document.body.classList.remove("orange"); document.body.classList.add("light"); });
-    document.getElementById("btn-orange").addEventListener("click", () => { document.body.classList.remove("light"); document.body.classList.add("orange"); });
-    document.getElementById("btn-black").addEventListener("click",  () => { document.body.classList.remove("light", "orange"); });
 
     // ── RESIZE: recalibrar bloque y recalcular elevación ─────────────────────
     window.addEventListener("resize", () => {
@@ -579,21 +584,26 @@
       }, 400);
     }
 
-    // ── PUSH-IN desde abajo (viene de hom3dtv.html) ───────────────────────────
-    if (document.documentElement.dataset.pushIn) {
-      sessionStorage.removeItem("pushIn");
-      stage.style.transform          = "translateY(100%)";
-      document.body.style.background = "#000";
-      delete document.documentElement.dataset.pushIn;
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        stage.style.transition = "transform 220ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-        stage.style.transform  = "";
-        setTimeout(() => {
-          stage.style.transition        = "";
-          document.body.style.background = "";
-        }, 230);
-      }));
+    // ── VIENE DE hom3dtv (introwork ya reprodujo allá) ───────────────────────
+    if (sessionStorage.getItem("skipIntro") === "1") {
+      sessionStorage.removeItem("skipIntro");
+      v.style.display = "none";
+      shelfTriggered  = true;
+      activateShelf();
     }
+
+    // ── PANEL DE TEMAS ────────────────────────────────────────────────────────
+    document.querySelectorAll("#blend-list li").forEach(li => {
+      li.addEventListener("click", () => {
+        if (li.dataset.theme) {
+          document.body.classList.remove("dark", "orange", "red", "light");
+          if (li.dataset.theme === "orange")      { document.body.classList.add("orange"); localStorage.setItem("theme","orange"); }
+          else if (li.dataset.theme === "red")    { document.body.classList.add("red");    localStorage.setItem("theme","red"); }
+          else if (li.dataset.theme === "light")  { document.body.classList.add("light");  localStorage.setItem("theme","light"); }
+          else                                    { localStorage.setItem("theme","dark"); }
+        }
+      });
+    });
   </script>
 
 </body>

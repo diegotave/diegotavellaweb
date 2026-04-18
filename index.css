@@ -22,7 +22,7 @@ body {
 #gate {
   position: fixed;
   inset: 0;
-  background: #fff;
+  background: rgb(255, 170, 0);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -154,7 +154,7 @@ body {
   width:  7.65%;
   height: calc(7.65% * 16 / 9);
   transform: translate(-50%, -50%);
-  background: #FFD600;
+  background: rgb(255, 170, 0);
   border-radius: 50%;
   transition: transform 200ms ease, background 200ms ease;
 }
@@ -179,7 +179,7 @@ body {
 
 #boton-circulo.hovered {
   transform: translate(-50%, -50%) scale(1.12);
-  background: #FFE033;
+  background: rgb(255, 185, 20);
 }
 
 #boton-cuadrado {
@@ -198,7 +198,7 @@ body {
   top: calc(15.6% - 2px);
   width: calc(71.48% + 4px);
   height: calc(68.8% + 4px);
-  background: #fc06c8;
+  background: rgb(255, 170, 0);
   border-radius: calc((min(100dvh, 1080px) - 20px) * 0.00628);
   opacity: 1;
   transition: opacity 200ms ease, width 300ms ease;
@@ -391,7 +391,8 @@ body:not(.dark):not(.orange) #video-somework.active ~ #logo-dtv {
 }
 
 /* logo naranja mientras tagsomework reproduce en fondo naranja */
-body.orange #video-somework.active ~ #logo-dtv {
+body.orange #video-somework.active ~ #logo-dtv,
+body.red    #video-somework.active ~ #logo-dtv {
   mix-blend-mode: multiply;
 }
 
@@ -449,6 +450,8 @@ body.dark #blend-label,
 body.dark #blend-list li { color: #fff; }
 body.orange #blend-label,
 body.orange #blend-list li { color: #000; }
+body.red #blend-label,
+body.red #blend-list li    { color: #000; }
 
 /* ── LOGO DTV ────────────────────────────────────────────────────────────── */
 #logo-dtv {
@@ -471,15 +474,16 @@ body.orange #blend-list li { color: #000; }
   to   { opacity: 1; }
 }
 
-#frame {
-  position: absolute;
+body::after {
+  content: '';
+  position: fixed;
   inset: 10px;
   border: var(--frame-border-width) solid #000;
   border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
   background: transparent;
   box-shadow: 0 0 0 20px #fff;
   pointer-events: none;
-  z-index: 500;
+  z-index: 9999;
   animation: frame-in 200ms ease forwards;
 }
 
@@ -542,7 +546,7 @@ body.dark #gate-field        { border-color: #fff; }
 body.dark #gate-input        { background: #000; color: #fff; }
 body.dark #gate-btn          { background: #fff; }
 body.dark #gate-err          { color: #fff; }
-body.dark #frame             { border-color: #fff; box-shadow: 0 0 0 20px #000; }
+body.dark::after             { border-color: #fff; box-shadow: 0 0 0 20px #000; }
 body.dark #boton-texto-watch { color: #fff; }
 body.dark #logo-dtv          { filter: invert(1); }
 body.dark #vhs               { mix-blend-mode: hard-light; filter: invert(1); }
@@ -551,7 +555,15 @@ body.dark #vhs-etiqueta      { z-index: 2; }
 
 /* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
 body.orange                  { background: rgb(255, 170, 0); }
-body.orange #frame           { border-color: #fff; box-shadow: 0 0 0 20px #000; }
+body.orange::after           { border-color: #fff; box-shadow: 0 0 0 20px rgb(255, 170, 0); }
 body.orange #vhs             { mix-blend-mode: multiply; filter: invert(1); }
 body.orange #boton-fondo     { background: #fff; }
 body.orange #boton-circulo   { background: #fff; }
+
+/* ── RED MODE ────────────────────────────────────────────────────────────── */
+body.red                     { background: #FF2200; }
+body.red::after              { border-color: #fff; box-shadow: 0 0 0 20px #FF2200; }
+body.red #vhs                { mix-blend-mode: multiply; filter: invert(1); }
+body.red #boton-fondo        { background: #fff; }
+body.red #boton-circulo      { background: #fff; }
+body.red #v                  { mix-blend-mode: multiply; }
