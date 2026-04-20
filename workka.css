@@ -566,3 +566,55 @@ body.light  #blend-list li          { color: #000; }
 
   .vhs-spine.is-active .vhs-label { opacity: 1; }
 }
+
+/* ── PORTRAIT FALLBACK (Chrome / Samsung tablets que reportan orientation incorrecta) ── */
+body.is-portrait #stage { width: 100vw; height: 100dvh; }
+body.is-portrait #shelf-wrap {
+  top: 60px; bottom: 20px; left: 0; right: auto;
+  transform: none; width: 40vw; overflow: visible;
+  align-items: stretch; justify-content: flex-start;
+  touch-action: auto; padding: 0;
+}
+body.is-portrait #shelf-rail {
+  flex-direction: column; height: 100%; width: 100%; gap: 0; align-items: stretch;
+}
+body.is-portrait .vhs-spine {
+  width: 100%; height: auto; flex: 1 0 0; margin: 0;
+  overflow: hidden; clip-path: inset(0 -30px 0 0); border-radius: 2px;
+  transition: transform 340ms cubic-bezier(0.4,0,1,1),
+              margin 280ms cubic-bezier(0.22,1,0.36,1),
+              width 600ms cubic-bezier(0.34,1.8,0.64,1);
+}
+body.is-portrait .vhs-spine.is-active { margin: 0; }
+body.is-portrait .vhs-visual { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 2px; }
+body.is-portrait .vhs-cover {
+  inset: auto; position: absolute; top: 50%;
+  left: calc(100% - (100dvh - 80px) * 461 / 936);
+  width: calc((100dvh - 80px) / 9);
+  height: calc((100dvh - 80px) * 8 / 13);
+  transform: translateY(-50%) rotate(-90deg);
+  object-fit: cover; object-position: center center;
+  -webkit-mask-image: none; mask-image: none;
+}
+body.is-portrait .vhs-png {
+  position: absolute; top: 50%;
+  left: calc(100% - (100dvh - 80px) * 881 / 1872);
+  width: calc((100dvh - 80px) / 9);
+  height: calc((100dvh - 80px) * 777 / 936);
+  transform: translateY(-50%) rotate(-90deg); object-fit: fill;
+}
+body.is-portrait #home-btn  { top: 60px !important; left: auto !important; right: 16px; }
+body.is-portrait #home-hit  { top: 60px !important; left: auto !important; right: 16px; }
+body.is-portrait #home-fondo { left: auto; right: calc(14.26% - 2px); }
+body.is-portrait #home-texto { left: auto; right: 105%; clip-path: inset(0 0 0 100%); }
+body.is-portrait #home-btn.hovered #home-texto { clip-path: inset(0 0 0 0%); }
+body.is-portrait .vhs-label {
+  inset: 0 auto 0 0;
+  width: calc(100% - (100dvh - 80px) * 121 / 936);
+  writing-mode: horizontal-tb; transform: none;
+  font-size: 13px; scale: 1; text-align: left;
+  justify-content: flex-start; align-items: center;
+  padding-left: 8px; padding-right: 0; opacity: 0.6;
+}
+body.is-portrait .vhs-spine.is-active .vhs-label { opacity: 1; }
+body.is-portrait #player-v.square { width: 100%; height: auto; }
