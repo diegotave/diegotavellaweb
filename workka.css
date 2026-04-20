@@ -518,8 +518,9 @@ body.light  #blend-list li          { color: #000; }
     top: 50%;
     left: calc(100% - (100dvh - 80px) * 881 / 1872);
     width: calc((100dvh - 80px) / 9);
-    height: auto;
+    height: calc((100dvh - 80px) * 777 / 936);
     transform: translateY(-50%) rotate(-90deg);
+    object-fit: fill;
   }
 
   /* Home button: right side, aligned with first spine, expands left */
