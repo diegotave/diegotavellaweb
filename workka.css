@@ -495,15 +495,17 @@ body.light  #blend-list li          { color: #000; }
     border-radius: 2px;
   }
 
-  /* Cover: centrado en ventana transparente (y=80–656 del PNG)
-     left = 100% - (dvh-80)*461/936, height = (dvh-80)*8/13 (576/936 del stage) */
+  /* Cover: centrado en ventana transparente del PNG + 2px sangría
+     Y-window = y=80–656 (576px), X-window = x=12–85 (74px), center-x=49 (offset 3px del centro del elemento)
+     width = (dvh-80)*37/468+4px (74/104*W + 2px*2), height = (dvh-80)*8/13+4px (576/936*H + 2px*2)
+     left = 100% - (dvh-80)*223/468 - 2px, top = 50% + (dvh-80)*3/936 (shift al centro de ventana X) */
   .vhs-cover {
     inset: auto;
     position: absolute;
-    top: 50%;
-    left: calc(100% - (100dvh - 80px) * 461 / 936);
-    width: calc((100dvh - 80px) / 9);
-    height: calc((100dvh - 80px) * 8 / 13);
+    top: calc(50% + (100dvh - 80px) * 3 / 936);
+    left: calc(100% - (100dvh - 80px) * 223 / 468 - 2px);
+    width: calc((100dvh - 80px) * 37 / 468 + 4px);
+    height: calc((100dvh - 80px) * 8 / 13 + 4px);
     transform: translateY(-50%) rotate(-90deg);
     object-fit: cover;
     object-position: center center;
@@ -547,24 +549,24 @@ body.light  #blend-list li          { color: #000; }
     clip-path: inset(0 0 0 0%);
   }
 
-  /* Label: contenido dentro de la ventana transparente, no desborda hacia el plástico opaco
-     width = 100% - (dvh-80)*121/936 (ventana termina a 121/777 * H del borde derecho) */
+  /* Label: contenido dentro de la ventana transparente, con margen del borde del stage */
   .vhs-label {
     inset: 0 auto 0 0;
     width: calc(100% - (100dvh - 80px) * 121 / 936);
     writing-mode: horizontal-tb;
     transform: none;
-    font-size: 13px;
+    font-size: 11px;
     scale: 1;
     text-align: left;
     justify-content: flex-start;
     align-items: center;
-    padding-left: 8px;
+    padding-left: 20px;
     padding-right: 0;
     opacity: 0.6;
+    transition: font-size 200ms ease, opacity 200ms ease;
   }
 
-  .vhs-spine.is-active .vhs-label { opacity: 1; }
+  .vhs-spine.is-active .vhs-label { opacity: 1; font-size: 13px; }
 }
 
 /* ── PORTRAIT FALLBACK (Chrome / Samsung tablets que reportan orientation incorrecta) ── */
@@ -588,10 +590,11 @@ body.is-portrait .vhs-spine {
 body.is-portrait .vhs-spine.is-active { margin: 0; }
 body.is-portrait .vhs-visual { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 2px; }
 body.is-portrait .vhs-cover {
-  inset: auto; position: absolute; top: 50%;
-  left: calc(100% - (100dvh - 80px) * 461 / 936);
-  width: calc((100dvh - 80px) / 9);
-  height: calc((100dvh - 80px) * 8 / 13);
+  inset: auto; position: absolute;
+  top: calc(50% + (100dvh - 80px) * 3 / 936);
+  left: calc(100% - (100dvh - 80px) * 223 / 468 - 2px);
+  width: calc((100dvh - 80px) * 37 / 468 + 4px);
+  height: calc((100dvh - 80px) * 8 / 13 + 4px);
   transform: translateY(-50%) rotate(-90deg);
   object-fit: cover; object-position: center center;
   -webkit-mask-image: none; mask-image: none;
@@ -612,9 +615,10 @@ body.is-portrait .vhs-label {
   inset: 0 auto 0 0;
   width: calc(100% - (100dvh - 80px) * 121 / 936);
   writing-mode: horizontal-tb; transform: none;
-  font-size: 13px; scale: 1; text-align: left;
+  font-size: 11px; scale: 1; text-align: left;
   justify-content: flex-start; align-items: center;
-  padding-left: 8px; padding-right: 0; opacity: 0.6;
+  padding-left: 20px; padding-right: 0; opacity: 0.6;
+  transition: font-size 200ms ease, opacity 200ms ease;
 }
-body.is-portrait .vhs-spine.is-active .vhs-label { opacity: 1; }
+body.is-portrait .vhs-spine.is-active .vhs-label { opacity: 1; font-size: 13px; }
 body.is-portrait #player-v.square { width: 100%; height: auto; }
