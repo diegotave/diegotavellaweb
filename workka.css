@@ -509,10 +509,11 @@ body.light  #blend-list li          { color: #000; }
   }
 
   /* Rotate PNG — right visual edge aligned to strip right edge */
+  /* left = 100% - W/2 - H/2, W=(dvh-80)/9, H=W*(777/104) → 100% - (dvh-80)*881/1872 */
   .vhs-png {
     position: absolute;
     top: 50%;
-    left: calc(100% - (100dvh - 80px) / 18 - 325px);
+    left: calc(100% - (100dvh - 80px) * 881 / 1872);
     width: calc((100dvh - 80px) / 9);
     height: auto;
     transform: translateY(-50%) rotate(-90deg);
