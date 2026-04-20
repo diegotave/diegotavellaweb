@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella — Works</title>
-  <link rel="stylesheet" href="workka.css?v=3">
+  <link rel="stylesheet" href="workka.css?v=4">
   <script>if(sessionStorage.getItem("pushIn")==="1"){document.documentElement.dataset.pushIn="1"}</script>
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="light"?"light":t==="dark"?"":t==="red"?"red":"orange";})()</script>
@@ -173,7 +173,7 @@
       const stageR    = stage.getBoundingClientRect();
       const frameR    = document.getElementById("frame").getBoundingClientRect();
       const spines    = Array.from(rail.querySelectorAll(".vhs-spine"));
-      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      const isPortrait = window.matchMedia("(orientation: portrait) and (max-width: 767px)").matches;
 
       // Bajar el visual anterior
       if (elevatedIdx >= 0 && elevatedIdx !== idx) {
@@ -410,7 +410,7 @@
       const dvh        = Math.min(window.innerHeight, 1080);
       const btnSize    = (dvh - 20) * 0.04813;
       homeBtnOrigW     = btnSize;
-      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      const isPortrait = window.matchMedia("(orientation: portrait) and (max-width: 767px)").matches;
 
       homeBtn.style.width  = btnSize + "px";
       homeBtn.style.height = btnSize + "px";
@@ -467,7 +467,7 @@
     // Portrait: tap fuera del shelf cierra el estado elevado
     stage.addEventListener("touchend", e => {
       if (elevatedIdx < 0) return;
-      if (!window.matchMedia("(orientation: portrait)").matches) return;
+      if (!window.matchMedia("(orientation: portrait) and (max-width: 767px)").matches) return;
       if (!e.target.closest(".vhs-spine")) { dropElevated(); setActive(-1); }
     }, { passive: true });
 
@@ -486,7 +486,7 @@
         const idx  = +spine.dataset.index;
         const work = works[idx];
 
-        if (window.matchMedia("(orientation: portrait)").matches) {
+        if (window.matchMedia("(orientation: portrait) and (max-width: 767px)").matches) {
           if (elevatedIdx === idx) {
             if (!work.video) return;
             dropElevated();
