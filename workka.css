@@ -495,21 +495,24 @@ body.light  #blend-list li          { color: #000; }
     border-radius: 2px;
   }
 
+  /* Cover: centrado en ventana transparente (y=80–656 del PNG)
+     left = 100% - (dvh-80)*461/936, height = (dvh-80)*8/13 (576/936 del stage) */
   .vhs-cover {
     inset: auto;
     position: absolute;
     top: 50%;
-    left: calc(100% - (100dvh - 80px) / 18 - 305px);
-    width: calc((100dvh - 80px) / 9 - 10px);
-    height: 650px;
+    left: calc(100% - (100dvh - 80px) * 461 / 936);
+    width: calc((100dvh - 80px) / 9);
+    height: calc((100dvh - 80px) * 8 / 13);
     transform: translateY(-50%) rotate(-90deg);
     object-fit: cover;
+    object-position: center center;
     -webkit-mask-image: none;
     mask-image: none;
   }
 
-  /* Rotate PNG — right visual edge aligned to strip right edge */
-  /* left = 100% - W/2 - H/2, W=(dvh-80)/9, H=W*(777/104) → 100% - (dvh-80)*881/1872 */
+  /* PNG: borde visual derecho alineado con borde derecho del strip
+     left = 100% - W/2 - H/2, W=(dvh-80)/9, H=W*(777/104) → 100% - (dvh-80)*881/1872 */
   .vhs-png {
     position: absolute;
     top: 50%;
@@ -543,16 +546,20 @@ body.light  #blend-list li          { color: #000; }
     clip-path: inset(0 0 0 0%);
   }
 
-  /* Label horizontal, left-aligned */
+  /* Label: contenido dentro de la ventana transparente, no desborda hacia el plástico opaco
+     width = 100% - (dvh-80)*121/936 (ventana termina a 121/777 * H del borde derecho) */
   .vhs-label {
+    inset: 0 auto 0 0;
+    width: calc(100% - (100dvh - 80px) * 121 / 936);
     writing-mode: horizontal-tb;
     transform: none;
-    font-size: 16px;
+    font-size: 13px;
     scale: 1;
     text-align: left;
     justify-content: flex-start;
     align-items: center;
-    padding-left: 13px;
+    padding-left: 8px;
+    padding-right: 0;
     opacity: 0.6;
   }
 
