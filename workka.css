@@ -207,7 +207,7 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
 @media (orientation: landscape) {
   #player-v.square { width: auto; height: 100%; }
 }
-@media (orientation: portrait) and (max-width: 767px) {
+@media (orientation: portrait) {
   #player-v.square { width: 100%; height: auto; }
 }
 
@@ -443,7 +443,7 @@ body.light  #blend-list li          { color: #000; }
   #stage { width: 100vw; height: 100dvh; }
 }
 
-@media (orientation: portrait) and (max-width: 767px) {
+@media (orientation: portrait) {
   #stage { width: 100vw; height: 100dvh; }
 
   /* Shelf anchored to left 40% — vertical stack of horizontal strips */
