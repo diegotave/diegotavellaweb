@@ -335,6 +335,7 @@
       const SENSITIVITY = opts?.sensitivity ?? 0.35;
       const IDLE_MS     = opts?.idleMs      ?? 110;
       const onIdle      = opts?.onIdle      ?? clearTilt;
+      const noPush      = opts?.noPush      ?? false;
 
       const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
       const idx    = activeIndex;
@@ -369,9 +370,13 @@
           spine.style.transform = "";
         } else {
           v.style.transform = isElev ? elevatedTransform(0) : "";
-          if      (angle >  0.1 && i > idx) spine.style.transform = `translateX(${pushPx.toFixed(1)}px)`;
-          else if (angle < -0.1 && i < idx) spine.style.transform = `translateX(${(-pushPx).toFixed(1)}px)`;
-          else                              spine.style.transform = "";
+          if (!noPush) {
+            if      (angle >  0.1 && i > idx) spine.style.transform = `translateX(${pushPx.toFixed(1)}px)`;
+            else if (angle < -0.1 && i < idx) spine.style.transform = `translateX(${(-pushPx).toFixed(1)}px)`;
+            else                              spine.style.transform = "";
+          } else {
+            spine.style.transform = "";
+          }
         }
       });
 
@@ -475,7 +480,7 @@
     if (isTouch) {
       let spineCenters = [];
 
-      const TOUCH_OPTS = { zone: 60, maxAngle: 12, sensitivity: 0.85, idleMs: 70 };
+      const TOUCH_OPTS = { zone: 60, maxAngle: 8, sensitivity: 0.8, idleMs: 70, noPush: true };
 
       function touchClearTilt() {
         const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
