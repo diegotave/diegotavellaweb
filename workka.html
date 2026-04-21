@@ -337,6 +337,7 @@
       const onIdle      = opts?.onIdle      ?? clearTilt;
       const noPush      = opts?.noPush      ?? false;
       const pushScale   = opts?.pushScale   ?? 1;
+      const emaK        = opts?.ema         ?? 0.55;
 
       const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
       const idx    = activeIndex;
@@ -351,7 +352,7 @@
       // velocidad suavizada (EMA) → evita jitter
       const rawDx = prevMouseX !== null ? mouseX - prevMouseX : 0;
       prevMouseX  = mouseX;
-      smoothDx    = smoothDx * 0.55 + rawDx * 0.45;
+      smoothDx    = smoothDx * emaK + rawDx * (1 - emaK);
 
       const angle  = Math.max(-MAX_ANGLE, Math.min(MAX_ANGLE, smoothDx * SENSITIVITY));
 
@@ -482,14 +483,14 @@
     if (isTouch) {
       let spineCenters = [];
 
-      const TOUCH_OPTS = { zone: 60, maxAngle: 5, sensitivity: 0.8, idleMs: 70, pushScale: 0.4 };
+      const TOUCH_OPTS = { zone: 60, maxAngle: 3, sensitivity: 0.6, idleMs: 110, pushScale: 0.35, ema: 0.78 };
 
       function touchClearTilt() {
         const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
         spines.forEach(spine => {
           const v = spine.querySelector(".vhs-visual");
-          if (v) v.style.transition = "transform 320ms cubic-bezier(0.34, 2.2, 0.64, 1)";
-          spine.style.transition    = "transform 320ms cubic-bezier(0.34, 2.2, 0.64, 1)";
+          if (v) v.style.transition = "transform 620ms cubic-bezier(0.25, 1.4, 0.5, 1)";
+          spine.style.transition    = "transform 620ms cubic-bezier(0.25, 1.4, 0.5, 1)";
         });
         clearTilt();
         prevMouseX = null; smoothDx = 0;
@@ -497,7 +498,7 @@
           const v = sp.querySelector(".vhs-visual");
           if (v) v.style.transition = "";
           sp.style.transition = "";
-        }), 340);
+        }), 640);
       }
 
       TOUCH_OPTS.onIdle = touchClearTilt;
