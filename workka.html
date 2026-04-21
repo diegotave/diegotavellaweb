@@ -475,6 +475,7 @@
       let spineCenters = [];   // centros X de cada spine, cacheados en touchstart
 
       function touchSpringBack() {
+        rail.classList.remove("shelf-touching");
         const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
         spines.forEach((spine, i) => {
           const v = spine.querySelector(".vhs-visual");
@@ -487,7 +488,7 @@
         setTimeout(() => spines.forEach(spine => {
           const v = spine.querySelector(".vhs-visual");
           if (v) v.style.transition = "";
-        }), 580);
+        }), 620);
       }
 
       rail.addEventListener("touchstart", e => {
@@ -495,6 +496,7 @@
         if (!spine) return;
         setActive(+spine.dataset.index);
         prevMouseX = null; smoothDx = 0;
+        rail.classList.add("shelf-touching");
         // cachear centros de cada spine para no forzar reflow en cada touchmove
         spineCenters = Array.from(rail.querySelectorAll(".vhs-spine")).map(sp => {
           const r = sp.getBoundingClientRect();
@@ -520,8 +522,7 @@
           if (!v) return;
           const dx    = spineCenters[i] - touchX;   // + = cassette a la derecha del dedo
           const angle = (MAX_A * Math.tanh(dx / SPREAD)).toFixed(1);
-          v.style.transition    = "transform 90ms ease-out";
-          v.style.transform     = `rotateZ(${angle}deg)`;
+          v.style.transform = `rotateZ(${angle}deg)`;
           spine.style.transform = "";
         });
 
