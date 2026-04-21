@@ -329,10 +329,12 @@
     let smoothDx      = 0;
     let tiltTimer     = null;
 
-    function updateTilt(mouseX) {
-      const ZONE        = 20;
-      const MAX_ANGLE   = 3;
-      const SENSITIVITY = 0.35;
+    function updateTilt(mouseX, opts) {
+      const ZONE        = opts?.zone        ?? 20;
+      const MAX_ANGLE   = opts?.maxAngle    ?? 3;
+      const SENSITIVITY = opts?.sensitivity ?? 0.35;
+      const IDLE_MS     = opts?.idleMs      ?? 110;
+      const onIdle      = opts?.onIdle      ?? clearTilt;
 
       const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
       const idx    = activeIndex;
@@ -342,7 +344,7 @@
       // zona del lomo activo
       const rect   = spines[idx].getBoundingClientRect();
       const inZone = mouseX >= rect.left - ZONE && mouseX <= rect.right + ZONE;
-      if (!inZone) { prevMouseX = null; smoothDx = 0; clearTilt(); return; }
+      if (!inZone) { prevMouseX = null; smoothDx = 0; onIdle(); return; }
 
       // velocidad suavizada (EMA) → evita jitter
       const rawDx = prevMouseX !== null ? mouseX - prevMouseX : 0;
@@ -373,9 +375,8 @@
         }
       });
 
-      // vuelve a reposo cuando el mouse se detiene
       clearTimeout(tiltTimer);
-      tiltTimer = setTimeout(clearTilt, 110);
+      tiltTimer = setTimeout(onIdle, IDLE_MS);
     }
 
     function clearTilt() {
@@ -474,6 +475,26 @@
     if (isTouch) {
       let spineCenters = [];
 
+      const TOUCH_OPTS = { zone: 60, maxAngle: 12, sensitivity: 0.85, idleMs: 70 };
+
+      function touchClearTilt() {
+        const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+        spines.forEach(spine => {
+          const v = spine.querySelector(".vhs-visual");
+          if (v) v.style.transition = "transform 320ms cubic-bezier(0.34, 2.2, 0.64, 1)";
+          spine.style.transition    = "transform 320ms cubic-bezier(0.34, 2.2, 0.64, 1)";
+        });
+        clearTilt();
+        prevMouseX = null; smoothDx = 0;
+        setTimeout(() => spines.forEach(sp => {
+          const v = sp.querySelector(".vhs-visual");
+          if (v) v.style.transition = "";
+          sp.style.transition = "";
+        }), 340);
+      }
+
+      TOUCH_OPTS.onIdle = touchClearTilt;
+
       rail.addEventListener("touchstart", e => {
         const spine = e.target.closest(".vhs-spine");
         if (!spine) return;
@@ -490,7 +511,6 @@
         const touchX = e.touches[0].clientX;
         if (!spineCenters.length) return;
 
-        // actualizar qué spine está bajo el dedo (igual que mousemove activa el spine)
         let hoverIdx = 0, minD = Infinity;
         spineCenters.forEach((cx, i) => {
           const d = Math.abs(touchX - cx);
@@ -498,19 +518,11 @@
         });
         if (hoverIdx !== activeIndex) setActive(hoverIdx);
 
-        // misma lógica que el mouse
-        updateTilt(touchX);
+        updateTilt(touchX, TOUCH_OPTS);
       }, { passive: true });
 
-      rail.addEventListener("touchend", () => {
-        clearTilt();
-        prevMouseX = null; smoothDx = 0;
-      }, { passive: true });
-
-      rail.addEventListener("touchcancel", () => {
-        clearTilt();
-        prevMouseX = null; smoothDx = 0;
-      }, { passive: true });
+      rail.addEventListener("touchend",    touchClearTilt, { passive: true });
+      rail.addEventListener("touchcancel", touchClearTilt, { passive: true });
 
       rail.addEventListener("click", e => {
         const spine = e.target.closest(".vhs-spine");
