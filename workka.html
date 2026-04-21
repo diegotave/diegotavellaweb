@@ -472,32 +472,13 @@
     }, { passive: true });
 
     if (isTouch) {
-      let spineCenters = [];   // centros X de cada spine, cacheados en touchstart
-
-      function touchSpringBack() {
-        rail.classList.remove("shelf-touching");
-        const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
-        spines.forEach((spine, i) => {
-          const v = spine.querySelector(".vhs-visual");
-          if (v) {
-            v.style.transition = "transform 600ms cubic-bezier(0.34, 1.55, 0.64, 1)";
-            v.style.transform  = (elevatedIdx === i) ? elevatedTransform(0) : "";
-          }
-          spine.style.transform = "";
-        });
-        setTimeout(() => spines.forEach(spine => {
-          const v = spine.querySelector(".vhs-visual");
-          if (v) v.style.transition = "";
-        }), 620);
-      }
+      let spineCenters = [];
 
       rail.addEventListener("touchstart", e => {
         const spine = e.target.closest(".vhs-spine");
         if (!spine) return;
         setActive(+spine.dataset.index);
         prevMouseX = null; smoothDx = 0;
-        rail.classList.add("shelf-touching");
-        // cachear centros de cada spine para no forzar reflow en cada touchmove
         spineCenters = Array.from(rail.querySelectorAll(".vhs-spine")).map(sp => {
           const r = sp.getBoundingClientRect();
           return (r.left + r.right) / 2;
@@ -507,31 +488,29 @@
       rail.addEventListener("touchmove", e => {
         if (e.touches.length !== 1 || elevatedIdx >= 0) return;
         const touchX = e.touches[0].clientX;
-        const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
         if (!spineCenters.length) return;
 
-        // SPREAD controla la anchura de la ola: ~2 anchos de lama
-        const sw     = spineCenters.length > 1 ? spineCenters[1] - spineCenters[0] : 48;
-        const SPREAD = Math.abs(sw) * 3;
-        const MAX_A  = 7;
-
-        // efecto tanh: el dedo parte la fila, el que está bajo queda recto,
-        // los de la derecha se inclinan a la derecha, los de la izquierda a la izquierda
-        spines.forEach((spine, i) => {
-          const v = spine.querySelector(".vhs-visual");
-          if (!v) return;
-          const dx    = spineCenters[i] - touchX;   // + = cassette a la derecha del dedo
-          const angle = (MAX_A * Math.tanh(dx / SPREAD)).toFixed(1);
-          v.style.transform = `rotateZ(${angle}deg)`;
-          spine.style.transform = "";
+        // actualizar qué spine está bajo el dedo (igual que mousemove activa el spine)
+        let hoverIdx = 0, minD = Infinity;
+        spineCenters.forEach((cx, i) => {
+          const d = Math.abs(touchX - cx);
+          if (d < minD) { minD = d; hoverIdx = i; }
         });
+        if (hoverIdx !== activeIndex) setActive(hoverIdx);
 
-        clearTimeout(tiltTimer);
-        tiltTimer = setTimeout(touchSpringBack, 220);
+        // misma lógica que el mouse
+        updateTilt(touchX);
       }, { passive: true });
 
-      rail.addEventListener("touchend",    touchSpringBack, { passive: true });
-      rail.addEventListener("touchcancel", touchSpringBack, { passive: true });
+      rail.addEventListener("touchend", () => {
+        clearTilt();
+        prevMouseX = null; smoothDx = 0;
+      }, { passive: true });
+
+      rail.addEventListener("touchcancel", () => {
+        clearTilt();
+        prevMouseX = null; smoothDx = 0;
+      }, { passive: true });
 
       rail.addEventListener("click", e => {
         const spine = e.target.closest(".vhs-spine");
