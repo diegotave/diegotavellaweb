@@ -482,12 +482,39 @@
       }, { passive: true });
 
       rail.addEventListener("touchmove", e => {
-        if (e.touches.length !== 1) return;
-        updateTilt(e.touches[0].clientX);
+        if (e.touches.length !== 1 || elevatedIdx >= 0) return;
+        const touchX = e.touches[0].clientX;
+        const rawDx  = prevMouseX !== null ? touchX - prevMouseX : 0;
+        prevMouseX   = touchX;
+        smoothDx     = smoothDx * 0.55 + rawDx * 0.45;
+        const angle  = Math.max(-4, Math.min(4, smoothDx * 0.4));
+        const idx    = activeIndex;
+        const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+        if (idx >= 0) {
+          const visual  = spines[idx].querySelector(".vhs-visual");
+          const vHeight = visual ? visual.offsetHeight : spines[idx].offsetHeight * 0.85;
+          const pushPx  = vHeight * Math.sin(Math.abs(angle) * Math.PI / 180);
+          spines.forEach((spine, i) => {
+            const v = spine.querySelector(".vhs-visual");
+            if (!v) return;
+            if (i === idx) {
+              v.style.transform     = `rotateZ(${angle.toFixed(1)}deg)`;
+              spine.style.transform = "";
+            } else {
+              v.style.transform = "";
+              if      (angle >  0.1 && i > idx) spine.style.transform = `translateX(${pushPx.toFixed(1)}px)`;
+              else if (angle < -0.1 && i < idx) spine.style.transform = `translateX(${(-pushPx).toFixed(1)}px)`;
+              else                              spine.style.transform = "";
+            }
+          });
+        }
+        clearTimeout(tiltTimer);
+        tiltTimer = setTimeout(clearTilt, 120);
       }, { passive: true });
 
       rail.addEventListener("touchend", () => {
         clearTilt();
+        prevMouseX = null; smoothDx = 0;
       }, { passive: true });
 
       rail.addEventListener("click", e => {
