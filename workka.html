@@ -76,7 +76,7 @@
       { title: "Demo Reel",            thumb: R2+"/WORKS/video1/thumbv1.png",  video: R2+"/WORKS/video1/video1reel.mp4",    ratio:"16/9", startAt: 1 },
       { title: "Multideportes · ESPN", thumb: R2+"/WORKS/video2/THUMBV2.png",  video: R2+"/WORKS/video2/Multideportes.mp4", ratio:"16/9" },
       { title: "Autocine Tenaris",      thumb: "",                               video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4", ratio:"16/9" },
-      { title: "El Escuerzo",          thumb: R2+"/WORKS/video4/thumbv4.png",  video: R2+"/WORKS/video4/video4.mp4",         ratio:"16/9", png:"assets/images/vhslomo1.png" },
+      { title: "El Escuerzo",          thumb: R2+"/WORKS/video4/thumbv4.png",  video: R2+"/WORKS/video4/video4.mp4",         ratio:"16/9", png:"assets/images/vhslomo10.png" },
       { title: "Video 05",             thumb: "",                               video: R2+"/WORKS/video5/efda.mp4", ratio:"16/9" },
       { title: "FOX CHANNEL - HIGHLIGHT FEBRERO", thumb: "",                   video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4", ratio:"16/9" },
       { title: "Highlight Fox",        thumb: R2+"/WORKS/video6/THUMBV6.png",  video: R2+"/WORKS/video6/hltfoxviejo.mp4",   ratio:"16/9" },
@@ -86,7 +86,7 @@
 
     const stage = document.getElementById("stage");
 
-    const VHS_PNG = "assets/images/vhslomo1.png"; // overlay del lomo VHS
+    const VHS_PNG = "assets/images/vhslomo10.png"; // overlay del lomo VHS
 
     // precargar el PNG para que todos los lomos lo reciban ya cacheado
     const _preload = new Image(); _preload.src = VHS_PNG;
@@ -478,6 +478,16 @@
         const spine = e.target.closest(".vhs-spine");
         if (!spine) return;
         setActive(+spine.dataset.index);
+        prevMouseX = null; smoothDx = 0;
+      }, { passive: true });
+
+      rail.addEventListener("touchmove", e => {
+        if (e.touches.length !== 1) return;
+        updateTilt(e.touches[0].clientX);
+      }, { passive: true });
+
+      rail.addEventListener("touchend", () => {
+        clearTilt();
       }, { passive: true });
 
       rail.addEventListener("click", e => {

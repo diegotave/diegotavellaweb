@@ -58,7 +58,9 @@
     function goHome() {
       if (navigated) return;
       navigated = true;
-      window.location.href = "hom3dtv.html";
+      document.body.style.transition = "opacity 300ms ease";
+      document.body.style.opacity = "0";
+      setTimeout(() => { window.location.href = "hom3dtv.html"; }, 300);
     }
 
     // Dev panel
