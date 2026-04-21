@@ -488,38 +488,45 @@
         prevMouseX   = touchX;
         smoothDx     = smoothDx * 0.6 + rawDx * 0.4;
         const angle  = Math.max(-15, Math.min(15, smoothDx * 0.9));
-        const idx    = activeIndex;
+
+        // lama bajo el dedo (persiana): buscar la más cercana al centro
         const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
-        if (idx >= 0) {
-          const visual  = spines[idx].querySelector(".vhs-visual");
-          const vHeight = visual ? visual.offsetHeight : spines[idx].offsetHeight * 0.85;
-          const pushPx  = vHeight * Math.sin(Math.abs(angle) * Math.PI / 180);
-          spines.forEach((spine, i) => {
-            const v = spine.querySelector(".vhs-visual");
-            if (!v) return;
-            if (i === idx) {
-              v.style.transition    = "none";
-              v.style.transform     = `rotateZ(${angle.toFixed(1)}deg)`;
-              spine.style.transform = "";
-            } else {
-              v.style.transition = "none";
-              v.style.transform  = "";
-              if      (angle >  0.1 && i > idx) spine.style.transform = `translateX(${pushPx.toFixed(1)}px)`;
-              else if (angle < -0.1 && i < idx) spine.style.transform = `translateX(${(-pushPx).toFixed(1)}px)`;
-              else                              spine.style.transform = "";
-            }
-          });
-        }
+        let hoverIdx = 0, minD = Infinity;
+        spines.forEach((spine, i) => {
+          const r  = spine.getBoundingClientRect();
+          const cx = (r.left + r.right) / 2;
+          const d  = Math.abs(touchX - cx);
+          if (d < minD) { minD = d; hoverIdx = i; }
+        });
+        if (hoverIdx !== activeIndex) setActive(hoverIdx);
+
+        // aplicar inclinación con decay exponencial a los vecinos
+        spines.forEach((spine, i) => {
+          const v = spine.querySelector(".vhs-visual");
+          if (!v) return;
+          const dist  = Math.abs(i - hoverIdx);
+          const decay = Math.exp(-dist * 0.75);         // 1.0 → 0.47 → 0.22 → 0.10
+          const a     = (angle * decay).toFixed(1);
+          v.style.transition    = dist === 0 ? "none" : "transform 55ms ease";
+          v.style.transform     = `rotateZ(${a}deg)`;
+          spine.style.transform = "";
+        });
+
         clearTimeout(tiltTimer);
         tiltTimer = setTimeout(clearTilt, 150);
       }, { passive: true });
 
       rail.addEventListener("touchend", () => {
-        const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
-        spines.forEach(spine => {
-          const v = spine.querySelector(".vhs-visual");
-          if (v) v.style.transition = "transform 560ms cubic-bezier(0.34, 1.9, 0.64, 1)";
-          spine.style.transition    = "transform 560ms cubic-bezier(0.34, 1.9, 0.64, 1)";
+        const lastIdx = activeIndex;
+        const spines  = Array.from(rail.querySelectorAll(".vhs-spine"));
+        // retorno con stagger: el que estaba bajo el dedo vuelve primero, los vecinos después
+        spines.forEach((spine, i) => {
+          const v     = spine.querySelector(".vhs-visual");
+          const dist  = lastIdx >= 0 ? Math.abs(i - lastIdx) : 0;
+          const delay = dist * 40;
+          const t     = `transform 500ms ${delay}ms cubic-bezier(0.34, 1.9, 0.64, 1)`;
+          if (v) v.style.transition = t;
+          spine.style.transition    = t;
         });
         clearTilt();
         prevMouseX = null; smoothDx = 0;
@@ -527,7 +534,7 @@
           const v = spine.querySelector(".vhs-visual");
           if (v) v.style.transition = "";
           spine.style.transition = "";
-        }), 580);
+        }), 700);
       }, { passive: true });
 
       rail.addEventListener("click", e => {
