@@ -353,12 +353,12 @@
         rafId = requestAnimationFrame(tick);
       }
 
-      function onMove(x, t) {
+      function onMove(x, t, scale) {
         const dx = x - lastX;
         const dt = t - lastT;
         if (dt > 0) {
-          const vel    = Math.max(-1.5, Math.min(dx / dt, 1.5)); // px/ms saturado
-          const target = vel * PUSH;
+          const vel    = Math.max(-1.5, Math.min(dx / dt, 1.5));
+          const target = vel * PUSH * (scale ?? 1);
           scrubRate = scrubRate * SMOOTH + target * (1 - SMOOTH);
         }
         lastX = x; lastT = t;
@@ -415,7 +415,7 @@
           startScrub(e.touches[0].clientX, e.timeStamp);
         }
         e.preventDefault();
-        onMove(e.touches[0].clientX, e.timeStamp);
+        onMove(e.touches[0].clientX, e.timeStamp, 0.35);
       }, { passive: false });
 
       surface.addEventListener("touchend", e => {
