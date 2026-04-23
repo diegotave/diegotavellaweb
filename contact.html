@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diego Tavella — Contact</title>
+  <link rel="stylesheet" href="index.css?v=4">
+  <style>
+    #contact-wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      gap: 40px;
+    }
+
+    #contact-email {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: clamp(22px, 4vw, 56px);
+      font-weight: 200;
+      letter-spacing: 0.04em;
+      color: #000;
+      text-decoration: none;
+      line-height: 1;
+      transition: opacity 120ms ease, font-size 180ms ease;
+    }
+    #contact-email:hover { opacity: 0.55; }
+
+    body.dark #contact-email { color: #fff; }
+
+    #contact-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+    }
+    #contact-links li a {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #000;
+      text-decoration: none;
+      opacity: 0.35;
+      transition: opacity 120ms ease;
+    }
+    #contact-links li a:hover { opacity: 0.75; }
+    body.dark #contact-links li a { color: #fff; }
+
+    #contact-video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+
+    #contact-label {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #000;
+      opacity: 0.25;
+    }
+    body.dark #contact-label { color: #fff; }
+  </style>
+</head>
+<body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"light":t==="red"?"red":"orange";})()</script>
+
+  <div id="stage">
+    <video id="contact-video" muted autoplay playsinline loop>
+      <source src="assets/videos/contact.webm" type='video/webm; codecs="vp9"'>
+    </video>
+  </div>
+
+  <div id="contact-wrap">
+    <a id="contact-email" href="mailto:diegotavella@gmail.com">diegotavella@gmail.com</a>
+    <ul id="contact-links">
+      <li><a href="https://www.instagram.com/diegotavella" target="_blank" rel="noopener">instagram</a></li>
+      <li><a href="https://vimeo.com/diegotavella" target="_blank" rel="noopener">vimeo</a></li>
+      <li><a href="https://www.linkedin.com/in/diegotavella" target="_blank" rel="noopener">linkedin</a></li>
+    </ul>
+  </div>
+
+  <div id="contact-label">diego tavella</div>
+
+  <div id="blend-panel">
+    <ul id="blend-list">
+      <li id="nav-home">home</li>
+      <li id="nav-works">works</li>
+      <li id="nav-about">about</li>
+      <li data-theme="orange">orange<br>version</li>
+      <li data-theme="red">red<br>version</li>
+      <li data-theme="dark">dark<br>version</li>
+      <li data-theme="white">white<br>version</li>
+    </ul>
+  </div>
+
+  <script>
+    document.getElementById("nav-home").addEventListener("click", () => {
+      window.location.href = "hom3dtv.html";
+    });
+    document.getElementById("nav-works").addEventListener("click", () => {
+      window.location.href = "workka.html";
+    });
+    document.getElementById("nav-about").addEventListener("click", () => {
+      window.location.href = "about.html";
+    });
+
+    const vid = document.getElementById("contact-video");
+
+    function applyThemeBlend() {
+      const isOrange = document.body.classList.contains("orange");
+      const isRed    = document.body.classList.contains("red");
+      const isDark   = document.body.classList.contains("dark");
+      vid.style.mixBlendMode = (isOrange || isRed) ? "multiply" : "normal";
+      vid.style.filter = isDark ? "invert(1)" : "";
+    }
+    applyThemeBlend();
+
+    document.querySelectorAll("#blend-list li[data-theme]").forEach(li => {
+      li.addEventListener("click", () => {
+        document.body.classList.remove("dark", "orange", "red", "light");
+        if      (li.dataset.theme === "orange") { document.body.classList.add("orange"); localStorage.setItem("theme","orange"); }
+        else if (li.dataset.theme === "red")    { document.body.classList.add("red");    localStorage.setItem("theme","red"); }
+        else if (li.dataset.theme === "dark")   { document.body.classList.add("dark");   localStorage.setItem("theme","dark"); }
+        else                                    { localStorage.setItem("theme","light"); }
+        applyThemeBlend();
+      });
+    });
+  </script>
+
+</body>
+</html>

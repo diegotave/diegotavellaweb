@@ -211,7 +211,8 @@
       if (vR.bottom + dy > frameR.bottom) dy -= (vR.bottom + dy) - frameR.bottom;
 
       elevatedDY    = dy;
-      v.style.transform = `translateY(${dy.toFixed(1)}px)`;
+      v.style.transition = "transform 800ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+      v.style.transform  = `translateY(${dy.toFixed(1)}px)`;
 
       if (v._leaveHandler) v.removeEventListener("mouseleave", v._leaveHandler);
       v._leaveHandler = () => { dropElevated(); setActive(-1); };
@@ -295,7 +296,9 @@
       const v = getVisual(elevatedIdx);
       if (v) {
         if (v._leaveHandler) { v.removeEventListener("mouseleave", v._leaveHandler); delete v._leaveHandler; }
-        v.style.transform = "";
+        v.style.transition = "transform 280ms cubic-bezier(0.55, 0, 1, 0.45)"; // cae pesado
+        v.style.transform  = "";
+        v.addEventListener("transitionend", () => { v.style.transition = ""; }, { once: true });
       }
       // Volver todos los spines a su lugar
       rail.querySelectorAll(".vhs-spine").forEach(spine => spine.style.transform = "");
@@ -754,7 +757,9 @@
     // ── PANEL DE TEMAS ────────────────────────────────────────────────────────
     document.querySelectorAll("#blend-list li").forEach(li => {
       li.addEventListener("click", () => {
-        if (li.dataset.theme) {
+        if (li.textContent.trim() === "contact") {
+          window.location.href = "contact.html";
+        } else if (li.dataset.theme) {
           document.body.classList.remove("dark", "orange", "red", "light");
           if (li.dataset.theme === "orange")      { document.body.classList.add("orange"); localStorage.setItem("theme","orange"); }
           else if (li.dataset.theme === "red")    { document.body.classList.add("red");    localStorage.setItem("theme","red"); }
