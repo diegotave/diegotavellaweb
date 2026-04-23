@@ -6,6 +6,10 @@
   <meta name="theme-color" content="rgb(255, 170, 0)">
   <title>Diego Tavella</title>
   <link rel="stylesheet" href="index.css?v=4">
+  <style>
+    /* los botones quedan por encima del logo para no quedar bloqueados */
+    #boton-hit, #boton-hit-cuadrado { z-index: 650; }
+  </style>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
   <script>if(sessionStorage.getItem("pushBack")==="1"){document.documentElement.dataset.pushBack="1"}</script>
 </head>
@@ -41,7 +45,7 @@
     <video id="video-somework" muted playsinline preload="auto">
       <source src="assets/videos/tagsomework.webm?v=2" type='video/webm; codecs="vp9"'>
     </video>
-    <img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="" style="opacity:1">
+<img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="" style="opacity:1">
   </div>
 
 
@@ -286,142 +290,97 @@
       const surface = document.getElementById("vhs-frame");
       surface.style.pointerEvents = "auto";
 
-      let scrubRate = 1;
-      let scrubbing = false;
-      let rafId     = null;
-      let lastX = 0, lastT = 0;
-
-      const PUSH     = 12.0;  // px/ms → rate
-      const SMOOTH   = 0.15;  // qué tan rápido sigue al gesto
-      const FRICTION = 0.02;  // decay de inercia (más bajo = más vueltas)
-      const EPS      = 0.02;
-
+      let locked = false;
+      let rate = 1;
+      let rafId = null;
       let wantReverse = false;
-      let isSeeking   = false;
-      let pendingStep = 0;     // acumula el paso mientras espera seeked
+      let isSeeking = false;
 
       vhs.addEventListener("seeked", () => {
         isSeeking = false;
-        if (wantReverse && pendingStep > 0) {
-          const dur = vhs.duration || 1;
-          isSeeking = true;
-          vhs.currentTime = ((vhs.currentTime - pendingStep) + dur) % dur;
-          pendingStep = 0;
-        }
+        if (wantReverse) stepReverse();
       });
+
+      function stepReverse() {
+        if (!wantReverse || isSeeking) return;
+        isSeeking = true;
+        const dur = vhs.duration || 1;
+        vhs.currentTime = ((vhs.currentTime - Math.abs(rate) / 60) + dur) % dur;
+      }
 
       function applyRate(r) {
         if (r >= 0) {
-          if (wantReverse) {
-            wantReverse  = false;
-            isSeeking    = false;
-            pendingStep  = 0;
-            scrubRate    = Math.max(r, 0.5);
-            vhs.loop     = true;
-            vhs.play().catch(() => {});
-          }
-          vhs.playbackRate = Math.max(0.05, Math.min(scrubRate, 16));
+          if (wantReverse) { wantReverse = false; isSeeking = false; vhs.play().catch(() => {}); }
+          vhs.playbackRate = Math.max(0.1, Math.min(r, 16));
         } else {
-          if (!wantReverse) {
-            wantReverse = true;
-            vhs.pause();
-          }
-          const dur  = vhs.duration || 1;
-          const step = Math.abs(r) / 60;
-          if (!isSeeking) {
-            isSeeking = true;
-            vhs.currentTime = ((vhs.currentTime - step) + dur) % dur;
-          } else {
-            pendingStep += step; // acumula si el seek anterior no terminó
-          }
+          if (!wantReverse) { wantReverse = true; vhs.pause(); }
+          stepReverse();
         }
       }
 
       function tick() {
-        if (!scrubbing) {
-          scrubRate += (1 - scrubRate) * FRICTION;
-          if (Math.abs(scrubRate - 1) < EPS) {
-            scrubRate = 1;
-            vhs.playbackRate = 1;
-            vhs.loop = true;
-            if (vhs.paused) vhs.play().catch(() => {});
-            rafId = null;
-            return;
-          }
+        rate += (1 - rate) * 0.08;
+        if (!wantReverse && Math.abs(rate - 1) < 0.03) {
+          rate = 1; wantReverse = false; isSeeking = false;
+          vhs.playbackRate = 1;
+          if (vhs.paused) vhs.play().catch(() => {});
+          locked = false; rafId = null;
+          return;
         }
-        applyRate(scrubRate);
+        applyRate(rate);
         rafId = requestAnimationFrame(tick);
       }
 
-      function onMove(x, t, scale) {
-        const dx = x - lastX;
-        const dt = t - lastT;
-        if (dt > 0) {
-          const vel    = Math.max(-1.5, Math.min(dx / dt, 1.5));
-          const target = vel * PUSH * (scale ?? 1);
-          scrubRate = scrubRate * SMOOTH + target * (1 - SMOOTH);
-        }
-        lastX = x; lastT = t;
+      function trigger(peakRate) {
+        if (locked) return;
+        locked = true;
+        rate = peakRate;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(tick);
       }
 
-      function startScrub(x, t) {
-        if (rafId && !scrubbing) return; // decelerando — ignorar hasta volver al loop
-        scrubbing   = true;
-        scrubRate   = vhs.playbackRate;
-        wantReverse = false;
-        isSeeking   = false;
-        pendingStep = 0;
-        lastX = x; lastT = t;
-        vhs.loop = false;
-        if (!rafId) rafId = requestAnimationFrame(tick);
+      function calcRate(dx, dt) {
+        return Math.max(-5, Math.min((dx / Math.max(dt, 16)) * 14, 16));
       }
 
-      function endScrub() {
-        scrubbing = false;
-        if (!rafId) rafId = requestAnimationFrame(tick);
-      }
-
-      vhs.addEventListener("ended", () => {
-        if (!vhs.loop) { vhs.currentTime = 0; vhs.play().catch(() => {}); }
-      });
-
-      // Mouse — ignora mousedown que venga de los botones
+      // Mouse
       surface.addEventListener("mousedown", e => {
-        if (e.target.tagName === "BUTTON") return;
+        if (e.target.tagName === "BUTTON" || locked) return;
         e.preventDefault();
-        startScrub(e.clientX, e.timeStamp);
-        const onMv = e2 => onMove(e2.clientX, e2.timeStamp);
-        const onUp = ()  => { window.removeEventListener("mousemove", onMv); endScrub(); };
-        window.addEventListener("mousemove", onMv);
-        window.addEventListener("mouseup", onUp, { once: true });
+        const x0 = e.clientX, t0 = e.timeStamp;
+        window.addEventListener("mouseup", e2 => {
+          const r = calcRate(e2.clientX - x0, e2.timeStamp - t0);
+          if (Math.abs(r) > 0.5) trigger(r);
+        }, { once: true });
       });
 
-      // Touch — ignora toques en botones, prioridad horizontal
-      let tx0 = 0, ty0 = 0, tActive = false;
+      // Touch
+      let tx0 = 0, ty0 = 0, tt0 = 0, tActive = false;
 
       surface.addEventListener("touchstart", e => {
-        if (e.target.tagName === "BUTTON") return;
+        if (e.target.tagName === "BUTTON" || locked) return;
         tx0 = e.touches[0].clientX;
         ty0 = e.touches[0].clientY;
+        tt0 = e.timeStamp;
         tActive = false;
       }, { passive: true });
 
       surface.addEventListener("touchmove", e => {
+        if (locked) return;
         const dx = e.touches[0].clientX - tx0;
         const dy = e.touches[0].clientY - ty0;
         if (!tActive) {
           if (Math.abs(dx) < Math.abs(dy) * 1.4 || Math.abs(dx) < 8) return;
           tActive = true;
-          startScrub(e.touches[0].clientX, e.timeStamp);
         }
-        e.preventDefault();
-        onMove(e.touches[0].clientX, e.timeStamp, 0.35);
+        if (tActive) e.preventDefault();
       }, { passive: false });
 
       surface.addEventListener("touchend", e => {
-        if (!tActive) return;
+        if (!tActive || locked) return;
         tActive = false;
-        endScrub();
+        const r = calcRate(e.changedTouches[0].clientX - tx0, e.timeStamp - tt0);
+        if (Math.abs(r) > 0.5) trigger(r);
         e.stopPropagation();
       }, { passive: true });
     })();
