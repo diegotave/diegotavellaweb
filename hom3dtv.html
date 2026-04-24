@@ -40,6 +40,11 @@
       transition: opacity 300ms ease;
     }
     #avediting-video.active            { opacity: var(--av-op, 1); }
+    body.red    #avediting-video       { mix-blend-mode: screen; --av-op: 0.76; }
+    body.orange #avediting-video       { mix-blend-mode: multiply; --av-op: 0.30; filter: invert(1); }
+    body.dark   #avediting-video       { mix-blend-mode: screen; --av-op: 0.49; }
+    body:not(.dark):not(.orange):not(.red) #avediting-video { mix-blend-mode: multiply; --av-op: 0.74; filter: invert(1); }
+
 
 </style>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
@@ -545,6 +550,7 @@
         rafId  = requestAnimationFrame(tick);
       }, { passive: true });
     })();
+
 
 </script>
 
