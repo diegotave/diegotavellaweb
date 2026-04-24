@@ -287,8 +287,11 @@
 
     // ── VHS SCRUB ─────────────────────────────────────────────────────────────
     (function () {
-      const surface = document.getElementById("vhs-frame");
-      surface.style.pointerEvents = "auto";
+      const surface  = document.getElementById("vhs-frame");
+      const etiqueta = document.getElementById("vhs-etiqueta");
+      surface.style.pointerEvents  = "auto";
+      etiqueta.style.pointerEvents = "auto";
+      etiqueta.style.touchAction   = "none";
 
       let locked = false;
       let rate = 1;
@@ -354,18 +357,18 @@
         }, { once: true });
       });
 
-      // Touch
+      // Touch — solo sobre la etiqueta del VHS
       let tx0 = 0, ty0 = 0, tt0 = 0, tActive = false;
 
-      surface.addEventListener("touchstart", e => {
-        if (e.target.tagName === "BUTTON" || locked) return;
+      etiqueta.addEventListener("touchstart", e => {
+        if (locked) return;
         tx0 = e.touches[0].clientX;
         ty0 = e.touches[0].clientY;
         tt0 = e.timeStamp;
         tActive = false;
       }, { passive: true });
 
-      surface.addEventListener("touchmove", e => {
+      etiqueta.addEventListener("touchmove", e => {
         if (locked) return;
         const dx = e.touches[0].clientX - tx0;
         const dy = e.touches[0].clientY - ty0;
@@ -376,7 +379,7 @@
         if (tActive) e.preventDefault();
       }, { passive: false });
 
-      surface.addEventListener("touchend", e => {
+      etiqueta.addEventListener("touchend", e => {
         if (!tActive || locked) return;
         tActive = false;
         const r = calcRate(e.changedTouches[0].clientX - tx0, e.timeStamp - tt0);
