@@ -45,6 +45,16 @@
     body.dark   #avediting-video       { mix-blend-mode: screen; --av-op: 0.49; }
     body:not(.dark):not(.orange):not(.red) #avediting-video { mix-blend-mode: multiply; --av-op: 0.74; filter: invert(1); }
 
+    @media (orientation: portrait) {
+      #avediting-video {
+        top: 50%; left: 50%;
+        width: 100vh;
+        height: 56.25vh;
+        object-fit: fill;
+        transform: translate(-50%, -50%) rotate(-90deg);
+      }
+    }
+
 
 </style>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
