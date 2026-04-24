@@ -369,18 +369,28 @@
         if (peakRate < 0) {
           wantReverse = true;
           const dur = vhs.duration || 10;
-          vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
-          vhs.pause();
-          vhs.style.opacity = "0";
-          vhsRev.loop = true;
-          vhsRev.classList.add("active");
           rate = Math.min(Math.abs(peakRate), 16);
+          vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
+          vhsRev.loop = true;
           vhsRev.playbackRate = rate;
-          vhsRev.play().catch(() => {});
-        } else {
-          wantReverse = false;
-          rate = peakRate;
+
+          let begun = false;
+          function beginRev() {
+            if (begun) return;
+            begun = true;
+            vhs.pause();
+            vhs.style.opacity = "0";
+            vhsRev.classList.add("active");
+            vhsRev.play().catch(() => {});
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(tick);
+          }
+          vhsRev.addEventListener("seeked", beginRev, { once: true });
+          setTimeout(beginRev, 100);
+          return;
         }
+        wantReverse = false;
+        rate = peakRate;
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(tick);
       }
@@ -408,14 +418,22 @@
 
       function startReverse() {
         const dur = vhs.duration || 10;
-        vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
-        vhs.pause();
-        vhs.style.opacity = "0";
-        vhsRev.loop = true;
-        vhsRev.classList.add("active");
-        vhsRev.playbackRate = 0.1;
-        vhsRev.play().catch(() => {});
         wantReverse = true;
+        vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
+        vhsRev.loop = true;
+        vhsRev.playbackRate = 0.1;
+
+        let begun = false;
+        function beginRev() {
+          if (begun) return;
+          begun = true;
+          vhs.pause();
+          vhs.style.opacity = "0";
+          vhsRev.classList.add("active");
+          vhsRev.play().catch(() => {});
+        }
+        vhsRev.addEventListener("seeked", beginRev, { once: true });
+        setTimeout(beginRev, 80);
       }
 
       etiqueta.addEventListener("touchstart", e => {
