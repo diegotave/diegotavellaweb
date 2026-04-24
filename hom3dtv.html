@@ -297,34 +297,22 @@
       let rate = 1;
       let rafId = null;
       let wantReverse = false;
-      let isSeeking = false;
-
-      vhs.addEventListener("seeked", () => {
-        isSeeking = false;
-        if (wantReverse) stepReverse();
-      });
-
-      function stepReverse() {
-        if (!wantReverse || isSeeking) return;
-        isSeeking = true;
-        const dur = vhs.duration || 1;
-        vhs.currentTime = ((vhs.currentTime - Math.abs(rate) / 40) + dur) % dur;
-      }
 
       function applyRate(r) {
         if (r >= 0) {
-          if (wantReverse) { wantReverse = false; isSeeking = false; vhs.play().catch(() => {}); }
+          if (wantReverse) { wantReverse = false; vhs.play().catch(() => {}); }
           vhs.playbackRate = Math.max(0.1, Math.min(r, 16));
         } else {
           if (!wantReverse) { wantReverse = true; vhs.pause(); }
-          stepReverse();
+          const dur = vhs.duration || 1;
+          vhs.currentTime = ((vhs.currentTime - Math.abs(r) / 80) + dur) % dur;
         }
       }
 
       function tick() {
         rate += (1 - rate) * 0.025;
         if (rate > 0 && Math.abs(rate - 1) < 0.03) {
-          rate = 1; wantReverse = false; isSeeking = false;
+          rate = 1; wantReverse = false;
           vhs.playbackRate = 1;
           if (vhs.paused) vhs.play().catch(() => {});
           locked = false; rafId = null;
@@ -344,7 +332,7 @@
 
       function calcRate(dx, dt) {
         const vel = dx / Math.max(dt, 16);
-        return Math.max(-30, Math.min(vel * 42, 48));
+        return Math.max(-60, Math.min(vel * 80, 90));
       }
 
       // Mouse
