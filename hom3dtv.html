@@ -308,7 +308,7 @@
         if (!wantReverse || isSeeking) return;
         isSeeking = true;
         const dur = vhs.duration || 1;
-        vhs.currentTime = ((vhs.currentTime - Math.abs(rate) / 60) + dur) % dur;
+        vhs.currentTime = ((vhs.currentTime - Math.abs(rate) / 40) + dur) % dur;
       }
 
       function applyRate(r) {
@@ -322,8 +322,8 @@
       }
 
       function tick() {
-        rate += (1 - rate) * 0.08;
-        if (!wantReverse && Math.abs(rate - 1) < 0.03) {
+        rate += (1 - rate) * 0.025;
+        if (rate > 0 && Math.abs(rate - 1) < 0.03) {
           rate = 1; wantReverse = false; isSeeking = false;
           vhs.playbackRate = 1;
           if (vhs.paused) vhs.play().catch(() => {});
@@ -343,7 +343,8 @@
       }
 
       function calcRate(dx, dt) {
-        return Math.max(-5, Math.min((dx / Math.max(dt, 16)) * 14, 16));
+        const vel = dx / Math.max(dt, 16);
+        return Math.max(-30, Math.min(vel * 42, 48));
       }
 
       // Mouse
