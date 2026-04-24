@@ -332,6 +332,7 @@
         vhsRev.pause();
         vhsRev.classList.remove("active");
         vhs.currentTime = (dur - vhsRev.currentTime % dur) % dur;
+        vhs.style.opacity = "";
         vhs.playbackRate = 1;
         vhs.play().catch(() => {});
         wantReverse = false;
@@ -358,6 +359,7 @@
           const dur = vhs.duration || 10;
           vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
           vhs.pause();
+          vhs.style.opacity = "0";
           vhsRev.loop = true;
           vhsRev.classList.add("active");
           rate = Math.min(Math.abs(peakRate), 16);
