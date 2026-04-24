@@ -30,21 +30,18 @@
 
     #avediting-video {
       position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      height: calc(100% - 20px);
-      width: auto;
-      display: block;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
       pointer-events: none;
       z-index: 0;
       opacity: 0;
       mix-blend-mode: multiply;
       transition: opacity 300ms ease;
     }
-    #avediting-video.active            { opacity: 1; }
-    body.dark #avediting-video         { mix-blend-mode: screen; }
-  </style>
+    #avediting-video.active            { opacity: var(--av-op, 1); }
+
+</style>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
   <script>if(sessionStorage.getItem("pushBack")==="1"){document.documentElement.dataset.pushBack="1"}</script>
 </head>
@@ -76,7 +73,7 @@
     <video id="avediting-video" muted playsinline preload="auto">
       <source src="assets/videos/avediting.webm" type='video/webm; codecs="vp9"'>
     </video>
-    <video id="vhs" muted autoplay playsinline loop preload="auto">
+    <video id="vhs" muted autoplay playsinline preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
     </video>
     <video id="vhs-reverse" muted playsinline preload="auto">
@@ -117,7 +114,8 @@
     const videoSW      = document.getElementById("video-somework");
     videoSW.addEventListener("ended", () => { videoSW.classList.remove("active"); });
 
-    const avVid = document.getElementById("avediting-video");
+    const avVid   = document.getElementById("avediting-video");
+    const vhsRevEl = document.getElementById("vhs-reverse");
     avVid.addEventListener("ended", () => avVid.classList.remove("active"));
 
     function playAvediting() {
@@ -126,8 +124,30 @@
       avVid.play().catch(() => {});
     }
 
-    document.getElementById("vhs").addEventListener("ended", playAvediting);
-    document.getElementById("vhs-reverse").addEventListener("ended", playAvediting);
+    // Loop vhs manualmente (sin atributo loop, para que fired ended funcione)
+    vhs.addEventListener("ended", () => {
+      vhs.currentTime = 0;
+      vhs.play().catch(() => {});
+    });
+
+    // RAF: disparar avediting 1 segundo antes de cada vuelta
+    const avState = { fwd: false, rev: false };
+    (function checkNearEnd() {
+      const dur = vhs.duration || 10;
+      const thr = dur - 1;
+
+      if (!vhs.paused) {
+        if (vhs.currentTime >= thr && !avState.fwd) { avState.fwd = true;  playAvediting(); }
+        else if (vhs.currentTime < thr)               avState.fwd = false;
+      }
+
+      if (!vhsRevEl.paused) {
+        if (vhsRevEl.currentTime >= thr && !avState.rev) { avState.rev = true;  playAvediting(); }
+        else if (vhsRevEl.currentTime < thr)               avState.rev = false;
+      }
+
+      requestAnimationFrame(checkNearEnd);
+    })();
 
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
@@ -358,10 +378,16 @@
         else             vhs.playbackRate    = clamped;
       }
 
+      vhsRev.addEventListener("ended", () => {
+        if (wantReverse) {
+          vhsRev.currentTime = 0;
+          vhsRev.play().catch(() => {});
+        }
+      });
+
       function finishReverse() {
         const dur = vhs.duration || 10;
         const target = (dur - vhsRev.currentTime % dur) % dur;
-        vhsRev.loop = false;
         vhsRev.pause();
         vhs.currentTime = target;
         vhs.playbackRate = 1;
@@ -403,7 +429,6 @@
           const dur = vhs.duration || 10;
           rate = Math.min(Math.abs(peakRate), 16);
           vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
-          vhsRev.loop = true;
           vhsRev.playbackRate = rate;
 
           let begun = false;
@@ -452,7 +477,6 @@
         const dur = vhs.duration || 10;
         wantReverse = true;
         vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
-        vhsRev.loop = true;
         vhsRev.playbackRate = 0.1;
 
         let begun = false;
@@ -521,7 +545,8 @@
         rafId  = requestAnimationFrame(tick);
       }, { passive: true });
     })();
-  </script>
+
+</script>
 
 </body>
 </html>
