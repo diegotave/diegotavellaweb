@@ -27,6 +27,23 @@
     body.dark   #vhs-reverse           { mix-blend-mode: hard-light; filter: invert(1); }
     body.orange #vhs-reverse,
     body.red    #vhs-reverse           { mix-blend-mode: multiply;   filter: invert(1); }
+
+    #avediting-video {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: calc(100% - 20px);
+      width: auto;
+      display: block;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      mix-blend-mode: multiply;
+      transition: opacity 300ms ease;
+    }
+    #avediting-video.active            { opacity: 1; }
+    body.dark #avediting-video         { mix-blend-mode: screen; }
   </style>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
   <script>if(sessionStorage.getItem("pushBack")==="1"){document.documentElement.dataset.pushBack="1"}</script>
@@ -56,6 +73,9 @@
       <button id="boton-hit" class="visible" aria-label="Demo Reel"></button>
       <button id="boton-hit-cuadrado" class="visible" aria-label="Works"></button>
     </div>
+    <video id="avediting-video" muted playsinline preload="auto">
+      <source src="assets/videos/avediting.webm" type='video/webm; codecs="vp9"'>
+    </video>
     <video id="vhs" muted autoplay playsinline loop preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -96,6 +116,18 @@
     const vhsFrame     = document.getElementById("vhs-frame");
     const videoSW      = document.getElementById("video-somework");
     videoSW.addEventListener("ended", () => { videoSW.classList.remove("active"); });
+
+    const avVid = document.getElementById("avediting-video");
+    avVid.addEventListener("ended", () => avVid.classList.remove("active"));
+
+    function playAvediting() {
+      avVid.currentTime = 0;
+      avVid.classList.add("active");
+      avVid.play().catch(() => {});
+    }
+
+    document.getElementById("vhs").addEventListener("ended", playAvediting);
+    document.getElementById("vhs-reverse").addEventListener("ended", playAvediting);
 
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
