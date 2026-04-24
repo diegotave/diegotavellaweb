@@ -9,6 +9,24 @@
   <style>
     /* los botones quedan por encima del logo para no quedar bloqueados */
     #boton-hit, #boton-hit-cuadrado { z-index: 650; }
+
+    #vhs-reverse {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      height: calc(100% - 20px);
+      width: auto;
+      display: block;
+      z-index: 2;
+      mix-blend-mode: exclusion;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #vhs-reverse.active                { opacity: 1; }
+    body.dark   #vhs-reverse           { mix-blend-mode: hard-light; filter: invert(1); }
+    body.orange #vhs-reverse,
+    body.red    #vhs-reverse           { mix-blend-mode: multiply;   filter: invert(1); }
   </style>
   <link rel="preload" href="assets/videos/introwork.webm" as="video" type="video/webm">
   <script>if(sessionStorage.getItem("pushBack")==="1"){document.documentElement.dataset.pushBack="1"}</script>
@@ -40,6 +58,9 @@
     </div>
     <video id="vhs" muted autoplay playsinline loop preload="auto">
       <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
+    </video>
+    <video id="vhs-reverse" muted playsinline preload="auto">
+      <source src="assets/videos/vhsindex-reverse.webm" type='video/webm; codecs="vp9"'>
     </video>
     <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.png" alt="">
     <video id="video-somework" muted playsinline preload="auto">
@@ -289,6 +310,7 @@
     (function () {
       const surface  = document.getElementById("vhs-frame");
       const etiqueta = document.getElementById("vhs-etiqueta");
+      const vhsRev   = document.getElementById("vhs-reverse");
       surface.style.pointerEvents  = "auto";
       etiqueta.style.pointerEvents = "auto";
       etiqueta.style.touchAction   = "none";
@@ -299,22 +321,28 @@
       let wantReverse = false;
 
       function applyRate(r) {
-        if (r >= 0) {
-          if (wantReverse) { wantReverse = false; vhs.play().catch(() => {}); }
-          vhs.playbackRate = Math.max(0.1, Math.min(r, 16));
-        } else {
-          if (!wantReverse) { wantReverse = true; vhs.pause(); }
-          const dur = vhs.duration || 1;
-          vhs.currentTime = ((vhs.currentTime - Math.abs(r) / 80) + dur) % dur;
-        }
+        const clamped = Math.max(0.1, Math.min(r, 16));
+        if (wantReverse) vhsRev.playbackRate = clamped;
+        else             vhs.playbackRate    = clamped;
+      }
+
+      function finishReverse() {
+        const dur = vhs.duration || 10;
+        vhsRev.loop = false;
+        vhsRev.pause();
+        vhsRev.classList.remove("active");
+        vhs.currentTime = (dur - vhsRev.currentTime % dur) % dur;
+        vhs.playbackRate = 1;
+        vhs.play().catch(() => {});
+        wantReverse = false;
       }
 
       function tick() {
         rate += (1 - rate) * 0.025;
-        if (rate > 0 && Math.abs(rate - 1) < 0.03) {
-          rate = 1; wantReverse = false;
-          vhs.playbackRate = 1;
-          if (vhs.paused) vhs.play().catch(() => {});
+        if (Math.abs(rate - 1) < 0.03) {
+          rate = 1;
+          if (wantReverse) finishReverse();
+          else { vhs.playbackRate = 1; if (vhs.paused) vhs.play().catch(() => {}); }
           locked = false; rafId = null;
           return;
         }
@@ -325,15 +353,27 @@
       function trigger(peakRate) {
         if (locked) return;
         locked = true;
-        rate = peakRate;
-        if (peakRate < 0) { wantReverse = true; vhs.pause(); }
+        if (peakRate < 0) {
+          wantReverse = true;
+          const dur = vhs.duration || 10;
+          vhsRev.currentTime = (dur - vhs.currentTime % dur) % dur;
+          vhs.pause();
+          vhsRev.loop = true;
+          vhsRev.classList.add("active");
+          rate = Math.min(Math.abs(peakRate), 16);
+          vhsRev.playbackRate = rate;
+          vhsRev.play().catch(() => {});
+        } else {
+          wantReverse = false;
+          rate = peakRate;
+        }
         if (rafId) cancelAnimationFrame(rafId);
         rafId = requestAnimationFrame(tick);
       }
 
       function calcRate(dx, dt) {
         const vel = dx / Math.max(dt, 16);
-        return Math.max(-60, Math.min(vel * 80, 90));
+        return Math.max(-16, Math.min(vel * 80, 90));
       }
 
       // Mouse
