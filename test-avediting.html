@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { background: rgb(255,170,0); margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+    video { max-height: 80vh; max-width: 90vw; }
+    button { position: fixed; top: 20px; left: 20px; font-size: 18px; padding: 10px 20px; cursor: pointer; }
+    #status { position: fixed; top: 20px; right: 20px; font-size: 14px; font-family: monospace; background: rgba(0,0,0,0.5); color: white; padding: 8px 12px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <button onclick="play()">▶ play avediting</button>
+  <div id="status">esperando...</div>
+  <video id="av" playsinline preload="auto">
+    <source src="assets/videos/avediting.webm" type='video/webm; codecs="vp9"'>
+  </video>
+  <script>
+    const av = document.getElementById("av");
+    const status = document.getElementById("status");
+
+    av.addEventListener("loadedmetadata", () => status.textContent = `listo — ${av.duration.toFixed(2)}s`);
+    av.addEventListener("play",   () => status.textContent = "reproduciendo...");
+    av.addEventListener("ended",  () => status.textContent = "terminó");
+    av.addEventListener("error",  () => status.textContent = "ERROR: " + (av.error?.message || "?"));
+
+    function play() {
+      av.currentTime = 0;
+      av.play().then(() => {}).catch(e => status.textContent = "error play: " + e.message);
+    }
+  </script>
+</body>
+</html>
