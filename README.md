@@ -53,6 +53,37 @@ El panel de temas está en ambas páginas como `#blend-panel` (fixed, derecha).
 
 ---
 
+## VHS scrub (hom3dtv)
+
+El cassette responde a arrastres del mouse y touch, acelerando y desacelerando el video con inercia.
+
+- **Mouse**: mousedown + mouseup en `#vhs-frame` — velocidad = Δx / Δt, escalada × 80.
+- **Touch**: solo `#vhs-etiqueta`. El dedo arrastra en tiempo real (velocidad instantánea → `playbackRate`). Al soltar, la velocidad pico lanza una deceleración suave por RAF (`rate += (1 - rate) * 0.025`).
+- **Dirección**: swipe derecha = forward (`vhs`), swipe izquierda = reverse (`vhs-reverse`).
+- **Reverse**: usa `vhsindex-reverse.webm` (generado con ffmpeg `reverse` filter). Se sincroniza por posición: `vhsRev.currentTime = (dur - vhs.currentTime) % dur`. Al terminar la inercia, hace `swap()` — espera `seeked` en vhs antes de ocultar vhs-reverse para evitar frame negro.
+- **Lock**: mientras hay inercia activa (`locked = true`) no se acepta nuevo input.
+
+---
+
+## avediting-video overlay (hom3dtv)
+
+`#avediting-video` reproduce `avediting.webm` superpuesto sobre el stage, detrás del tape (z-index: 0), con blend mode por tema.
+
+- **Trigger**: RAF polling en `checkNearEnd()` — dispara `playAvediting()` cuando `currentTime >= duration - 1`, tanto en `vhs` como en `vhs-reverse`.
+- **Landscape**: `width: 100%; height: 100%; object-fit: cover`.
+- **Portrait** (`orientation: portrait`): rotado 90° CCW, `width: 100vh; height: 56.25vh`, centrado con `translate(-50%, -50%)`.
+
+### Blend mode y opacidad por tema
+
+| Tema | blend-mode | opacity | invert |
+|---|---|---|---|
+| orange | multiply | 0.30 | sí |
+| red | screen | 0.76 | no |
+| dark | screen | 0.49 | no |
+| white | multiply | 0.74 | sí |
+
+---
+
 ## Botones en hom3dtv
 
 ### `#boton-demo` / hit: `#boton-hit`
@@ -126,7 +157,9 @@ Mismo diseño que `#boton-cuadrado` de hom3dtv. Texto: "home".
 | Archivo | Uso |
 |---|---|
 | `logointro3.webm` | Intro animada en index.html |
-| `vhsindex.webm` | VHS cassette animado en hom3dtv |
+| `vhsindex.webm` | VHS cassette animado en hom3dtv (forward) |
+| `vhsindex-reverse.webm` | VHS cassette en reversa — generado con `ffmpeg -vf reverse` |
+| `avediting.webm` | Overlay de avediting que dispara cerca del final de cada loop VHS |
 | `introwork.webm` | Transición hom3dtv → workka |
 | `tagsomework.webm` | Preview en hover del botón "watch some work" |
 
