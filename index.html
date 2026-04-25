@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella</title>
-  <link rel="stylesheet" href="index.css?v=3">
-  <link rel="preload" href="assets/videos/logointro3.webm" as="video" type="video/webm">
-  <link rel="preload" href="assets/videos/vhsindex.webm" as="video" type="video/webm">
-  <link rel="preload" href="assets/images/etiquetavhs2.png" as="image">
-  <link rel="preload" href="assets/images/logodtvfixed.png" as="image">
+  <link rel="stylesheet" href="index.css?v=4">
+  <script>(function(){var t=localStorage.getItem("theme")||"orange";var s=t==="dark"?"logointrodark.webm":"logointro.webm";var l=document.createElement("link");l.rel="preload";l.as="video";l.type="video/webm";l.href="assets/videos/"+s;document.head.appendChild(l);})();</script>
+  <link rel="preload" href="assets/videos/vhsindex1.webm" as="video" type="video/webm">
+  <link rel="preload" href="assets/images/etiquetavhs2.webp" as="image" type="image/webp">
+  <link rel="preload" href="assets/images/logodtvfixed.webp" as="image" type="image/webp">
   <link rel="prefetch" href="hom3dtv.html">
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
@@ -28,16 +28,16 @@
   </div>
 
   <div id="stage">
-    <video id="v" muted playsinline preload="auto" style="mix-blend-mode: multiply">
-      <source src="assets/videos/logointro3.webm" type='video/webm; codecs="vp9"'>
+    <video id="v" muted playsinline preload="auto">
+      <source src="assets/videos/logointro.webm" type='video/webm; codecs="vp9"'>
     </video>
     <div id="frame"></div>
   </div>
 
-  <!-- PROVISIONAL: controles de prueba -->
-  <div id="dev-panel" style="display:none; position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:999; font-family:'Helvetica Neue',sans-serif; font-size:12px; text-align:right;">
-    <div style="display:none; margin-bottom:8px; opacity:0.5; font-size:10px; letter-spacing:.08em;">blend mode</div>
-    <ul id="opacity-list" style="display:none; list-style:none; margin:0; padding:0; flex-direction:column; gap:3px;">
+  <!-- PROVISIONAL: controles de prueba — toggle con ` -->
+  <div id="dev-panel" style="display:none; position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:999; font-family:'Helvetica Neue',sans-serif; font-size:12px; text-align:right; color:#fff; text-shadow:0 1px 3px #000;">
+    <div style="margin-bottom:8px; opacity:0.5; font-size:10px; letter-spacing:.08em;">blend mode</div>
+    <ul id="opacity-list" style="list-style:none; margin:0 0 12px; padding:0; display:flex; flex-direction:column; gap:3px;">
       <li data-op="normal"     style="cursor:pointer; opacity:0.4; padding:2px 0;">normal</li>
       <li data-op="multiply"   style="cursor:pointer; opacity:0.4; padding:2px 0;">multiply</li>
       <li data-op="screen"     style="cursor:pointer; opacity:0.4; padding:2px 0;">screen</li>
@@ -48,24 +48,25 @@
       <li data-op="exclusion"  style="cursor:pointer; opacity:0.4; padding:2px 0;">exclusion</li>
       <li data-op="luminosity" style="cursor:pointer; opacity:0.4; padding:2px 0;">luminosity</li>
     </ul>
-    <div id="loop-btn" style="margin-top:12px; cursor:pointer; opacity:0.4; padding:2px 0;">loop: off</div>
+    <div id="dev-invert" style="cursor:pointer; opacity:0.4; padding:2px 0; margin-bottom:4px;">invert: off</div>
+    <div id="dev-loop"   style="cursor:pointer; opacity:0.4; padding:2px 0;">loop: off</div>
   </div>
 
   <script>
-    const v   = document.getElementById("v");
+    const v = document.getElementById("v");
     let navigated = false;
 
     function goHome() {
       if (navigated) return;
       navigated = true;
-      document.body.style.transition = "opacity 300ms ease";
-      document.body.style.opacity = "0";
-      setTimeout(() => { window.location.href = "hom3dtv.html"; }, 300);
+      window.location.href = "hom3dtv.html";
     }
 
     // Dev panel
     const devPanel  = document.getElementById("dev-panel");
-    const loopBtn   = document.getElementById("loop-btn");
+    const devInvert = document.getElementById("dev-invert");
+    const devLoop   = document.getElementById("dev-loop");
+
     document.querySelectorAll("#opacity-list li").forEach(li => {
       li.addEventListener("click", () => {
         document.querySelectorAll("#opacity-list li").forEach(el => el.style.fontWeight = "");
@@ -73,15 +74,26 @@
         v.style.mixBlendMode = li.dataset.op;
       });
     });
-    loopBtn.addEventListener("click", () => {
+
+    devInvert.addEventListener("click", () => {
+      const on = devInvert.textContent === "invert: on";
+      v.style.filter = on ? "" : "invert(1)";
+      devInvert.textContent = on ? "invert: off" : "invert: on";
+      devInvert.style.fontWeight = on ? "" : "700";
+    });
+
+    devLoop.addEventListener("click", () => {
       v.loop = !v.loop;
-      loopBtn.textContent = "loop: " + (v.loop ? "on" : "off");
-      loopBtn.style.fontWeight = v.loop ? "700" : "";
-      if (v.loop) navigated = true; // evita que navegue mientras loopea
+      devLoop.textContent = "loop: " + (v.loop ? "on" : "off");
+      devLoop.style.fontWeight = v.loop ? "700" : "";
+      if (v.loop) navigated = true;
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "d" && e.target.tagName !== "INPUT") devPanel.style.display = devPanel.style.display === "none" ? "block" : "none";
     });
 
     function startVideo() {
-      devPanel.style.display = "block";
       v.addEventListener("loadedmetadata", () => {
         const stopAt = v.duration - 0.04;
         v.addEventListener("timeupdate", () => {
@@ -89,7 +101,13 @@
         });
       });
       v.addEventListener("ended", () => { if (!v.loop) goHome(); });
-      v.play().catch(() => {});
+      if (document.body.classList.contains("dark")) {
+        v.querySelector("source").src = "assets/videos/logointrodark.webm";
+        v.load();
+        v.addEventListener("canplay", () => v.play().catch(() => {}), { once: true });
+      } else {
+        v.play().catch(() => {});
+      }
     }
 
     // Password gate

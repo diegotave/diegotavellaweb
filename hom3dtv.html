@@ -85,20 +85,20 @@
       <button id="boton-hit" class="visible" aria-label="Demo Reel"></button>
       <button id="boton-hit-cuadrado" class="visible" aria-label="Works"></button>
     </div>
-    <video id="avediting-video" muted playsinline preload="auto">
+    <video id="avediting-video" muted playsinline preload="none">
       <source src="assets/videos/avediting.webm" type='video/webm; codecs="vp9"'>
     </video>
     <video id="vhs" muted autoplay playsinline preload="auto">
-      <source src="assets/videos/vhsindex.webm" type='video/webm; codecs="vp9"'>
+      <source src="assets/videos/vhsindex1.webm" type='video/webm; codecs="vp9"'>
     </video>
-    <video id="vhs-reverse" muted playsinline preload="auto">
+    <video id="vhs-reverse" muted playsinline preload="metadata">
       <source src="assets/videos/vhsindex-reverse.webm" type='video/webm; codecs="vp9"'>
     </video>
-    <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.png" alt="">
-    <video id="video-somework" muted playsinline preload="auto">
+    <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.webp" alt="">
+    <video id="video-somework" muted playsinline preload="none">
       <source src="assets/videos/tagsomework.webm?v=2" type='video/webm; codecs="vp9"'>
     </video>
-<img id="logo-dtv" src="assets/images/logodtvfixed.png" alt="" style="opacity:1">
+<img id="logo-dtv" src="assets/images/logodtvfixed.webp" alt="" style="opacity:1">
   </div>
 
 
@@ -211,6 +211,11 @@
     window.addEventListener("resize", setFondoWidth);
 
     vhs.play().catch(() => {});
+
+    // Precargar avediting diferido: arranca descarga 3s después que el VHS empieza
+    vhs.addEventListener("playing", () => {
+      setTimeout(() => { avVid.preload = "auto"; avVid.load(); }, 3000);
+    }, { once: true });
 
     function goToWorks() {
       if (!btnReady) return;

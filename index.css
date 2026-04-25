@@ -112,10 +112,10 @@ body {
 /* ── VIDEO ───────────────────────────────────────────────────────────────── */
 #vhs-frame {
   position: absolute;
-  bottom: 10px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: calc(100% - 20px);
+  height: 100%;
   width: auto;
   aspect-ratio: 16 / 9;
   z-index: 3;
@@ -136,10 +136,10 @@ body {
 
 #boton-demo {
   position: absolute;
-  bottom: 10px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: calc(100% - 20px);
+  height: 100%;
   width: auto;
   aspect-ratio: 16 / 9;
   z-index: 0;
@@ -199,7 +199,7 @@ body {
   width: calc(71.48% + 4px);
   height: calc(68.8% + 4px);
   background: rgb(255, 170, 0);
-  border-radius: calc((min(100dvh, 1080px) - 20px) * 0.00628);
+  border-radius: calc(min(100dvh, 1080px) * 0.00628);
   opacity: 1;
   transition: opacity 200ms ease, width 300ms ease;
 }
@@ -235,7 +235,7 @@ body {
   transform: translateY(-50%);
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 200;
-  font-size: calc((min(100dvh, 1080px) - 20px) * 0.02652);
+  font-size: calc(min(100dvh, 1080px) * 0.02652);
   white-space: nowrap;
   color: #000;
   line-height: 1;
@@ -285,15 +285,15 @@ body {
   #boton-circulo-negro,
   #boton-hit {
     left: min(
-      calc((min(100dvh, 1080px) - 20px) * 1.3511),
-      calc(44vw + (min(100dvh, 1080px) - 20px) * 0.8209 - 8px)
+      calc(min(100dvh, 1080px) * 1.3511),
+      calc(44vw + min(100dvh, 1080px) * 0.8209 - 8px)
     );
   }
   #boton-cuadrado,
   #boton-hit-cuadrado {
     left: max(
-      calc((min(100dvh, 1080px) - 20px) * 0.4435),
-      calc((min(100dvh, 1080px) - 20px) * 0.9130 - 50vw + 38px)
+      calc(min(100dvh, 1080px) * 0.4435),
+      calc(min(100dvh, 1080px) * 0.9130 - 50vw + 38px)
     );
   }
 }
@@ -322,21 +322,22 @@ body {
 
 #v {
   position: absolute;
-  bottom: 10px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: calc(100% - 20px);
+  height: 100%;
   width: auto;
   display: block;
   z-index: 2;
+  mix-blend-mode: multiply;
 }
 
 #vhs {
   position: absolute;
-  bottom: 10px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: calc(100% - 20px);
+  height: 100%;
   width: auto;
   display: block;
   z-index: 1;
@@ -346,10 +347,10 @@ body {
 
 #vhs-etiqueta {
   position: absolute;
-  bottom: 10px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  height: calc(100% - 20px);
+  height: 100%;
   width: auto;
   display: block;
   z-index: 0;
@@ -550,6 +551,7 @@ body.dark::after             { border-color: #fff; box-shadow: 0 0 0 20px #000; 
 body.dark #boton-texto-watch { color: #fff; }
 body.dark #logo-dtv          { filter: invert(1); }
 body.dark #vhs               { mix-blend-mode: hard-light; filter: invert(1); }
+body.dark #v                 { mix-blend-mode: normal; }
 body.dark #boton-demo        { z-index: 10; }
 body.dark #vhs-etiqueta      { z-index: 2; }
 
