@@ -22,13 +22,81 @@
     body.orange #vhs4 { mix-blend-mode: multiply;   filter: invert(1); }
     body.red    #vhs4 { mix-blend-mode: multiply;   filter: invert(1); }
 
-    #vhs4 { transition: top 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94), height 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    #vhs4, #etiqueta-wrap {
+      transition: top 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  height 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    #etiqueta-wrap {
+      position: absolute;
+      left: 50%;
+      top: 68.70%;
+      height: 53.50%;
+      aspect-ratio: 1102 / 622;
+      transform: translateX(calc(-50% + -1px));
+      margin-top: 2px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    #etiqueta-outline {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
     @media (orientation: portrait) and (max-width: 599px) {
-      #vhs4 { top: 80.10%; height: 26.40%; transform: translateX(-50%); }
+      #vhs4, #etiqueta-wrap { top: 80.10%; height: 26.40%; transform: translateX(-50%); }
     }
     @media (orientation: portrait) and (min-width: 600px) {
-      #vhs4 { top: 71.00%; height: 46.60%; transform: translateX(calc(-50% + 4px)); }
+      #vhs4, #etiqueta-wrap { top: 71.00%; height: 46.60%; transform: translateX(calc(-50% + 4px)); }
     }
+
+    /* Logo */
+    #logo-dtv {
+      opacity: 1;
+      bottom: auto;
+      top: 0.93%;
+      height: 98.15%;
+      transform: translateX(-50%);
+      transition: top 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  height 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  transform 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    /* Panel logo — lado derecho */
+    #logo-panel {
+      position: fixed;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 9999;
+      background: #fff;
+      color: #000;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 220px;
+    }
+    #logo-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    #logo-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
+    #logo-panel input[type=range] { flex: 1; accent-color: #000; }
+    #logo-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
+    #logo-btns { display: flex; gap: 6px; }
+    #logo-btns button {
+      flex: 1; border: 1.5px solid #000; background: #fff; color: #000;
+      font-family: inherit; font-size: 10px; letter-spacing: 0.08em;
+      padding: 5px 0; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+    }
+    #logo-btns button:hover { background: #000; color: #fff; }
+    #logo-capture {
+      font-size: 10px; letter-spacing: 0.04em; background: #f0f0f0;
+      border-radius: 4px; padding: 6px 8px; line-height: 1.6;
+      display: none; user-select: all;
+    }
+    #logo-capture.visible { display: block; }
 
     #pos-panel {
       position: fixed;
@@ -79,11 +147,26 @@
     <div id="pos-capture"></div>
   </div>
 
+  <div id="logo-panel">
+    <label><span class="lbl">top</span><input type="range" id="lg-top" min="-20" max="100" step="0.1" value="0.93"><span class="val" id="lv-top">0.93%</span></label>
+    <label><span class="lbl">offsetX</span><input type="range" id="lg-left" min="-400" max="400" step="1" value="0"><span class="val" id="lv-left">0px</span></label>
+    <label><span class="lbl">height</span><input type="range" id="lg-h" min="20" max="120" step="0.1" value="98.15"><span class="val" id="lv-h">98.15%</span></label>
+    <div id="logo-btns">
+      <button id="lg-btn-reset">reset</button>
+      <button id="lg-btn-capture">capturar</button>
+    </div>
+    <div id="logo-capture"></div>
+  </div>
+
   <div id="stage">
     <video id="vhs4" muted playsinline preload="auto" loop>
       <source src="assets/videos/vhsentero.webm" type='video/webm; codecs="vp9"'>
     </video>
-    <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.webp" alt="">
+    <div id="etiqueta-wrap">
+      <svg id="etiqueta-outline" viewBox="0 0 1102 622" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" shape-rendering="geometricPrecision">
+        <rect x="318" y="200" width="467" height="270" rx="15" fill="none" stroke="#000" stroke-width="2" vector-effect="non-scaling-stroke"/>
+      </svg>
+    </div>
     <img id="logo-dtv" src="assets/images/logodtvfixed.webp" alt="">
   </div>
 
@@ -129,6 +212,40 @@
     });
     [slTop, slLeft, slH].forEach(sl => sl.addEventListener("input", applyPanel));
 
+    // Dev: logo panel
+    const logo     = document.getElementById("logo-dtv");
+    const lgTop    = document.getElementById("lg-top");
+    const lgLeft   = document.getElementById("lg-left");
+    const lgH      = document.getElementById("lg-h");
+    const lgCapture = document.getElementById("logo-capture");
+    const LOGO_DEFAULT = () => ({ top: 0.93, dx: 0, h: 98.15 });
+    const LOGO_UP = () => {
+      if (isTabletP()) return { top:  5.33, dx: 149, h: 44.16 };
+      if (isPhoneP())  return { top: 42.89, dx:  76, h: 25.02 };
+                       return { top: -6.70, dx: 372, h: 50.70 };
+    };
+
+    function applyLogoPanel() {
+      const t = parseFloat(lgTop.value), dx = parseFloat(lgLeft.value), h = parseFloat(lgH.value);
+      logo.style.top       = t + "%";
+      logo.style.transform = `translateX(calc(-50% + ${dx}px))`;
+      logo.style.height    = h + "%";
+      document.getElementById("lv-top").textContent  = t.toFixed(1) + "%";
+      document.getElementById("lv-left").textContent = dx.toFixed(0) + "px";
+      document.getElementById("lv-h").textContent    = h.toFixed(1) + "%";
+    }
+    document.getElementById("lg-btn-reset").addEventListener("click", () => {
+      const d = LOGO_DEFAULT();
+      lgTop.value = d.top; lgLeft.value = d.dx; lgH.value = d.h;
+      lgCapture.classList.remove("visible"); applyLogoPanel();
+    });
+    document.getElementById("lg-btn-capture").addEventListener("click", () => {
+      const t = parseFloat(lgTop.value), dx = parseFloat(lgLeft.value), h = parseFloat(lgH.value);
+      lgCapture.textContent = `top:${t.toFixed(2)}%  offsetX:${dx}px  height:${h.toFixed(2)}%`;
+      lgCapture.classList.add("visible");
+    });
+    [lgTop, lgLeft, lgH].forEach(sl => sl.addEventListener("input", applyLogoPanel));
+
     // Swipe up/down
     const isPortrait = () => window.matchMedia("(orientation: portrait)").matches;
     const isTabletP  = () => isPortrait() && window.innerWidth >= 600;
@@ -146,12 +263,26 @@
     };
     let expanded = false;
 
-    function setPos(pos, animate) {
-      if (!animate) vhs4.style.transition = "none";
-      vhs4.style.top       = pos.top + "%";
-      vhs4.style.height    = pos.h + "%";
-      vhs4.style.transform = `translateX(calc(-50% + ${pos.dx}px))`;
-      if (!animate) requestAnimationFrame(() => { vhs4.style.transition = ""; });
+    const etiquetaWrap = document.getElementById("etiqueta-wrap");
+
+    function setPos(pos, logoPos, animate) {
+      const els = [vhs4, etiquetaWrap];
+      if (!animate) {
+        els.forEach(el => el.style.transition = "none");
+        logo.style.transition = "none";
+      }
+      els.forEach(el => {
+        el.style.top       = pos.top + "%";
+        el.style.height    = pos.h + "%";
+        el.style.transform = `translateX(calc(-50% + ${pos.dx}px))`;
+      });
+      logo.style.top       = logoPos.top + "%";
+      logo.style.height    = logoPos.h + "%";
+      logo.style.transform = `translateX(calc(-50% + ${logoPos.dx}px))`;
+      if (!animate) requestAnimationFrame(() => {
+        els.forEach(el => el.style.transition = "");
+        logo.style.transition = "";
+      });
     }
 
     const stage = document.getElementById("stage");
@@ -167,8 +298,8 @@
       const dy = ty0 - e.changedTouches[0].clientY;
       const dx = Math.abs(txStart - e.changedTouches[0].clientX);
       if (Math.abs(dy) < 30 || dx > Math.abs(dy)) return; // muy corto o más horizontal
-      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   true); }
-      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), true); }
+      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); }
+      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); }
     }, { passive: true });
 
     // Mouse: drag vertical
@@ -177,14 +308,14 @@
     window.addEventListener("mouseup", e => {
       const dy = my0 - e.clientY;
       if (Math.abs(dy) < 30) return;
-      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   true); }
-      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), true); }
+      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); }
+      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); }
     });
 
     // Al rotar, volver al estado colapsado con los valores del nuevo formato
     window.addEventListener("orientationchange", () => {
       expanded = false;
-      setTimeout(() => setPos(POS_DOWN(), false), 100);
+      setTimeout(() => setPos(POS_DOWN(), LOGO_DEFAULT(), false), 100);
     });
 
 
