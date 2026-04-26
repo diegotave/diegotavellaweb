@@ -241,11 +241,14 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
 body::after {
   content: '';
   position: fixed;
-  inset: 10px;
+  top: 10px;
+  bottom: 10px;
+  left: max(10px, calc(50vw - 950px));
+  right: max(10px, calc(50vw - 950px));
   border: 2px solid #fff;
   border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
   background: transparent;
-  box-shadow: 0 0 0 20px #000;
+  box-shadow: 0 0 0 100vmax #000;
   pointer-events: none;
   z-index: 9999;
 }
@@ -352,9 +355,9 @@ body.orange #btn-orange { box-shadow: inset 0 0 0 2px #000; }
 body.light                { background: #fff; }
 body.light #stage         { background: #fff; }
 body.light .vhs-label     { color: #000; }
-body.light::after         { border-color: #000; box-shadow: 0 0 0 20px #fff; }
-body.orange::after        { border-color: #fff; box-shadow: 0 0 0 20px rgb(255, 170, 0); }
-body.red::after           { border-color: #fff; box-shadow: 0 0 0 20px #FF2200; }
+body.light::after         { border-color: #000; box-shadow: 0 0 0 100vmax #fff; }
+body.orange::after        { border-color: #fff; box-shadow: 0 0 0 100vmax rgb(255, 170, 0); }
+body.red::after           { border-color: #fff; box-shadow: 0 0 0 100vmax #FF2200; }
 body.light #vhs-ruler     { color: #000; }
 body.orange #home-fondo   { background: #fff; }
 body.red    #home-fondo   { background: #fff; }

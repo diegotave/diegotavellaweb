@@ -8,7 +8,7 @@ Portfolio personal de Diego Tavella. Sitio web de acceso restringido (password g
 
 | Archivo | Rol |
 |---|---|
-| `index.html` | Entrada — password gate + video intro (`logointro3.webm`) → redirige a `hom3dtv.html` |
+| `index.html` | Entrada — password gate + video intro (`logointro.webm` / `logointrodark.webm` en dark mode) → redirige a `hom3dtv.html` |
 | `index.css` | Estilos compartidos por `index.html` y `hom3dtv.html` |
 | `hom3dtv.html` | Home — VHS cassette animado, botón "play demo" y "watch some work" |
 | `workka.html` | Works — videoteca de VHS spines + player |
@@ -21,12 +21,14 @@ Portfolio personal de Diego Tavella. Sitio web de acceso restringido (password g
 ## Flujo de navegación
 
 ```
-index.html (gate + logointro3.webm)
+index.html (gate + logointro.webm)
     → hom3dtv.html (VHS cassette)
         → [click "play demo"]  → workka.html (autoplay video 1)
         → [click "watch work"] → introwork.webm overlay → workka.html
         → [back desde workka]  → pushBack animation → hom3dtv.html
 ```
+
+**Transición index → hom3dtv:** navegación directa sin fade (hom3dtv está prefetcheada).
 
 **Transición hom3dtv → workka:** se crea un `<video>` overlay con `introwork.webm` sobre la página, `hom3dtv` se oculta a los 5 frames (~167ms), workka arranca cuando el video termina (`skipIntro` en sessionStorage).
 
@@ -43,9 +45,9 @@ El tema se aplica como clase en `<body>` mediante un inline script al inicio del
 | Clase body | Fondo | Frame border |
 |---|---|---|
 | `.orange` (default) | `rgb(255,170,0)` | blanco |
-| *(ninguna = dark)* | `#000` | blanco |
+| `.dark` | `#000` | blanco |
 | `.red` | `#FF2200` | blanco |
-| `.light` | `#fff` | negro |
+| *(ninguna = light)* | `#fff` | negro |
 
 El frame visible es un `body::after` con `position:fixed; inset:10px; box-shadow: 0 0 0 20px [color]` — se define en `index.css` (para index/hom3dtv) y en `workka.css` (para workka).
 
@@ -140,15 +142,17 @@ Mismo diseño que `#boton-cuadrado` de hom3dtv. Texto: "home".
 
 ---
 
-## Breakpoints definidos (implementación pendiente)
+## Sizing de video (index + hom3dtv)
 
-| Target | Media query |
-|---|---|
-| **Landscape desktop** | base (sin query) — ≥ 1024px landscape |
-| **Landscape tablet** | `@media (orientation: landscape) and (max-width: 1366px)` |
-| **Portrait phone** | `@media (orientation: portrait) and (max-width: 767px)` |
+`#v` (logointro) y `#vhs` (vhsindex1) usan el mismo modelo de sizing:
 
-> Actualmente el portrait usa solo `@media (orientation: portrait)` sin límite de ancho. Pendiente acotar a `max-width: 767px` y separar estilos por breakpoint con valores fijos en lugar de fórmulas fluidas.
+```css
+height: 100%; width: auto; left: 50%; transform: translateX(-50%); bottom: 0;
+```
+
+- En stage 16:9 (1920×1080 máximo): ancho natural = 1920px, llena el stage completo.
+- En viewports angostos o en portrait: el alto llena el stage, el ancho desborda y se cropea por `overflow: hidden` del stage.
+- La transición entre páginas es continua (sin fade): ambos videos tienen el mismo tamaño y posición al corte.
 
 ---
 
@@ -156,8 +160,9 @@ Mismo diseño que `#boton-cuadrado` de hom3dtv. Texto: "home".
 
 | Archivo | Uso |
 |---|---|
-| `logointro3.webm` | Intro animada en index.html |
-| `vhsindex.webm` | VHS cassette animado en hom3dtv (forward) |
+| `logointro.webm` | Intro animada en index.html (todos los temas excepto dark) |
+| `logointrodark.webm` | Intro animada en index.html en dark mode |
+| `vhsindex1.webm` | VHS cassette animado en hom3dtv (forward) |
 | `vhsindex-reverse.webm` | VHS cassette en reversa — generado con `ffmpeg -vf reverse` |
 | `avediting.webm` | Overlay de avediting que dispara cerca del final de cada loop VHS |
 | `introwork.webm` | Transición hom3dtv → workka |

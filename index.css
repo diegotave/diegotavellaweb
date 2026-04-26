@@ -322,11 +322,11 @@ body {
 
 #v {
   position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  width: 100%;
   height: 100%;
-  width: auto;
+  object-fit: cover;
+  object-position: center;
   display: block;
   z-index: 2;
   mix-blend-mode: multiply;
@@ -478,11 +478,14 @@ body.red #blend-list li    { color: #000; }
 body::after {
   content: '';
   position: fixed;
-  inset: 10px;
+  top: 10px;
+  bottom: 10px;
+  left: max(10px, calc(50vw - 950px));
+  right: max(10px, calc(50vw - 950px));
   border: var(--frame-border-width) solid #000;
   border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
   background: transparent;
-  box-shadow: 0 0 0 20px #fff;
+  box-shadow: 0 0 0 100vmax #fff;
   pointer-events: none;
   z-index: 9999;
   animation: frame-in 200ms ease forwards;
@@ -547,7 +550,7 @@ body.dark #gate-field        { border-color: #fff; }
 body.dark #gate-input        { background: #000; color: #fff; }
 body.dark #gate-btn          { background: #fff; }
 body.dark #gate-err          { color: #fff; }
-body.dark::after             { border-color: #fff; box-shadow: 0 0 0 20px #000; }
+body.dark::after             { border-color: #fff; box-shadow: 0 0 0 100vmax #000; }
 body.dark #boton-texto-watch { color: #fff; }
 body.dark #logo-dtv          { filter: invert(1); }
 body.dark #vhs               { mix-blend-mode: hard-light; filter: invert(1); }
@@ -557,14 +560,14 @@ body.dark #vhs-etiqueta      { z-index: 2; }
 
 /* ── ORANGE MODE ─────────────────────────────────────────────────────────── */
 body.orange                  { background: rgb(255, 170, 0); }
-body.orange::after           { border-color: #fff; box-shadow: 0 0 0 20px rgb(255, 170, 0); }
+body.orange::after           { border-color: #fff; box-shadow: 0 0 0 100vmax rgb(255, 170, 0); }
 body.orange #vhs             { mix-blend-mode: multiply; filter: invert(1); }
 body.orange #boton-fondo     { background: #fff; }
 body.orange #boton-circulo   { background: #fff; }
 
 /* ── RED MODE ────────────────────────────────────────────────────────────── */
 body.red                     { background: #FF2200; }
-body.red::after              { border-color: #fff; box-shadow: 0 0 0 20px #FF2200; }
+body.red::after              { border-color: #fff; box-shadow: 0 0 0 100vmax #FF2200; }
 body.red #vhs                { mix-blend-mode: multiply; filter: invert(1); }
 body.red #boton-fondo        { background: #fff; }
 body.red #boton-circulo      { background: #fff; }

@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diego Tavella</title>
-  <link rel="stylesheet" href="index.css?v=4">
+  <link rel="stylesheet" href="index.css?v=5">
   <script>(function(){var t=localStorage.getItem("theme")||"orange";var s=t==="dark"?"logointrodark.webm":"logointro.webm";var l=document.createElement("link");l.rel="preload";l.as="video";l.type="video/webm";l.href="assets/videos/"+s;document.head.appendChild(l);})();</script>
   <link rel="preload" href="assets/videos/vhsindex1.webm" as="video" type="video/webm">
   <link rel="preload" href="assets/images/etiquetavhs2.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/images/logodtvfixed.webp" as="image" type="image/webp">
   <link rel="prefetch" href="hom3dtv.html">
+  <link rel="prefetch" href="assets/videos/saltovhs.webm">
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
 
@@ -59,6 +60,7 @@
     function goHome() {
       if (navigated) return;
       navigated = true;
+      sessionStorage.setItem("vhsJump", "1");
       window.location.href = "hom3dtv.html";
     }
 
