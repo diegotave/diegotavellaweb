@@ -10,7 +10,7 @@
   <link rel="preload" href="assets/images/etiquetavhs2.webp" as="image" type="image/webp">
   <link rel="preload" href="assets/images/logodtvfixed.webp" as="image" type="image/webp">
   <link rel="prefetch" href="hom3dtv.html">
-  <link rel="prefetch" href="assets/videos/saltovhs.webm">
+  <link rel="preload" href="assets/videos/saltovhs.webm" as="video" type="video/webm">
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
 
@@ -56,12 +56,18 @@
   <script>
     const v = document.getElementById("v");
     let navigated = false;
+    let hom3dReady = false;
 
     function goHome() {
       if (navigated) return;
       navigated = true;
       sessionStorage.setItem("vhsJump", "1");
-      window.location.href = "hom3dtv.html";
+      if (hom3dReady) { window.location.href = "hom3dtv.html"; return; }
+      const deadline = Date.now() + 3000;
+      (function wait() {
+        if (hom3dReady || Date.now() >= deadline) window.location.href = "hom3dtv.html";
+        else requestAnimationFrame(wait);
+      })();
     }
 
     // Dev panel
@@ -96,6 +102,23 @@
     });
 
     function startVideo() {
+      // Precargar videos de hom3dtv en paralelo al intro
+      function makePreloader(src) {
+        const el = document.createElement("video");
+        el.muted = true; el.preload = "auto";
+        el.setAttribute("playsinline", "");
+        el.style.cssText = "position:fixed;width:0;height:0;opacity:0;pointer-events:none;";
+        const s = document.createElement("source");
+        s.src = src; s.type = 'video/webm; codecs="vp9"';
+        el.appendChild(s); document.body.appendChild(el); el.load();
+        return el;
+      }
+      // saltovhs es el primero en reproducirse al llegar a hom3dtv → prioridad alta
+      const preSalto = makePreloader("assets/videos/saltovhs.webm");
+      makePreloader("assets/videos/vhsindex1.webm");
+      preSalto.addEventListener("canplaythrough", () => { hom3dReady = true; }, { once: true });
+      setTimeout(() => { hom3dReady = true; }, 4000); // fallback por si tarda mucho
+
       v.addEventListener("loadedmetadata", () => {
         const stopAt = v.duration - 0.04;
         v.addEventListener("timeupdate", () => {

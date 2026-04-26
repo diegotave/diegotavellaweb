@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diego Tavella</title>
+  <link rel="stylesheet" href="index.css?v=5">
+  <style>
+    #vhs4 {
+      position: absolute;
+      left: 50%;
+      top: 68.70%;
+      height: 53.50%;
+      width: auto;
+      display: block;
+      z-index: 1;
+      mix-blend-mode: exclusion;
+      pointer-events: none;
+      transform: translateX(calc(-50% + -1px));
+    }
+    body.dark   #vhs4 { mix-blend-mode: hard-light; filter: invert(1); }
+    body.orange #vhs4 { mix-blend-mode: multiply;   filter: invert(1); }
+    body.red    #vhs4 { mix-blend-mode: multiply;   filter: invert(1); }
+
+    #vhs4 { transition: top 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94), height 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+    @media (orientation: portrait) and (max-width: 599px) {
+      #vhs4 { top: 80.10%; height: 26.40%; transform: translateX(-50%); }
+    }
+    @media (orientation: portrait) and (min-width: 600px) {
+      #vhs4 { top: 71.00%; height: 46.60%; transform: translateX(calc(-50% + 4px)); }
+    }
+
+    #pos-panel {
+      position: fixed;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 9999;
+      background: #fff;
+      color: #000;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 220px;
+    }
+    #pos-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    #pos-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
+    #pos-panel input[type=range] { flex: 1; accent-color: #000; }
+    #pos-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
+    #pos-btns { display: flex; gap: 6px; }
+    #pos-btns button {
+      flex: 1; border: 1.5px solid #000; background: #fff; color: #000;
+      font-family: inherit; font-size: 10px; letter-spacing: 0.08em;
+      padding: 5px 0; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+    }
+    #pos-btns button:hover { background: #000; color: #fff; }
+    #pos-capture {
+      font-size: 10px; letter-spacing: 0.04em; background: #f0f0f0;
+      border-radius: 4px; padding: 6px 8px; line-height: 1.6;
+      display: none; user-select: all;
+    }
+    #pos-capture.visible { display: block; }
+  </style>
+</head>
+<body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
+
+  <div id="pos-panel">
+    <label><span class="lbl">top</span><input type="range" id="sl-top" min="-20" max="100" step="0.1" value="68.70"><span class="val" id="vl-top">68.70%</span></label>
+    <label><span class="lbl">offsetX</span><input type="range" id="sl-left" min="-400" max="400" step="1" value="-1"><span class="val" id="vl-left">-1px</span></label>
+    <label><span class="lbl">height</span><input type="range" id="sl-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="vl-h">53.50%</span></label>
+    <div id="pos-btns">
+      <button id="btn-reset">reset</button>
+      <button id="btn-capture">capturar</button>
+    </div>
+    <div id="pos-capture"></div>
+  </div>
+
+  <div id="stage">
+    <video id="vhs4" muted playsinline preload="auto" loop>
+      <source src="assets/videos/vhsentero.webm" type='video/webm; codecs="vp9"'>
+    </video>
+    <img id="vhs-etiqueta" src="assets/images/etiquetavhs2.webp" alt="">
+    <img id="logo-dtv" src="assets/images/logodtvfixed.webp" alt="">
+  </div>
+
+<div id="blend-panel">
+    <div id="blend-label">blend mode</div>
+    <ul id="blend-list">
+      <li id="nav-home3">home</li>
+      <li>contact</li>
+      <li data-theme="orange">orange<br>version</li>
+      <li data-theme="red">red<br>version</li>
+      <li data-theme="dark">dark<br>version</li>
+      <li data-theme="white">white<br>version</li>
+    </ul>
+  </div>
+
+  <script>
+    const vhs4 = document.getElementById("vhs4");
+    vhs4.play().catch(() => {});
+
+    // Dev: position panel
+    const slTop  = document.getElementById("sl-top");
+    const slLeft = document.getElementById("sl-left");
+    const slH    = document.getElementById("sl-h");
+    const capture = document.getElementById("pos-capture");
+
+    function applyPanel() {
+      const t = parseFloat(slTop.value), dx = parseFloat(slLeft.value), h = parseFloat(slH.value);
+      vhs4.style.top       = t + "%";
+      vhs4.style.transform = `translateX(calc(-50% + ${dx}px))`;
+      vhs4.style.height    = h + "%";
+      document.getElementById("vl-top").textContent  = t.toFixed(1) + "%";
+      document.getElementById("vl-left").textContent = dx.toFixed(0) + "px";
+      document.getElementById("vl-h").textContent    = h.toFixed(1) + "%";
+    }
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      slTop.value = 68.70; slLeft.value = -1; slH.value = 53.50;
+      capture.classList.remove("visible"); applyPanel();
+    });
+    document.getElementById("btn-capture").addEventListener("click", () => {
+      const t = parseFloat(slTop.value), dx = parseFloat(slLeft.value), h = parseFloat(slH.value);
+      capture.textContent = `top:${t.toFixed(2)}%  offsetX:${dx}px  height:${h.toFixed(2)}%`;
+      capture.classList.add("visible");
+    });
+    [slTop, slLeft, slH].forEach(sl => sl.addEventListener("input", applyPanel));
+
+    // Swipe up/down
+    const isPortrait = () => window.matchMedia("(orientation: portrait)").matches;
+    const isTabletP  = () => isPortrait() && window.innerWidth >= 600;
+    const isPhoneP   = () => isPortrait() && window.innerWidth <  600;
+
+    const POS_DOWN = () => {
+      if (isTabletP()) return { top: 71.00, dx:  4, h: 46.60 };
+      if (isPhoneP())  return { top: 80.10, dx:  0, h: 26.40 };
+                       return { top: 68.70, dx: -1, h: 53.50 };
+    };
+    const POS_UP = () => {
+      if (isTabletP()) return { top: 23.00, dx:  4, h: 46.60 }; // tablet swipe-up TBD
+      if (isPhoneP())  return { top: 68.70, dx:  1, h: 49.70 };
+                       return { top: 23.00, dx: -1, h: 53.50 };
+    };
+    let expanded = false;
+
+    function setPos(pos, animate) {
+      if (!animate) vhs4.style.transition = "none";
+      vhs4.style.top       = pos.top + "%";
+      vhs4.style.height    = pos.h + "%";
+      vhs4.style.transform = `translateX(calc(-50% + ${pos.dx}px))`;
+      if (!animate) requestAnimationFrame(() => { vhs4.style.transition = ""; });
+    }
+
+    const stage = document.getElementById("stage");
+    let ty0 = 0, txStart = 0, didSwipe = false;
+
+    stage.addEventListener("touchstart", e => {
+      ty0 = e.touches[0].clientY;
+      txStart = e.touches[0].clientX;
+      didSwipe = false;
+    }, { passive: true });
+
+    stage.addEventListener("touchend", e => {
+      const dy = ty0 - e.changedTouches[0].clientY;
+      const dx = Math.abs(txStart - e.changedTouches[0].clientX);
+      if (Math.abs(dy) < 30 || dx > Math.abs(dy)) return; // muy corto o más horizontal
+      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   true); }
+      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), true); }
+    }, { passive: true });
+
+    // Mouse: drag vertical
+    let my0 = 0;
+    stage.addEventListener("mousedown", e => { my0 = e.clientY; });
+    window.addEventListener("mouseup", e => {
+      const dy = my0 - e.clientY;
+      if (Math.abs(dy) < 30) return;
+      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   true); }
+      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), true); }
+    });
+
+    // Al rotar, volver al estado colapsado con los valores del nuevo formato
+    window.addEventListener("orientationchange", () => {
+      expanded = false;
+      setTimeout(() => setPos(POS_DOWN(), false), 100);
+    });
+
+
+    document.getElementById("nav-home3").addEventListener("click", () => {
+      window.location.href = "hom3dtv.html";
+    });
+
+    document.querySelectorAll("#blend-list li").forEach(li => {
+      li.addEventListener("click", () => {
+        if (li.textContent.trim() === "contact") {
+          window.location.href = "contact.html";
+        } else if (li.dataset.theme) {
+          document.body.classList.remove("dark", "orange", "red");
+          if      (li.dataset.theme === "dark")   { document.body.classList.add("dark");   localStorage.setItem("theme","dark"); }
+          else if (li.dataset.theme === "orange") { document.body.classList.add("orange"); localStorage.setItem("theme","orange"); }
+          else if (li.dataset.theme === "red")    { document.body.classList.add("red");    localStorage.setItem("theme","red"); }
+          else                                    { localStorage.setItem("theme","light"); }
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

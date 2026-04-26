@@ -58,6 +58,7 @@
   <div id="blend-panel">
     <div id="blend-label">blend mode</div>
     <ul id="blend-list">
+      <li id="nav-alt4">home alternativo</li>
       <li>contact</li>
       <li data-theme="orange">orange<br>version</li>
       <li data-theme="red">red<br>version</li>
@@ -755,6 +756,10 @@
       shelfTriggered  = true;
       activateShelf();
     }
+
+    document.getElementById("nav-alt4").addEventListener("click", () => {
+      window.location.href = "hom4dtv.html";
+    });
 
     // ── PANEL DE TEMAS ────────────────────────────────────────────────────────
     document.querySelectorAll("#blend-list li").forEach(li => {
