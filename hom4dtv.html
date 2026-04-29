@@ -523,7 +523,7 @@
     [flSlTop, flSlLeft, flSlH].forEach(sl => sl.addEventListener("input", applyFlPanel));
 
     // Swipe up/down
-    const isPortrait = () => window.matchMedia("(orientation: portrait)").matches;
+    const isPortrait = () => window.innerHeight > window.innerWidth;
 
     const POS_DOWN = () => {
       if (isPortrait()) return { top: 69.90, dx:  1, h: 31.40 };
@@ -600,11 +600,17 @@
     });
 
     // Al rotar, volver al estado colapsado con los valores del nuevo formato
-    window.addEventListener("orientationchange", () => {
+    let lastOrientation = isPortrait();
+    function onOrientationChange() {
+      const nowPortrait = isPortrait();
+      if (nowPortrait === lastOrientation) return;
+      lastOrientation = nowPortrait;
       expanded = false;
       setFlechitaVisible(false);
-      setTimeout(() => setPos(POS_DOWN(), LOGO_DEFAULT(), false), 100);
-    });
+      setTimeout(() => setPos(POS_DOWN(), LOGO_DEFAULT(), false), 350);
+    }
+    window.addEventListener("orientationchange", () => setTimeout(onOrientationChange, 350));
+    window.addEventListener("resize", onOrientationChange);
 
 
     document.getElementById("nav-home3").addEventListener("click", () => {
