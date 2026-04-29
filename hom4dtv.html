@@ -43,11 +43,8 @@
       width: 100%; height: 100%;
       pointer-events: none;
     }
-    @media (orientation: portrait) and (max-width: 599px) {
-      #vhs4, #etiqueta-wrap { top: 80.10%; height: 26.40%; transform: translateX(-50%); }
-    }
-    @media (orientation: portrait) and (min-width: 600px) {
-      #vhs4, #etiqueta-wrap { top: 71.00%; height: 46.60%; transform: translateX(calc(-50% + 4px)); }
+    @media (orientation: portrait) {
+      #vhs4, #etiqueta-wrap { top: 69.90%; height: 31.40%; transform: translateX(calc(-50% + 1px)); }
     }
 
     /* Logo */
@@ -209,6 +206,24 @@
     }
     .vp-btn:hover { background: #000; color: #fff; border-color: #000; }
 
+    /* VHS outline toggle */
+    #vhs-outline {
+      position: absolute;
+      left: 50%;
+      top: 68.70%;
+      height: 53.50%;
+      width: auto;
+      transform: translateX(calc(-50% + -1px));
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+      transition: top 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  height 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #vhs-outline.visible { display: block; }
+    @media (orientation: portrait) {
+      #vhs-outline { top: 69.90%; height: 31.40%; transform: translateX(calc(-50% + 1px)); }
+    }
     /* Grid toggle — dentro del dropdown */
     #grid-toggle {
       background: none;
@@ -240,6 +255,11 @@
   <div id="tools-menu">
     <button id="tools-btn">tools</button>
     <div id="tools-dropdown">
+
+      <div class="tool-row">
+        <span class="tool-row-label">vhs outline</span>
+        <button id="vhs-outline-toggle">off</button>
+      </div>
 
       <div class="tool-row">
         <span class="tool-row-label">grid</span>
@@ -337,6 +357,7 @@
         <rect x="318" y="200" width="467" height="270" rx="15" fill="none" stroke="#000" stroke-width="2" vector-effect="non-scaling-stroke"/>
       </svg>
     </div>
+    <img id="vhs-outline" src="assets/images/vhs-outline.svg" alt="">
     <img id="logo-exacto" src="assets/images/logoexacto.png" alt="">
     <img id="flechita" src="assets/images/flechita.svg" alt="">
   </div>
@@ -391,8 +412,8 @@
     const lgH      = document.getElementById("lg-h");
     const lgCapture = document.getElementById("logo-capture");
     const LOGO_DEFAULT = () => {
-      if (isPhoneP()) return { top: 38.70, dx: 0, h: 8.40 };
-      return { top: 38.70, dx: 4, h: 20.60 };
+      if (isPortrait()) return { top: 38.70, dx: 0, h: 8.40 };
+                        return { top: 38.70, dx: 4, h: 20.60 };
     };
 
     // Devuelve la posición X en px (relativa al stage) de la línea vertical col (1-indexed)
@@ -415,10 +436,8 @@
     }
 
     const LOGO_UP = () => {
-      if (isTabletP()) return { top:  9.80, dx: 269,  h: 12.80 };
-      if (isPhoneP())  return { top: 17.20, dx:  -4,  h:  8.40 };
-      if (isTabletL()) return { top:  8.70, dx: 274,  h: 13.70 };
-                       return { top: 10.10, dx: 312,  h: 12.60 };
+      if (isPortrait()) return { top: 17.20, dx:  -4, h:  8.40 };
+                        return { top: 10.10, dx: 312, h: 12.60 };
     };
 
     function applyLogoPanel() {
@@ -449,9 +468,8 @@
     const etCapture = document.getElementById("etiqueta-capture");
 
     const ET_DEFAULT = () => {
-      if (isTabletP()) return { top: 71.00, dx:  4, h: 46.60 };
-      if (isPhoneP())  return { top: 69.90, dx:  1, h: 31.40 };
-                       return { top: 68.70, dx: -1, h: 53.50 };
+      if (isPortrait()) return { top: 69.90, dx:  1, h: 31.40 };
+                        return { top: 68.70, dx: -1, h: 53.50 };
     };
 
     function applyEtPanel() {
@@ -506,19 +524,14 @@
 
     // Swipe up/down
     const isPortrait = () => window.matchMedia("(orientation: portrait)").matches;
-    const isTabletP  = () =>  isPortrait() && window.innerWidth >= 600;
-    const isPhoneP   = () =>  isPortrait() && window.innerWidth <  600;
-    const isTabletL  = () => !isPortrait() && window.innerWidth <= 1024;
 
     const POS_DOWN = () => {
-      if (isTabletP()) return { top: 71.00, dx:  4, h: 46.60 };
-      if (isPhoneP())  return { top: 69.90, dx:  1, h: 31.40 };
-                       return { top: 68.70, dx: -1, h: 53.50 };
+      if (isPortrait()) return { top: 69.90, dx:  1, h: 31.40 };
+                        return { top: 68.70, dx: -1, h: 53.50 };
     };
     const POS_UP = () => {
-      if (isTabletP()) return { top: 23.00, dx:  4, h: 46.60 };
-      if (isPhoneP())  return { top: 29.40, dx:  2, h: 42.20 };
-                       return { top: 23.00, dx: -1, h: 53.50 };
+      if (isPortrait()) return { top: 29.40, dx:  2, h: 42.20 };
+                        return { top: 23.00, dx: -1, h: 53.50 };
     };
     let expanded = false;
 
@@ -678,6 +691,17 @@
     }
 
     gridToggle.addEventListener('click', toggleGrid);
+
+    // VHS outline toggle
+    const vhsOutlineEl     = document.getElementById('vhs-outline');
+    const vhsOutlineToggle = document.getElementById('vhs-outline-toggle');
+    let vhsOutlineVisible  = false;
+    vhsOutlineToggle.addEventListener('click', () => {
+      vhsOutlineVisible = !vhsOutlineVisible;
+      vhsOutlineToggle.classList.toggle('active', vhsOutlineVisible);
+      vhsOutlineToggle.textContent = vhsOutlineVisible ? 'on' : 'off';
+      vhsOutlineEl.classList.toggle('visible', vhsOutlineVisible);
+    });
 
     // Open as popup at target size
     const POPUP_SIZES = {
