@@ -49,16 +49,20 @@
 
     /* Logo */
     #logo-exacto {
-      position: absolute;
+      position: fixed;
       left: 50%;
       top: 38.70%;
       height: 20.60%;
       transform: translateX(calc(-50% + 4px));
       pointer-events: none;
-      z-index: 4;
+      z-index: 10000;
       transition: top 620ms cubic-bezier(0.16, 1, 0.3, 1),
                   height 620ms cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+                  transform 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.stage-expanded #logo-exacto {
+      filter: brightness(0);
     }
 
     /* Tools menu */
@@ -210,20 +214,22 @@
     #vhs-outline {
       position: absolute;
       left: 50%;
-      top: 70.40%;
+      top: 70.20%;
       height: 53.50%;
       width: auto;
       transform: translateX(calc(-50% + -2px));
       pointer-events: none;
       z-index: 5;
-      display: none;
-      transition: top 900ms cubic-bezier(0.16, 1, 0.3, 1),
-                  height 900ms cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+      opacity: 0;
+      transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+                  top 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  height 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    #vhs-outline.visible { display: block; }
-    @media (orientation: portrait) {
-      #vhs-outline { top: 69.90%; height: 31.40%; transform: translateX(calc(-50% + 1px)); }
+    #vhs-outline.visible {
+      opacity: 1;
+      top: 24.00%;
+      transform: translateX(calc(-50% + -2px));
     }
     /* Grid toggle — dentro del dropdown */
     #grid-toggle {
@@ -249,6 +255,61 @@
       display: none;
     }
     #grid-canvas.visible { display: block; }
+
+    /* Stage transform — VHS shape */
+    #stage {
+      clip-path: inset(0 0 0 0 round 0px);
+      transition: clip-path 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.stage-expanded #stage {
+      clip-path: inset(
+        21.25vh
+        max(0px, calc(50vw - 49.7vh))
+        22.25vh
+        max(0px, calc(50vw - 49.9vh))
+        round 4px 4px 24px 24px
+      );
+      transition: clip-path 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body::after,
+    body.orange::after,
+    body.dark::after,
+    body.red::after {
+      border-color: #000;
+    }
+    body::after {
+      transition: top          620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  bottom       620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  left         620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  right        620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  border-radius 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  border-color 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    body.stage-expanded::after {
+      top:    21.25vh;
+      bottom: 22.25vh;
+      left:   max(10px, calc(50vw - 49.9vh));
+      right:  max(10px, calc(50vw - 49.7vh));
+      border-radius: 4px 4px 24px 24px;
+      border-color: #000;
+    }
+    body.stage-goto-workka #stage {
+      clip-path: inset(
+        12.75vh
+        max(0px, calc(30vw - 29.82vh))
+        13.35vh
+        max(0px, calc(30vw - 29.94vh))
+        round 4px 4px 24px 24px
+      );
+    }
+    body.stage-goto-workka::after {
+      top:    12.75vh;
+      bottom: 13.35vh;
+      left:   max(10px, calc(30vw - 29.94vh));
+      right:  max(10px, calc(30vw - 29.82vh));
+      border-radius: 4px 4px 24px 24px;
+      border-color: #000;
+    }
   </style>
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
@@ -376,9 +437,9 @@
       </svg>
     </div>
     <img id="vhs-outline" src="assets/images/vhs-outline.svg" alt="">
-    <img id="logo-exacto" src="assets/images/logoexacto.png" alt="">
     <img id="flechita" src="assets/images/flechita.svg" alt="">
   </div>
+  <img id="logo-exacto" src="assets/images/logoexacto.png" alt="">
 
 <div id="blend-panel">
     <div id="blend-label">blend mode</div>
@@ -454,8 +515,13 @@
     }
 
     const LOGO_UP = () => {
-      if (isPortrait()) return { top: 17.20, dx:  -4, h:  8.40 };
-                        return { top: 10.10, dx: 312, h: 12.60 };
+      if (isPortrait()) return { top: 17.20, dx: -4, h: 8.40 };
+      const rightInset  = Math.max(10, 0.5 * window.innerWidth - 0.497 * window.innerHeight);
+      const windowRight = window.innerWidth - rightInset;
+      const logoH       = window.innerHeight * 0.126;
+      const logoW       = logo.naturalWidth > 0 ? logoH * (logo.naturalWidth / logo.naturalHeight) : logoH * 3;
+      const dx          = Math.round((windowRight - window.innerWidth / 2) - logoW / 2);
+      return { top: 7.85, dx, h: 12.60 };
     };
 
     function applyLogoPanel() {
@@ -615,22 +681,32 @@
       didSwipe = false;
     }, { passive: true });
 
+    function gotoWorkka() {
+      sessionStorage.setItem('from-hom4dtv', '1');
+      document.body.classList.add('stage-goto-workka');
+      setTimeout(() => { window.location.href = 'workka.html'; }, 640);
+    }
+
     stage.addEventListener("touchend", e => {
       const dy = ty0 - e.changedTouches[0].clientY;
       const dx = Math.abs(txStart - e.changedTouches[0].clientX);
       if (Math.abs(dy) < 30 || dx > Math.abs(dy)) return;
-      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); setFlechitaVisible(true); }
-      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); setFlechitaVisible(false); }
+      if      (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(), LOGO_UP(), true); document.body.classList.add('stage-expanded');    setFlechitaVisible(true); }
+      else if (dy > 0 &&  expanded) { gotoWorkka(); return; }
+      else if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); document.body.classList.remove('stage-expanded'); setFlechitaVisible(false); }
     }, { passive: true });
 
     // Mouse: drag vertical
-    let my0 = 0;
-    stage.addEventListener("mousedown", e => { my0 = e.clientY; });
+    let my0 = 0, mousedownOnStage = false;
+    stage.addEventListener("mousedown", e => { my0 = e.clientY; mousedownOnStage = true; });
     window.addEventListener("mouseup", e => {
+      if (!mousedownOnStage) return;
+      mousedownOnStage = false;
       const dy = my0 - e.clientY;
       if (Math.abs(dy) < 30) return;
-      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); setFlechitaVisible(true); }
-      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); setFlechitaVisible(false); }
+      if      (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(), LOGO_UP(), true); document.body.classList.add('stage-expanded');    setFlechitaVisible(true); }
+      else if (dy > 0 &&  expanded) { gotoWorkka(); return; }
+      else if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); document.body.classList.remove('stage-expanded'); setFlechitaVisible(false); }
     });
 
     // Al rotar, volver al estado colapsado con los valores del nuevo formato
@@ -641,6 +717,7 @@
       lastOrientation = nowPortrait;
       expanded = false;
       setFlechitaVisible(false);
+      document.body.classList.remove('stage-expanded');
       setTimeout(() => setPos(POS_DOWN(), LOGO_DEFAULT(), false), 350);
     }
     window.addEventListener("orientationchange", () => setTimeout(onOrientationChange, 350));

@@ -8,6 +8,23 @@
   <link rel="preconnect" href="https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev" crossorigin>
   <link rel="dns-prefetch" href="https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev">
   <script>if(sessionStorage.getItem("pushIn")==="1"){document.documentElement.dataset.pushIn="1"}</script>
+  <script>if(sessionStorage.getItem("from-hom4dtv")==="1"){document.documentElement.dataset.fromHom4dtv="1";sessionStorage.removeItem("from-hom4dtv")}</script>
+  <style>
+    body::after {
+      transition: top 620ms cubic-bezier(0.16,1,0.3,1),
+                  bottom 620ms cubic-bezier(0.16,1,0.3,1),
+                  left 620ms cubic-bezier(0.16,1,0.3,1),
+                  right 620ms cubic-bezier(0.16,1,0.3,1),
+                  border-radius 620ms cubic-bezier(0.16,1,0.3,1);
+    }
+    html[data-from-hom4dtv] body::after {
+      top:    12.75vh;
+      bottom: 13.35vh;
+      left:   max(10px, calc(30vw - 29.94vh));
+      right:  max(10px, calc(30vw - 29.82vh));
+      border-radius: 4px 4px 24px 24px;
+    }
+  </style>
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="light"?"light":t==="dark"?"":t==="red"?"red":"orange";})()</script><script>(function(){function s(){var p=screen.orientation?screen.orientation.type.startsWith("portrait"):window.innerHeight>=window.innerWidth;document.body.classList.toggle("is-portrait",p)}s();window.addEventListener("resize",s);if(screen.orientation)screen.orientation.addEventListener("change",s)})()</script>
 
@@ -53,7 +70,7 @@
     </div>
 
   </div>
-  <div id="frame" style="position:fixed;inset:10px;pointer-events:none"></div>
+  <div id="frame" style="position:fixed;inset:5vh 10px;pointer-events:none"></div>
 
   <div id="blend-panel">
     <div id="blend-label">blend mode</div>
@@ -209,12 +226,14 @@
       if (!v) return;
       const vR = v.getBoundingClientRect();
 
+      document.body.classList.add('vhs-elevated');
+
       let dy = (frameR.top + frameR.height / 2) - (vR.top + vR.height / 2);
-      if (vR.top    + dy < frameR.top)    dy += frameR.top    - (vR.top    + dy);
-      if (vR.bottom + dy > frameR.bottom) dy -= (vR.bottom + dy) - frameR.bottom;
+      if      (vR.top    + dy < frameR.top)    dy = frameR.top    - vR.top;
+      else if (vR.bottom + dy > frameR.bottom) dy = frameR.bottom - vR.bottom;
 
       elevatedDY    = dy;
-      v.style.transition = "transform 800ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+      v.style.transition = "transform 700ms cubic-bezier(0.16, 1, 0.3, 1)";
       v.style.transform  = `translateY(${dy.toFixed(1)}px)`;
 
       if (v._leaveHandler) v.removeEventListener("mouseleave", v._leaveHandler);
@@ -314,6 +333,7 @@
       elevatedIdx   = -1;
       elevatedDY    = 0;
       elevatedScale = 1;
+      document.body.classList.remove('vhs-elevated');
       hideRuler();
     }
 
