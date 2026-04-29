@@ -123,7 +123,7 @@
       text-transform: uppercase;
     }
     #grid-toggle.active { background: #000; color: #fff; border-color: #000; }
-    #pos-panel, #logo-panel, #etiqueta-panel, #flechita-panel {
+    .dev-panel {
       color: #000;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -133,7 +133,7 @@
       gap: 8px;
       border-bottom: 1px solid rgba(0,0,0,0.07);
     }
-    #flechita-panel { border-bottom: none; }
+    .dev-panel:last-child { border-bottom: none; }
     .panel-header { display: flex; align-items: center; justify-content: space-between; }
     .panel-id { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.45; }
     .panel-collapse {
@@ -144,23 +144,23 @@
     .panel-collapse:hover { opacity: 0.7; }
     .panel-body { display: flex; flex-direction: column; gap: 8px; }
     .panel-body.collapsed { display: none; }
-    #pos-panel label, #logo-panel label, #etiqueta-panel label, #flechita-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    #pos-panel label span.lbl, #logo-panel label span.lbl, #etiqueta-panel label span.lbl, #flechita-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
-    #pos-panel input[type=range], #logo-panel input[type=range], #etiqueta-panel input[type=range], #flechita-panel input[type=range] { flex: 1; accent-color: #000; }
-    #pos-panel span.val, #logo-panel span.val, #etiqueta-panel span.val, #flechita-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
-    #pos-btns, #logo-btns, #etiqueta-btns, #flechita-btns { display: flex; gap: 6px; }
-    #pos-btns button, #logo-btns button, #etiqueta-btns button, #flechita-btns button {
+    .dev-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    .dev-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
+    .dev-panel input[type=range] { flex: 1; accent-color: #000; }
+    .dev-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
+    .panel-btns { display: flex; gap: 6px; }
+    .panel-btns button {
       flex: 1; border: 1.5px solid #000; background: #fff; color: #000;
       font-family: inherit; font-size: 10px; letter-spacing: 0.08em;
       padding: 5px 0; border-radius: 4px; cursor: pointer; text-transform: uppercase;
     }
-    #pos-btns button:hover, #logo-btns button:hover, #etiqueta-btns button:hover, #flechita-btns button:hover { background: #000; color: #fff; }
-    #pos-capture, #logo-capture, #etiqueta-capture, #flechita-capture {
+    .panel-btns button:hover { background: #000; color: #fff; }
+    .panel-capture {
       font-size: 10px; letter-spacing: 0.04em; background: #f0f0f0;
       border-radius: 4px; padding: 6px 8px; line-height: 1.6;
       display: none; user-select: all;
     }
-    #pos-capture.visible, #logo-capture.visible, #etiqueta-capture.visible, #flechita-capture.visible { display: block; }
+    .panel-capture.visible { display: block; }
     /* Flechita SVG overlay */
     #flechita {
       position: absolute;
@@ -210,15 +210,16 @@
     #vhs-outline {
       position: absolute;
       left: 50%;
-      top: 68.70%;
+      top: 70.40%;
       height: 53.50%;
       width: auto;
-      transform: translateX(calc(-50% + -1px));
+      transform: translateX(calc(-50% + -2px));
       pointer-events: none;
       z-index: 5;
       display: none;
-      transition: top 620ms cubic-bezier(0.16, 1, 0.3, 1),
-                  height 620ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: top 900ms cubic-bezier(0.16, 1, 0.3, 1),
+                  height 900ms cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     #vhs-outline.visible { display: block; }
     @media (orientation: portrait) {
@@ -276,7 +277,7 @@
         <button class="vp-btn" data-vp="phone-v">phone</button>
       </div>
 
-      <div id="pos-panel">
+      <div id="pos-panel" class="dev-panel">
         <div class="panel-header">
           <span class="panel-id">vhs</span>
           <button class="panel-collapse">−</button>
@@ -285,15 +286,15 @@
           <label><span class="lbl">top</span><input type="range" id="sl-top" min="-20" max="100" step="0.1" value="68.70"><span class="val" id="vl-top">68.70%</span></label>
           <label><span class="lbl">offsetX</span><input type="range" id="sl-left" min="-400" max="400" step="1" value="-1"><span class="val" id="vl-left">-1px</span></label>
           <label><span class="lbl">height</span><input type="range" id="sl-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="vl-h">53.50%</span></label>
-          <div id="pos-btns">
+          <div class="panel-btns">
             <button id="btn-reset">reset</button>
             <button id="btn-capture">capturar</button>
           </div>
-          <div id="pos-capture"></div>
+          <div id="pos-capture" class="panel-capture"></div>
         </div>
       </div>
 
-      <div id="logo-panel">
+      <div id="logo-panel" class="dev-panel">
         <div class="panel-header">
           <span class="panel-id">logo</span>
           <button class="panel-collapse">−</button>
@@ -302,15 +303,15 @@
           <label><span class="lbl">top</span><input type="range" id="lg-top" min="-20" max="100" step="0.1" value="38.70"><span class="val" id="lv-top">38.70%</span></label>
           <label><span class="lbl">offsetX</span><input type="range" id="lg-left" min="-400" max="400" step="1" value="4"><span class="val" id="lv-left">4px</span></label>
           <label><span class="lbl">height</span><input type="range" id="lg-h" min="1" max="120" step="0.1" value="20.60"><span class="val" id="lv-h">20.60%</span></label>
-          <div id="logo-btns">
+          <div class="panel-btns">
             <button id="lg-btn-reset">reset</button>
             <button id="lg-btn-capture">capturar</button>
           </div>
-          <div id="logo-capture"></div>
+          <div id="logo-capture" class="panel-capture"></div>
         </div>
       </div>
 
-      <div id="etiqueta-panel">
+      <div id="etiqueta-panel" class="dev-panel">
         <div class="panel-header">
           <span class="panel-id">etiqueta</span>
           <button class="panel-collapse">−</button>
@@ -319,15 +320,15 @@
           <label><span class="lbl">top</span><input type="range" id="et-top" min="-20" max="100" step="0.1" value="68.70"><span class="val" id="ev-top">68.70%</span></label>
           <label><span class="lbl">offsetX</span><input type="range" id="et-left" min="-400" max="400" step="1" value="-1"><span class="val" id="ev-left">-1px</span></label>
           <label><span class="lbl">height</span><input type="range" id="et-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="ev-h">53.50%</span></label>
-          <div id="etiqueta-btns">
+          <div class="panel-btns">
             <button id="et-btn-reset">reset</button>
             <button id="et-btn-capture">capturar</button>
           </div>
-          <div id="etiqueta-capture"></div>
+          <div id="etiqueta-capture" class="panel-capture"></div>
         </div>
       </div>
 
-      <div id="flechita-panel">
+      <div id="flechita-panel" class="dev-panel">
         <div class="panel-header">
           <span class="panel-id">flechita</span>
           <button class="panel-collapse">−</button>
@@ -336,11 +337,28 @@
           <label><span class="lbl">top</span><input type="range" id="fl-top" min="-20" max="100" step="0.1" value="26.50"><span class="val" id="fv-top">26.5%</span></label>
           <label><span class="lbl">offsetX</span><input type="range" id="fl-left" min="-400" max="400" step="1" value="-1"><span class="val" id="fv-left">-1px</span></label>
           <label><span class="lbl">height</span><input type="range" id="fl-h" min="0.1" max="60" step="0.1" value="2.50"><span class="val" id="fv-h">2.5%</span></label>
-          <div id="flechita-btns">
+          <div class="panel-btns">
             <button id="fl-btn-reset">reset</button>
             <button id="fl-btn-capture">capturar</button>
           </div>
-          <div id="flechita-capture"></div>
+          <div id="flechita-capture" class="panel-capture"></div>
+        </div>
+      </div>
+
+      <div id="vhs-outline-panel" class="dev-panel">
+        <div class="panel-header">
+          <span class="panel-id">outline</span>
+          <button class="panel-collapse">−</button>
+        </div>
+        <div class="panel-body">
+          <label><span class="lbl">top</span><input type="range" id="ol-top" min="-20" max="100" step="0.1" value="70.40"><span class="val" id="ov-top">70.40%</span></label>
+          <label><span class="lbl">offsetX</span><input type="range" id="ol-left" min="-400" max="400" step="1" value="-2"><span class="val" id="ov-left">-2px</span></label>
+          <label><span class="lbl">height</span><input type="range" id="ol-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="ov-h">53.50%</span></label>
+          <div class="panel-btns">
+            <button id="ol-btn-reset">reset</button>
+            <button id="ol-btn-capture">capturar</button>
+          </div>
+          <div id="ol-capture" class="panel-capture"></div>
         </div>
       </div>
 
@@ -537,11 +555,12 @@
 
     const etiquetaWrap = document.getElementById("etiqueta-wrap");
 
-    function setPos(pos, logoPos, animate) {
+    function setPos(pos, logoPos, animate, outlinePos) {
       const els = [vhs4, etiquetaWrap];
       if (!animate) {
         els.forEach(el => el.style.transition = "none");
         logo.style.transition = "none";
+        if (outlinePos) vhsOutlineEl.style.transition = "none";
       }
       els.forEach(el => {
         el.style.top       = pos.top + "%";
@@ -551,9 +570,24 @@
       logo.style.top       = logoPos.top + "%";
       logo.style.height    = logoPos.h + "%";
       logo.style.transform = `translateX(calc(-50% + ${logoPos.dx}px))`;
+      if (outlinePos) {
+        vhsOutlineEl.style.top       = outlinePos.top + "%";
+        vhsOutlineEl.style.height    = outlinePos.h + "%";
+        vhsOutlineEl.style.transform = `translateX(calc(-50% + ${outlinePos.dx}px))`;
+        const _olTop = document.getElementById("ol-top");
+        if (_olTop) {
+          _olTop.value = outlinePos.top;
+          document.getElementById("ol-left").value = outlinePos.dx;
+          document.getElementById("ol-h").value = outlinePos.h;
+          document.getElementById("ov-top").textContent  = outlinePos.top.toFixed(1) + "%";
+          document.getElementById("ov-left").textContent = outlinePos.dx.toFixed(0) + "px";
+          document.getElementById("ov-h").textContent    = outlinePos.h.toFixed(1) + "%";
+        }
+      }
       if (!animate) requestAnimationFrame(() => {
         els.forEach(el => el.style.transition = "");
         logo.style.transition = "";
+        if (outlinePos) vhsOutlineEl.style.transition = "";
       });
       const _etTop = document.getElementById("et-top");
       if (_etTop) {
@@ -708,6 +742,36 @@
       vhsOutlineToggle.textContent = vhsOutlineVisible ? 'on' : 'off';
       vhsOutlineEl.classList.toggle('visible', vhsOutlineVisible);
     });
+
+    // Dev: vhs-outline positioning panel
+    const olSlTop   = document.getElementById("ol-top");
+    const olSlLeft  = document.getElementById("ol-left");
+    const olSlH     = document.getElementById("ol-h");
+    const olCapture = document.getElementById("ol-capture");
+    const OL_DEFAULT = () => {
+      if (isPortrait()) return { top: 69.90, dx:  1, h: 31.40 };
+                        return { top: 70.40, dx: -2, h: 53.50 };
+    };
+    function applyOlPanel() {
+      const t = parseFloat(olSlTop.value), dx = parseFloat(olSlLeft.value), h = parseFloat(olSlH.value);
+      vhsOutlineEl.style.top       = t + "%";
+      vhsOutlineEl.style.transform = `translateX(calc(-50% + ${dx}px))`;
+      vhsOutlineEl.style.height    = h + "%";
+      document.getElementById("ov-top").textContent  = t.toFixed(1) + "%";
+      document.getElementById("ov-left").textContent = dx.toFixed(0) + "px";
+      document.getElementById("ov-h").textContent    = h.toFixed(1) + "%";
+    }
+    document.getElementById("ol-btn-reset").addEventListener("click", () => {
+      const d = OL_DEFAULT();
+      olSlTop.value = d.top; olSlLeft.value = d.dx; olSlH.value = d.h;
+      olCapture.classList.remove("visible"); applyOlPanel();
+    });
+    document.getElementById("ol-btn-capture").addEventListener("click", () => {
+      const t = parseFloat(olSlTop.value), dx = parseFloat(olSlLeft.value), h = parseFloat(olSlH.value);
+      olCapture.textContent = `top:${t.toFixed(2)}%  offsetX:${dx}px  height:${h.toFixed(2)}%`;
+      olCapture.classList.add("visible");
+    });
+    [olSlTop, olSlLeft, olSlH].forEach(sl => sl.addEventListener("input", applyOlPanel));
 
     // Open as popup at target size
     const POPUP_SIZES = {
