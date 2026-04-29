@@ -23,8 +23,8 @@
     body.red    #vhs4 { mix-blend-mode: multiply;   filter: invert(1); }
 
     #vhs4, #etiqueta-wrap {
-      transition: top 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  height 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: top 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  height 620ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     #etiqueta-wrap {
       position: absolute;
@@ -51,114 +51,284 @@
     }
 
     /* Logo */
-    #logo-dtv {
-      opacity: 1;
-      bottom: auto;
-      top: 0.93%;
-      height: 98.15%;
-      transform: translateX(-50%);
-      transition: top 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  height 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                  transform 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    #logo-exacto {
+      position: absolute;
+      left: 50%;
+      top: 38.70%;
+      height: 20.60%;
+      transform: translateX(calc(-50% + 4px));
+      pointer-events: none;
+      z-index: 4;
+      transition: top 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  height 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    /* Panel logo — lado derecho */
-    #logo-panel {
+    /* Tools menu */
+    #tools-menu {
       position: fixed;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
+      top: 12px;
+      left: 12px;
       z-index: 9999;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    #tools-btn {
+      background: rgba(128,128,128,0.08);
+      border: 1px solid rgba(128,128,128,0.18);
+      color: rgba(128,128,128,0.4);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 4px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: lowercase;
+      display: block;
+    }
+    #tools-btn:hover { border-color: rgba(128,128,128,0.35); color: rgba(128,128,128,0.6); }
+    #tools-btn.open {
+      background: rgba(128,128,128,0.12);
+      border-color: rgba(128,128,128,0.3);
+      color: rgba(128,128,128,0.6);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    #tools-dropdown {
+      display: none;
       background: #fff;
+      color: #000;
+      border-radius: 0 6px 6px 6px;
+      width: 240px;
+      flex-direction: column;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    }
+    #tools-dropdown.open { display: flex; }
+    .tool-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
+    }
+    .tool-row-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.45; }
+    #grid-toggle {
+      background: none;
+      border: 1px solid rgba(0,0,0,0.22);
+      color: rgba(0,0,0,0.38);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    #grid-toggle.active { background: #000; color: #fff; border-color: #000; }
+    #pos-panel, #logo-panel, #etiqueta-panel, #flechita-panel {
       color: #000;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
-      padding: 14px 16px;
-      border-radius: 8px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      width: 220px;
+      gap: 8px;
+      border-bottom: 1px solid rgba(0,0,0,0.07);
     }
-    #logo-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    #logo-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
-    #logo-panel input[type=range] { flex: 1; accent-color: #000; }
-    #logo-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
-    #logo-btns { display: flex; gap: 6px; }
-    #logo-btns button {
+    #flechita-panel { border-bottom: none; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; }
+    .panel-id { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.45; }
+    .panel-collapse {
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; line-height: 1; padding: 0 2px;
+      color: #000; opacity: 0.3; font-family: inherit;
+    }
+    .panel-collapse:hover { opacity: 0.7; }
+    .panel-body { display: flex; flex-direction: column; gap: 8px; }
+    .panel-body.collapsed { display: none; }
+    #pos-panel label, #logo-panel label, #etiqueta-panel label, #flechita-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+    #pos-panel label span.lbl, #logo-panel label span.lbl, #etiqueta-panel label span.lbl, #flechita-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
+    #pos-panel input[type=range], #logo-panel input[type=range], #etiqueta-panel input[type=range], #flechita-panel input[type=range] { flex: 1; accent-color: #000; }
+    #pos-panel span.val, #logo-panel span.val, #etiqueta-panel span.val, #flechita-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
+    #pos-btns, #logo-btns, #etiqueta-btns, #flechita-btns { display: flex; gap: 6px; }
+    #pos-btns button, #logo-btns button, #etiqueta-btns button, #flechita-btns button {
       flex: 1; border: 1.5px solid #000; background: #fff; color: #000;
       font-family: inherit; font-size: 10px; letter-spacing: 0.08em;
       padding: 5px 0; border-radius: 4px; cursor: pointer; text-transform: uppercase;
     }
-    #logo-btns button:hover { background: #000; color: #fff; }
-    #logo-capture {
+    #pos-btns button:hover, #logo-btns button:hover, #etiqueta-btns button:hover, #flechita-btns button:hover { background: #000; color: #fff; }
+    #pos-capture, #logo-capture, #etiqueta-capture, #flechita-capture {
       font-size: 10px; letter-spacing: 0.04em; background: #f0f0f0;
       border-radius: 4px; padding: 6px 8px; line-height: 1.6;
       display: none; user-select: all;
     }
-    #logo-capture.visible { display: block; }
+    #pos-capture.visible, #logo-capture.visible, #etiqueta-capture.visible, #flechita-capture.visible { display: block; }
+    /* Flechita SVG overlay */
+    #flechita {
+      position: absolute;
+      left: 50%;
+      top: 26.50%;
+      height: 2.50%;
+      width: auto;
+      transform: translateX(calc(-50% + -1px));
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0;
+      transition: opacity 350ms cubic-bezier(0.16, 1, 0.3, 1),
+                  top 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  height 620ms cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes flechita-rise {
+      0%   { transform: translateX(calc(-50% + -1px)) translateY(0);    opacity: 0; filter: none; }
+      15%  { transform: translateX(calc(-50% + -1px)) translateY(0);    opacity: 1; filter: none; }
+      45%  {
+        transform: translateX(calc(-50% + -1px)) translateY(-4vh);
+        filter: drop-shadow(0 0.8vh 0    rgba(0,0,0,0.24))
+                drop-shadow(0 2.2vh 0.5px rgba(0,0,0,0.10))
+                drop-shadow(0 3.8vh 1px  rgba(0,0,0,0.04));
+      }
+      83%  {
+        transform: translateX(calc(-50% + -1px)) translateY(-9vh);
+        opacity: 0.4;
+        filter: drop-shadow(0 1.2vh 0.5px rgba(0,0,0,0.15))
+                drop-shadow(0 3vh   1px   rgba(0,0,0,0.06));
+      }
+      100% { transform: translateX(calc(-50% + -1px)) translateY(-10vh); opacity: 0; filter: none; }
+    }
+    #flechita.visible { animation: flechita-rise 3s linear infinite; }
+    /* Open as */
+    .vp-section { border-bottom: none; padding-bottom: 4px; }
+    .vp-btns { display: flex; gap: 4px; padding: 0 14px 10px; border-bottom: 1px solid rgba(0,0,0,0.07); }
+    .vp-btn {
+      flex: 1; border: 1px solid rgba(0,0,0,0.2); background: none;
+      color: rgba(0,0,0,0.45); font-family: inherit; font-size: 9px;
+      letter-spacing: 0.06em; padding: 5px 2px; border-radius: 3px;
+      cursor: pointer; text-transform: lowercase; white-space: nowrap;
+    }
+    .vp-btn:hover { background: #000; color: #fff; border-color: #000; }
 
-    #pos-panel {
-      position: fixed;
-      left: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 9999;
-      background: #fff;
-      color: #000;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      padding: 14px 16px;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 220px;
+    /* Grid toggle — dentro del dropdown */
+    #grid-toggle {
+      background: none;
+      border: 1px solid rgba(0,0,0,0.22);
+      color: rgba(0,0,0,0.38);
+      font-family: inherit;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      text-transform: uppercase;
     }
-    #pos-panel label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-    #pos-panel label span.lbl { width: 52px; font-size: 10px; opacity: 0.5; }
-    #pos-panel input[type=range] { flex: 1; accent-color: #000; }
-    #pos-panel span.val { width: 40px; text-align: right; font-size: 10px; opacity: 0.6; }
-    #pos-btns { display: flex; gap: 6px; }
-    #pos-btns button {
-      flex: 1; border: 1.5px solid #000; background: #fff; color: #000;
-      font-family: inherit; font-size: 10px; letter-spacing: 0.08em;
-      padding: 5px 0; border-radius: 4px; cursor: pointer; text-transform: uppercase;
+    #grid-toggle:hover { border-color: rgba(0,0,0,0.4); color: rgba(0,0,0,0.6); }
+    #grid-toggle.active { background: #000; color: #fff; border-color: #000; }
+    #grid-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 998;
+      display: none;
     }
-    #pos-btns button:hover { background: #000; color: #fff; }
-    #pos-capture {
-      font-size: 10px; letter-spacing: 0.04em; background: #f0f0f0;
-      border-radius: 4px; padding: 6px 8px; line-height: 1.6;
-      display: none; user-select: all;
-    }
-    #pos-capture.visible { display: block; }
+    #grid-canvas.visible { display: block; }
   </style>
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"":t==="red"?"red":"orange";})()</script>
 
-  <div id="pos-panel">
-    <label><span class="lbl">top</span><input type="range" id="sl-top" min="-20" max="100" step="0.1" value="68.70"><span class="val" id="vl-top">68.70%</span></label>
-    <label><span class="lbl">offsetX</span><input type="range" id="sl-left" min="-400" max="400" step="1" value="-1"><span class="val" id="vl-left">-1px</span></label>
-    <label><span class="lbl">height</span><input type="range" id="sl-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="vl-h">53.50%</span></label>
-    <div id="pos-btns">
-      <button id="btn-reset">reset</button>
-      <button id="btn-capture">capturar</button>
-    </div>
-    <div id="pos-capture"></div>
-  </div>
+  <div id="tools-menu">
+    <button id="tools-btn">tools</button>
+    <div id="tools-dropdown">
 
-  <div id="logo-panel">
-    <label><span class="lbl">top</span><input type="range" id="lg-top" min="-20" max="100" step="0.1" value="0.93"><span class="val" id="lv-top">0.93%</span></label>
-    <label><span class="lbl">offsetX</span><input type="range" id="lg-left" min="-400" max="400" step="1" value="0"><span class="val" id="lv-left">0px</span></label>
-    <label><span class="lbl">height</span><input type="range" id="lg-h" min="20" max="120" step="0.1" value="98.15"><span class="val" id="lv-h">98.15%</span></label>
-    <div id="logo-btns">
-      <button id="lg-btn-reset">reset</button>
-      <button id="lg-btn-capture">capturar</button>
+      <div class="tool-row">
+        <span class="tool-row-label">grid</span>
+        <button id="grid-toggle">off</button>
+      </div>
+
+      <div class="tool-row vp-section">
+        <span class="tool-row-label">open as</span>
+      </div>
+      <div class="vp-btns">
+        <button class="vp-btn" data-vp="full">full</button>
+        <button class="vp-btn" data-vp="tablet-h">tab →</button>
+        <button class="vp-btn" data-vp="tablet-v">tab ↑</button>
+        <button class="vp-btn" data-vp="phone-v">phone</button>
+      </div>
+
+      <div id="pos-panel">
+        <div class="panel-header">
+          <span class="panel-id">vhs</span>
+          <button class="panel-collapse">−</button>
+        </div>
+        <div class="panel-body">
+          <label><span class="lbl">top</span><input type="range" id="sl-top" min="-20" max="100" step="0.1" value="68.70"><span class="val" id="vl-top">68.70%</span></label>
+          <label><span class="lbl">offsetX</span><input type="range" id="sl-left" min="-400" max="400" step="1" value="-1"><span class="val" id="vl-left">-1px</span></label>
+          <label><span class="lbl">height</span><input type="range" id="sl-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="vl-h">53.50%</span></label>
+          <div id="pos-btns">
+            <button id="btn-reset">reset</button>
+            <button id="btn-capture">capturar</button>
+          </div>
+          <div id="pos-capture"></div>
+        </div>
+      </div>
+
+      <div id="logo-panel">
+        <div class="panel-header">
+          <span class="panel-id">logo</span>
+          <button class="panel-collapse">−</button>
+        </div>
+        <div class="panel-body">
+          <label><span class="lbl">top</span><input type="range" id="lg-top" min="-20" max="100" step="0.1" value="38.70"><span class="val" id="lv-top">38.70%</span></label>
+          <label><span class="lbl">offsetX</span><input type="range" id="lg-left" min="-400" max="400" step="1" value="4"><span class="val" id="lv-left">4px</span></label>
+          <label><span class="lbl">height</span><input type="range" id="lg-h" min="1" max="120" step="0.1" value="20.60"><span class="val" id="lv-h">20.60%</span></label>
+          <div id="logo-btns">
+            <button id="lg-btn-reset">reset</button>
+            <button id="lg-btn-capture">capturar</button>
+          </div>
+          <div id="logo-capture"></div>
+        </div>
+      </div>
+
+      <div id="etiqueta-panel">
+        <div class="panel-header">
+          <span class="panel-id">etiqueta</span>
+          <button class="panel-collapse">−</button>
+        </div>
+        <div class="panel-body">
+          <label><span class="lbl">top</span><input type="range" id="et-top" min="-20" max="100" step="0.1" value="68.70"><span class="val" id="ev-top">68.70%</span></label>
+          <label><span class="lbl">offsetX</span><input type="range" id="et-left" min="-400" max="400" step="1" value="-1"><span class="val" id="ev-left">-1px</span></label>
+          <label><span class="lbl">height</span><input type="range" id="et-h" min="20" max="120" step="0.1" value="53.50"><span class="val" id="ev-h">53.50%</span></label>
+          <div id="etiqueta-btns">
+            <button id="et-btn-reset">reset</button>
+            <button id="et-btn-capture">capturar</button>
+          </div>
+          <div id="etiqueta-capture"></div>
+        </div>
+      </div>
+
+      <div id="flechita-panel">
+        <div class="panel-header">
+          <span class="panel-id">flechita</span>
+          <button class="panel-collapse">−</button>
+        </div>
+        <div class="panel-body">
+          <label><span class="lbl">top</span><input type="range" id="fl-top" min="-20" max="100" step="0.1" value="26.50"><span class="val" id="fv-top">26.5%</span></label>
+          <label><span class="lbl">offsetX</span><input type="range" id="fl-left" min="-400" max="400" step="1" value="-1"><span class="val" id="fv-left">-1px</span></label>
+          <label><span class="lbl">height</span><input type="range" id="fl-h" min="0.1" max="60" step="0.1" value="2.50"><span class="val" id="fv-h">2.5%</span></label>
+          <div id="flechita-btns">
+            <button id="fl-btn-reset">reset</button>
+            <button id="fl-btn-capture">capturar</button>
+          </div>
+          <div id="flechita-capture"></div>
+        </div>
+      </div>
+
     </div>
-    <div id="logo-capture"></div>
   </div>
 
   <div id="stage">
+    <canvas id="grid-canvas"></canvas>
     <video id="vhs4" muted playsinline preload="auto" loop>
       <source src="assets/videos/vhsentero.webm" type='video/webm; codecs="vp9"'>
     </video>
@@ -167,7 +337,8 @@
         <rect x="318" y="200" width="467" height="270" rx="15" fill="none" stroke="#000" stroke-width="2" vector-effect="non-scaling-stroke"/>
       </svg>
     </div>
-    <img id="logo-dtv" src="assets/images/logodtvfixed.webp" alt="">
+    <img id="logo-exacto" src="assets/images/logoexacto.png" alt="">
+    <img id="flechita" src="assets/images/flechita.svg" alt="">
   </div>
 
 <div id="blend-panel">
@@ -202,7 +373,8 @@
       document.getElementById("vl-h").textContent    = h.toFixed(1) + "%";
     }
     document.getElementById("btn-reset").addEventListener("click", () => {
-      slTop.value = 68.70; slLeft.value = -1; slH.value = 53.50;
+      const d = POS_DOWN();
+      slTop.value = d.top; slLeft.value = d.dx; slH.value = d.h;
       capture.classList.remove("visible"); applyPanel();
     });
     document.getElementById("btn-capture").addEventListener("click", () => {
@@ -213,16 +385,40 @@
     [slTop, slLeft, slH].forEach(sl => sl.addEventListener("input", applyPanel));
 
     // Dev: logo panel
-    const logo     = document.getElementById("logo-dtv");
+    const logo = document.getElementById("logo-exacto");
     const lgTop    = document.getElementById("lg-top");
     const lgLeft   = document.getElementById("lg-left");
     const lgH      = document.getElementById("lg-h");
     const lgCapture = document.getElementById("logo-capture");
-    const LOGO_DEFAULT = () => ({ top: 0.93, dx: 0, h: 98.15 });
+    const LOGO_DEFAULT = () => {
+      if (isPhoneP()) return { top: 38.70, dx: 0, h: 8.40 };
+      return { top: 38.70, dx: 4, h: 20.60 };
+    };
+
+    // Devuelve la posición X en px (relativa al stage) de la línea vertical col (1-indexed)
+    // Misma fórmula que drawGrid para que coincida pixel a pixel con la grilla
+    function gridColX(col) {
+      const rect   = stage.getBoundingClientRect();
+      const step   = window.innerHeight * 0.025;
+      const cx     = window.innerWidth  / 2 - rect.left;
+      const startX = ((cx % step) + step) % step;
+      return startX + (col - 1) * step;
+    }
+    // Devuelve la posición Y en px (relativa al stage) de la línea horizontal rowLetter (A, B, C…)
+    function gridRowY(rowLetter) {
+      const rect   = stage.getBoundingClientRect();
+      const step   = window.innerHeight * 0.025;
+      const cy     = window.innerHeight / 2 - rect.top;
+      const startY = ((cy % step) + step) % step;
+      const idx    = rowLetter.toUpperCase().charCodeAt(0) - 65;
+      return startY + idx * step;
+    }
+
     const LOGO_UP = () => {
-      if (isTabletP()) return { top:  5.33, dx: 149, h: 44.16 };
-      if (isPhoneP())  return { top: 42.89, dx:  76, h: 25.02 };
-                       return { top: -6.70, dx: 372, h: 50.70 };
+      if (isTabletP()) return { top:  9.80, dx: 269,  h: 12.80 };
+      if (isPhoneP())  return { top: 17.20, dx:  -4,  h:  8.40 };
+      if (isTabletL()) return { top:  8.70, dx: 274,  h: 13.70 };
+                       return { top: 10.10, dx: 312,  h: 12.60 };
     };
 
     function applyLogoPanel() {
@@ -235,7 +431,7 @@
       document.getElementById("lv-h").textContent    = h.toFixed(1) + "%";
     }
     document.getElementById("lg-btn-reset").addEventListener("click", () => {
-      const d = LOGO_DEFAULT();
+      const d = expanded ? LOGO_UP() : LOGO_DEFAULT();
       lgTop.value = d.top; lgLeft.value = d.dx; lgH.value = d.h;
       lgCapture.classList.remove("visible"); applyLogoPanel();
     });
@@ -246,19 +442,82 @@
     });
     [lgTop, lgLeft, lgH].forEach(sl => sl.addEventListener("input", applyLogoPanel));
 
+    // Dev: etiqueta panel
+    const etSlTop   = document.getElementById("et-top");
+    const etSlLeft  = document.getElementById("et-left");
+    const etSlH     = document.getElementById("et-h");
+    const etCapture = document.getElementById("etiqueta-capture");
+
+    const ET_DEFAULT = () => {
+      if (isTabletP()) return { top: 71.00, dx:  4, h: 46.60 };
+      if (isPhoneP())  return { top: 69.90, dx:  1, h: 31.40 };
+                       return { top: 68.70, dx: -1, h: 53.50 };
+    };
+
+    function applyEtPanel() {
+      const t = parseFloat(etSlTop.value), dx = parseFloat(etSlLeft.value), h = parseFloat(etSlH.value);
+      etiquetaWrap.style.top       = t + "%";
+      etiquetaWrap.style.transform = `translateX(calc(-50% + ${dx}px))`;
+      etiquetaWrap.style.height    = h + "%";
+      document.getElementById("ev-top").textContent  = t.toFixed(1) + "%";
+      document.getElementById("ev-left").textContent = dx.toFixed(0) + "px";
+      document.getElementById("ev-h").textContent    = h.toFixed(1) + "%";
+    }
+    document.getElementById("et-btn-reset").addEventListener("click", () => {
+      const d = ET_DEFAULT();
+      etSlTop.value = d.top; etSlLeft.value = d.dx; etSlH.value = d.h;
+      etCapture.classList.remove("visible"); applyEtPanel();
+    });
+    document.getElementById("et-btn-capture").addEventListener("click", () => {
+      const t = parseFloat(etSlTop.value), dx = parseFloat(etSlLeft.value), h = parseFloat(etSlH.value);
+      etCapture.textContent = `top:${t.toFixed(2)}%  offsetX:${dx}px  height:${h.toFixed(2)}%`;
+      etCapture.classList.add("visible");
+    });
+    [etSlTop, etSlLeft, etSlH].forEach(sl => sl.addEventListener("input", applyEtPanel));
+
+    // Dev: flechita panel
+    const flSlTop   = document.getElementById("fl-top");
+    const flSlLeft  = document.getElementById("fl-left");
+    const flSlH     = document.getElementById("fl-h");
+    const flCapture = document.getElementById("flechita-capture");
+    const FL_DEFAULT = () => ({ top: 26.50, dx: -1, h: 2.50 });
+
+    function applyFlPanel() {
+      const t = parseFloat(flSlTop.value), dx = parseFloat(flSlLeft.value), h = parseFloat(flSlH.value);
+      const fl = document.getElementById("flechita");
+      fl.style.top       = t + "%";
+      fl.style.transform = `translateX(calc(-50% + ${dx}px))`;
+      fl.style.height    = h + "%";
+      document.getElementById("fv-top").textContent  = t.toFixed(1) + "%";
+      document.getElementById("fv-left").textContent = dx.toFixed(0) + "px";
+      document.getElementById("fv-h").textContent    = h.toFixed(1) + "%";
+    }
+    document.getElementById("fl-btn-reset").addEventListener("click", () => {
+      const d = FL_DEFAULT();
+      flSlTop.value = d.top; flSlLeft.value = d.dx; flSlH.value = d.h;
+      flCapture.classList.remove("visible"); applyFlPanel();
+    });
+    document.getElementById("fl-btn-capture").addEventListener("click", () => {
+      const t = parseFloat(flSlTop.value), dx = parseFloat(flSlLeft.value), h = parseFloat(flSlH.value);
+      flCapture.textContent = `top:${t.toFixed(2)}%  offsetX:${dx}px  height:${h.toFixed(2)}%`;
+      flCapture.classList.add("visible");
+    });
+    [flSlTop, flSlLeft, flSlH].forEach(sl => sl.addEventListener("input", applyFlPanel));
+
     // Swipe up/down
     const isPortrait = () => window.matchMedia("(orientation: portrait)").matches;
-    const isTabletP  = () => isPortrait() && window.innerWidth >= 600;
-    const isPhoneP   = () => isPortrait() && window.innerWidth <  600;
+    const isTabletP  = () =>  isPortrait() && window.innerWidth >= 600;
+    const isPhoneP   = () =>  isPortrait() && window.innerWidth <  600;
+    const isTabletL  = () => !isPortrait() && window.innerWidth <= 1024;
 
     const POS_DOWN = () => {
       if (isTabletP()) return { top: 71.00, dx:  4, h: 46.60 };
-      if (isPhoneP())  return { top: 80.10, dx:  0, h: 26.40 };
+      if (isPhoneP())  return { top: 69.90, dx:  1, h: 31.40 };
                        return { top: 68.70, dx: -1, h: 53.50 };
     };
     const POS_UP = () => {
-      if (isTabletP()) return { top: 23.00, dx:  4, h: 46.60 }; // tablet swipe-up TBD
-      if (isPhoneP())  return { top: 68.70, dx:  1, h: 49.70 };
+      if (isTabletP()) return { top: 23.00, dx:  4, h: 46.60 };
+      if (isPhoneP())  return { top: 29.40, dx:  2, h: 42.20 };
                        return { top: 23.00, dx: -1, h: 53.50 };
     };
     let expanded = false;
@@ -283,9 +542,24 @@
         els.forEach(el => el.style.transition = "");
         logo.style.transition = "";
       });
+      const _etTop = document.getElementById("et-top");
+      if (_etTop) {
+        _etTop.value = pos.top;
+        document.getElementById("et-left").value = pos.dx;
+        document.getElementById("et-h").value = pos.h;
+        document.getElementById("ev-top").textContent  = pos.top.toFixed(1) + "%";
+        document.getElementById("ev-left").textContent = pos.dx.toFixed(0) + "px";
+        document.getElementById("ev-h").textContent    = pos.h.toFixed(1) + "%";
+      }
     }
 
     const stage = document.getElementById("stage");
+    const flechita = document.getElementById("flechita");
+
+    function setFlechitaVisible(show) {
+      flechita.classList.toggle("visible", show);
+    }
+
     let ty0 = 0, txStart = 0, didSwipe = false;
 
     stage.addEventListener("touchstart", e => {
@@ -297,9 +571,9 @@
     stage.addEventListener("touchend", e => {
       const dy = ty0 - e.changedTouches[0].clientY;
       const dx = Math.abs(txStart - e.changedTouches[0].clientX);
-      if (Math.abs(dy) < 30 || dx > Math.abs(dy)) return; // muy corto o más horizontal
-      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); }
-      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); }
+      if (Math.abs(dy) < 30 || dx > Math.abs(dy)) return;
+      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); setFlechitaVisible(true); }
+      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); setFlechitaVisible(false); }
     }, { passive: true });
 
     // Mouse: drag vertical
@@ -308,13 +582,14 @@
     window.addEventListener("mouseup", e => {
       const dy = my0 - e.clientY;
       if (Math.abs(dy) < 30) return;
-      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); }
-      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); }
+      if (dy > 0 && !expanded) { expanded = true;  setPos(POS_UP(),   LOGO_UP(),      true); setFlechitaVisible(true); }
+      if (dy < 0 &&  expanded) { expanded = false; setPos(POS_DOWN(), LOGO_DEFAULT(), true); setFlechitaVisible(false); }
     });
 
     // Al rotar, volver al estado colapsado con los valores del nuevo formato
     window.addEventListener("orientationchange", () => {
       expanded = false;
+      setFlechitaVisible(false);
       setTimeout(() => setPos(POS_DOWN(), LOGO_DEFAULT(), false), 100);
     });
 
@@ -322,6 +597,120 @@
     document.getElementById("nav-home3").addEventListener("click", () => {
       window.location.href = "hom3dtv.html";
     });
+
+    // Grid overlay
+    const gridCanvas = document.getElementById('grid-canvas');
+    const gridToggle = document.getElementById('grid-toggle');
+    let gridVisible = false;
+
+    // Genera etiqueta alfabética (A, B…Z, AA, AB…)
+    function alphaLabel(n) {
+      return n < 26
+        ? String.fromCharCode(65 + n)
+        : String.fromCharCode(64 + Math.floor(n / 26)) + String.fromCharCode(65 + (n % 26));
+    }
+    // Etiqueta de fila relativa al centro: mayúsculas = arriba (A más cercana), minúsculas = abajo, · = centro
+    function rowLabel(idx) {
+      if (idx === 0) return '·';
+      const ltr = alphaLabel(Math.abs(idx) - 1);
+      return idx < 0 ? ltr : ltr.toLowerCase();
+    }
+
+    function drawGrid() {
+      const rect  = stage.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+      gridCanvas.width  = Math.round(w);
+      gridCanvas.height = Math.round(h);
+      const ctx  = gridCanvas.getContext('2d');
+      const step = window.innerHeight * 0.025;
+      // Ancla SIEMPRE al centro del viewport completo (consistente entre modos)
+      const cx   = window.innerWidth  / 2 - rect.left;
+      const cy   = window.innerHeight / 2 - rect.top;
+
+      const vLines = [], hLines = [];
+      for (let x = ((cx % step) + step) % step; x <= w; x += step) vLines.push(x);
+      for (let y = ((cy % step) + step) % step; y <= h; y += step) hLines.push(y);
+
+      // Líneas
+      vLines.forEach(x => {
+        ctx.strokeStyle = Math.abs(x - cx) < 0.5 ? 'rgba(160,160,160,0.5)' : 'rgba(128,128,128,0.22)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+      });
+      hLines.forEach(y => {
+        ctx.strokeStyle = Math.abs(y - cy) < 0.5 ? 'rgba(160,160,160,0.5)' : 'rgba(128,128,128,0.22)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+      });
+
+      // Labels — ancladas a segunda línea visible para quedar dentro del stage
+      const refY = hLines.length > 1 ? hLines[1] - 2 : step * 1.5;
+      const refX = vLines.length > 1 ? vLines[1] + 2 : step * 1.5;
+      ctx.font = '9px monospace';
+
+      // Columnas: 0 en centro, positivos derecha, negativos izquierda
+      ctx.textBaseline = 'bottom';
+      ctx.textAlign = 'center';
+      vLines.forEach(x => {
+        const idx = Math.round((x - cx) / step);
+        const isCenter = idx === 0;
+        ctx.fillStyle = isCenter ? 'rgba(160,160,160,0.8)' : 'rgba(128,128,128,0.4)';
+        ctx.fillText(String(idx), x, refY);
+      });
+
+      // Filas: · en centro, mayúsculas arriba (A=primera), minúsculas abajo (a=primera)
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      hLines.forEach(y => {
+        const idx = Math.round((y - cy) / step);
+        const isCenter = idx === 0;
+        ctx.fillStyle = isCenter ? 'rgba(160,160,160,0.8)' : 'rgba(128,128,128,0.4)';
+        ctx.fillText(rowLabel(idx), refX, y);
+      });
+    }
+
+    function toggleGrid() {
+      gridVisible = !gridVisible;
+      gridToggle.classList.toggle('active', gridVisible);
+      gridToggle.textContent = gridVisible ? 'on' : 'off';
+      gridCanvas.classList.toggle('visible', gridVisible);
+      if (gridVisible) drawGrid();
+    }
+
+    gridToggle.addEventListener('click', toggleGrid);
+
+    // Open as popup at target size
+    const POPUP_SIZES = {
+      'tablet-h': { w: 1024, h: 768  },
+      'tablet-v': { w: 768,  h: 1024 },
+      'phone-v':  { w: 390,  h: 844  },
+    };
+    document.querySelectorAll('.vp-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const size = POPUP_SIZES[btn.dataset.vp];
+        const feat = size
+          ? `width=${size.w},height=${size.h},menubar=no,toolbar=no,location=yes,resizable=yes`
+          : '';
+        window.open(window.location.href, '_blank', feat);
+      });
+    });
+
+    const toolsBtn      = document.getElementById('tools-btn');
+    const toolsDropdown = document.getElementById('tools-dropdown');
+    toolsBtn.addEventListener('click', () => {
+      const open = toolsDropdown.classList.toggle('open');
+      toolsBtn.classList.toggle('open', open);
+    });
+
+    document.querySelectorAll('.panel-collapse').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const body = btn.closest('.panel-header').nextElementSibling;
+        const collapsed = body.classList.toggle('collapsed');
+        btn.textContent = collapsed ? '+' : '−';
+      });
+    });
+    window.addEventListener('resize', () => { if (gridVisible) drawGrid(); });
+    window.addEventListener('orientationchange', () => { if (gridVisible) setTimeout(drawGrid, 150); });
 
     document.querySelectorAll("#blend-list li").forEach(li => {
       li.addEventListener("click", () => {
