@@ -18,17 +18,21 @@
                   border-radius 620ms cubic-bezier(0.16,1,0.3,1);
     }
     html[data-from-hom4dtv] body::after {
-      top:    12.75vh;
-      bottom: 13.35vh;
-      left:   max(10px, calc(30vw - 29.94vh));
-      right:  max(10px, calc(30vw - 29.82vh));
-      border-radius: 4px 4px 24px 24px;
+      top:    13vh;
+      bottom: 13vh;
+      left:   max(10px, calc(50vw - 61.1vh + 6px));
+      right:  max(10px, calc(50vw - 61.1vh + 6px));
+      border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
     }
   </style>
 </head>
 <body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="light"?"light":t==="dark"?"":t==="red"?"red":"orange";})()</script><script>(function(){function s(){var p=screen.orientation?screen.orientation.type.startsWith("portrait"):window.innerHeight>=window.innerWidth;document.body.classList.toggle("is-portrait",p)}s();window.addEventListener("resize",s);if(screen.orientation)screen.orientation.addEventListener("change",s)})()</script>
 
   <div id="stage">
+
+    <video id="bg-fondo" muted playsinline preload="auto" loop>
+      <source src="assets/videos/fondo_videoteca.webm" type='video/webm; codecs="vp9"'>
+    </video>
 
     <video id="v" muted playsinline preload="auto">
       <source src="assets/videos/introwork.webm" type='video/webm; codecs="vp9"'>
@@ -71,6 +75,30 @@
 
   </div>
   <div id="frame" style="position:fixed;inset:5vh 10px;pointer-events:none"></div>
+  <div id="frame-fill"></div>
+
+  <div id="vhs-ctrl">
+    <div id="vhs-ctrl-label">lomo</div>
+    <ul id="vhs-ctrl-list">
+      <li class="vhs-ctrl-item" id="ctrl-invert">invert</li>
+      <li class="vhs-ctrl-item vhs-ctrl-op active" data-op="1">100</li>
+      <li class="vhs-ctrl-item vhs-ctrl-op" data-op="0.8">80</li>
+      <li class="vhs-ctrl-item vhs-ctrl-op" data-op="0.6">60</li>
+      <li class="vhs-ctrl-item vhs-ctrl-op" data-op="0.4">40</li>
+      <li class="vhs-ctrl-item vhs-ctrl-op" data-op="0.2">20</li>
+      <li class="vhs-ctrl-item vhs-ctrl-op" data-op="0">0</li>
+    </ul>
+    <div id="vhs-ctrl-label2">blend</div>
+    <ul id="vhs-blend-list">
+      <li class="vhs-ctrl-item vhs-ctrl-blend active" data-blend="normal">normal</li>
+      <li class="vhs-ctrl-item vhs-ctrl-blend" data-blend="exclusion">exclusion</li>
+      <li class="vhs-ctrl-item vhs-ctrl-blend" data-blend="multiply">multiply</li>
+      <li class="vhs-ctrl-item vhs-ctrl-blend" data-blend="hard-light">hard-light</li>
+      <li class="vhs-ctrl-item vhs-ctrl-blend" data-blend="screen">screen</li>
+      <li class="vhs-ctrl-item vhs-ctrl-blend" data-blend="overlay">overlay</li>
+      <li class="vhs-ctrl-item vhs-ctrl-blend" data-blend="difference">difference</li>
+    </ul>
+  </div>
 
   <div id="blend-panel">
     <div id="blend-label">blend mode</div>
@@ -210,6 +238,7 @@
       elevatedDY    = 0;
       elevatedScale = 1;
       setActive(idx);
+      updateLomoOpacities();
 
       if (isPortrait) {
         // Portrait: expandir solo el spine activo (cada spine es su propio contenedor)
@@ -335,6 +364,27 @@
       elevatedScale = 1;
       document.body.classList.remove('vhs-elevated');
       hideRuler();
+      updateLomoOpacities();
+    }
+
+    function updateLomoOpacities() {
+      const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
+      spines.forEach((spine, i) => {
+        const png = spine.querySelector(".vhs-png");
+        if (!png) return;
+        let op;
+        if (elevatedIdx >= 0) {
+          op = i === elevatedIdx ? 1 : 0.6;
+        } else if (activeIndex < 0) {
+          op = 0.6;
+        } else {
+          const d = Math.abs(i - activeIndex);
+          if      (d === 0) op = 0.8;
+          else if (d === 1) op = 0.7;
+          else              op = 0.6;
+        }
+        png.style.opacity = op;
+      });
     }
 
     function setActive(idx) {
@@ -347,6 +397,7 @@
       spines.forEach((spine, i) => {
         spine.classList.toggle("is-active", idx >= 0 && i === idx);
       });
+      updateLomoOpacities();
     }
 
     // ── TILT ──────────────────────────────────────────────────────────────────
@@ -506,6 +557,25 @@
       if (!e.target.closest(".vhs-spine")) { dropElevated(); setActive(-1); }
     }, { passive: true });
 
+    // Swipe down para volver a hom4dtv
+    let _swipeY0 = 0, _swipeX0 = 0;
+    stage.addEventListener("touchstart", e => {
+      _swipeY0 = e.touches[0].clientY;
+      _swipeX0 = e.touches[0].clientX;
+    }, { passive: true });
+    stage.addEventListener("touchend", e => {
+      if (document.body.classList.contains("player-open")) return;
+      if (elevatedIdx >= 0) return;
+      const dy = e.changedTouches[0].clientY - _swipeY0;
+      const dx = Math.abs(e.changedTouches[0].clientX - _swipeX0);
+      if (dy > 60 && dx < dy * 0.7) {
+        const sw = document.getElementById("shelf-wrap");
+        sw.style.transition = "transform 750ms cubic-bezier(0.55, 0, 1, 0.45)";
+        sw.style.transform  = "translateX(-50%) translateY(110%)";
+        setTimeout(() => { window.location.href = "hom4dtv.html"; }, 780);
+      }
+    }, { passive: true });
+
     if (isTouch) {
       let spineCenters = [];
 
@@ -646,32 +716,36 @@
 
 
     function openPlayer(spineEl, src, startAt, ratio) {
-      const stageRect = stage.getBoundingClientRect();
-      const rect      = spineEl.getBoundingClientRect();
-      const cx  = (rect.left + rect.width  / 2) - stageRect.left - 10;
-      const cy  = (rect.top  + rect.height / 2) - stageRect.top  - 10;
-      const pw  = stageRect.width  - 20;
-      const ph  = stageRect.height - 20;
+      const rect     = spineEl.getBoundingClientRect();
+      const isSquare = ratio === "1/1";
 
       if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
+      document.body.classList.remove("vhs-elevated");
+      document.body.classList.add("player-open");
+      if (isSquare) document.body.classList.add("player-square");
       document.getElementById("shelf-wrap").style.visibility = "hidden";
       homeBtn.style.opacity = "0";
       homeHit.style.opacity = "0";
       homeHit.style.pointerEvents = "none";
 
+      player.classList.toggle("square", isSquare);
       player.classList.add("open");
       player.style.opacity = "0";
       playerBack.style.opacity = "0";
 
-      playerV.classList.toggle("square", ratio === "1/1");
+      // Posición del spine relativa al player
+      const playerRect = player.getBoundingClientRect();
+      const cx    = (rect.left + rect.width  / 2) - playerRect.left;
+      const cy    = (rect.top  + rect.height / 2) - playerRect.top;
+      const cxPct = (cx / playerRect.width  * 100).toFixed(1);
+      const cyPct = (cy / playerRect.height * 100).toFixed(1);
+
+      playerV.classList.toggle("square", isSquare);
       playerV.src = src;
       if (startAt) playerV.addEventListener("loadedmetadata", () => { playerV.currentTime = startAt; }, { once: true });
       playerV.muted = false;
       playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
-
-      const cxPct = (cx / pw * 100).toFixed(1);
-      const cyPct = (cy / ph * 100).toFixed(1);
 
       playerAnim = player.animate(
         [{ opacity: "0" }, { opacity: "1" }],
@@ -704,10 +778,10 @@
       playerAnim = anim;
       anim.finished.then(() => {
         anim.cancel();
-        player.classList.remove("open");
+        player.classList.remove("open", "square");
         player.style.opacity = "";
         player.style.clipPath = "";
-        playerAnim = null;
+        document.body.classList.remove("player-open", "player-square");
         document.getElementById("shelf-wrap").style.visibility = "";
         homeBtn.style.opacity = "";
         homeHit.style.opacity = "";
@@ -749,7 +823,7 @@
       v.style.display = "none";
     });
 
-    setTimeout(() => { v.play().catch(() => {}); }, 333);
+    setTimeout(() => { if (!shelfTriggered) v.play().catch(() => {}); }, 333);
 
     // ── AUTOPLAY DEMO 1 (viene de play demo en hom3dtv) ──────────────────────
     if (sessionStorage.getItem("autoplayVideo1") === "1") {
@@ -777,6 +851,48 @@
       activateShelf();
     }
 
+    // ── VIENE DE hom4dtv ──────────────────────────────────────────────────────
+    if (document.documentElement.dataset.fromHom4dtv) {
+      v.style.display = "none";
+      shelfTriggered  = true;
+      delete document.documentElement.dataset.fromHom4dtv;
+
+      if (sessionStorage.getItem('lomos-from-below') === '1') {
+        sessionStorage.removeItem('lomos-from-below');
+        const sw = document.getElementById("shelf-wrap");
+        sw.style.transition = "none";
+        sw.style.transform  = "translateX(-50%) translateY(110%)";
+        sw.style.visibility = "";
+        document.querySelectorAll(".vhs-spine").forEach(spine => spine.classList.add("entered"));
+
+        const bgFondo = document.getElementById("bg-fondo");
+        if (bgFondo) {
+          bgFondo.style.opacity = "1";
+          bgFondo.play().catch(() => {});
+        }
+
+        requestAnimationFrame(() => {
+          positionHomeBtn();
+          requestAnimationFrame(() => {
+            sw.style.transition = "transform 900ms cubic-bezier(0.22, 1.18, 0.36, 1)";
+            sw.style.transform  = "translateX(-50%) translateY(0)";
+            setTimeout(() => { sw.style.transition = ""; sw.style.transform = ""; }, 950);
+          });
+        });
+      } else {
+        activateShelf();
+      }
+    }
+
+    // ── BFCACHE (Chrome restaura página desde caché al navegar hacia atrás) ──
+    window.addEventListener("pageshow", e => {
+      if (!e.persisted) return;
+      if (document.documentElement.dataset.fromHom4dtv) {
+        delete document.documentElement.dataset.fromHom4dtv;
+      }
+      if (shelfTriggered) document.getElementById("shelf-wrap").style.visibility = "";
+    });
+
     document.getElementById("nav-alt4").addEventListener("click", () => {
       window.location.href = "hom4dtv.html";
     });
@@ -795,6 +911,41 @@
         }
       });
     });
+    // ── VHS CTRL PANEL ───────────────────────────────────────────────────────
+    (function() {
+      // Defaults: invert + exclusion
+      document.body.classList.add("vhs-invert");
+      document.body.style.setProperty("--vhs-blend", "exclusion");
+
+      const invertBtn = document.getElementById("ctrl-invert");
+      invertBtn.classList.add("active");
+      document.querySelectorAll(".vhs-ctrl-blend").forEach(b =>
+        b.classList.toggle("active", b.dataset.blend === "exclusion")
+      );
+      const opBtns   = Array.from(document.querySelectorAll(".vhs-ctrl-op"));
+
+      invertBtn.addEventListener("click", () => {
+        const on = document.body.classList.toggle("vhs-invert");
+        invertBtn.classList.toggle("active", on);
+      });
+
+      opBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          opBtns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          document.body.style.setProperty("--vhs-lomo-op", btn.dataset.op);
+        });
+      });
+
+      const blendBtns = Array.from(document.querySelectorAll(".vhs-ctrl-blend"));
+      blendBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          blendBtns.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          document.body.style.setProperty("--vhs-blend", btn.dataset.blend);
+        });
+      });
+    })();
   </script>
 
 </body>

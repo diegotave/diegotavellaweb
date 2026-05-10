@@ -1,0 +1,393 @@
+/* ── RESET ───────────────────────────────────────────────────────────────── */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+::selection { background: transparent; }
+html { overflow: hidden; }
+
+/* ── BODY ────────────────────────────────────────────────────────────────── */
+body {
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── STAGE ───────────────────────────────────────────────────────────────── */
+#stage {
+  position: relative;
+  width:  min(100vw, 1920px);
+  height: min(100vh, 1080px);
+  height: min(100dvh, 1080px);
+  overflow: hidden;
+  background: #000;
+}
+
+/* ── WORK TITLE ──────────────────────────────────────────────────────────── */
+#work-title {
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  transform: translate(-50%, -50%);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 37vh;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* ── SHELF WRAP ──────────────────────────────────────────────────────────── */
+#shelf-wrap {
+  position: absolute;
+  bottom: -74vh;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+/* ── SHELF RAIL ──────────────────────────────────────────────────────────── */
+#shelf-rail {
+  display: flex;
+  align-items: center;
+  height: 110vh;
+  position: relative;
+}
+
+/* ── VHS SPINE ───────────────────────────────────────────────────────────── */
+.vhs-spine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 100%;
+  position: relative;
+  overflow: visible;
+  cursor: pointer;
+  margin: 0 1px;
+  opacity: 0;
+  transition: margin   280ms cubic-bezier(0.22, 1, 0.36, 1),
+              transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes spine-enter {
+  from { opacity: 1; transform: translateY(110vh); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+
+.vhs-spine.entered {
+  animation: spine-enter 600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.vhs-spine.is-active { margin: 0 4px; }
+
+/* ── VISUAL ──────────────────────────────────────────────────────────────── */
+.vhs-visual {
+  position: relative;
+  height: 85%;
+  aspect-ratio: 108 / 780;
+  flex-shrink: 0;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: bottom center;
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── PNG del lomo (imagen coloreada) ─────────────────────────────────────── */
+.vhs-png {
+  position: relative;
+  height: 100%;
+  width: auto;
+  display: block;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.65;
+  transition: opacity 180ms ease;
+}
+
+.vhs-spine.is-active .vhs-png {
+  opacity: 1;
+}
+
+/* ── LABEL ───────────────────────────────────────────────────────────────── */
+.vhs-label {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.6;
+  scale: 0.75;
+  transition: opacity 200ms ease, scale 200ms ease;
+}
+
+.vhs-spine.is-active .vhs-label {
+  opacity: 1;
+  scale: 1;
+}
+
+/* ── HOME BUTTON ─────────────────────────────────────────────────────────── */
+#home-btn {
+  position: absolute;
+  z-index: 600;
+  cursor: pointer;
+  transition: opacity 300ms ease;
+}
+
+#home-fondo {
+  position: absolute;
+  left: calc(14.26% - 2px);
+  top: calc(15.6% - 2px);
+  width: calc(71.48% + 4px);
+  height: calc(68.8% + 4px);
+  background: rgb(255, 170, 0);
+  border-radius: calc(var(--home-btn-size, 50px) * 0.0628);
+  transition: width 300ms ease;
+}
+
+#home-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 71.48%;
+  height: 68.8%;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+}
+
+#home-texto {
+  position: absolute;
+  left: 105%;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-weight: 200;
+  font-size: calc(var(--home-btn-size, 50px) * 0.28);
+  white-space: nowrap;
+  color: #000;
+  line-height: 1;
+  pointer-events: none;
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 300ms ease;
+}
+
+#home-mask-path {
+  animation: home-blink 0.8s linear infinite;
+}
+#home-btn.hovered #home-mask-path {
+  animation: none;
+  opacity: 1;
+}
+@keyframes home-blink {
+  0%, 49.99%  { opacity: 1; }
+  50%, 100%   { opacity: 0; }
+}
+
+#home-btn.hovered #home-fondo  { width: var(--home-hover-w, 300%); }
+#home-btn.hovered #home-texto  { clip-path: inset(0 0% 0 0); }
+
+#home-hit {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 601;
+  padding: 0;
+}
+
+/* ── VHS RULER ───────────────────────────────────────────────────────────── */
+#vhs-ruler {
+  position: absolute;
+  display: none;
+  align-items: center;
+  pointer-events: none;
+  z-index: 20;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 100;
+  letter-spacing: 0.03em;
+  color: #fff;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+#vhs-ruler.visible { display: flex; }
+
+#ruler-left, #ruler-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+#ruler-gap { flex-shrink: 0; }
+.ruler-dashes { overflow: hidden; flex: 1; min-width: 0; white-space: nowrap; }
+.ruler-title  { flex-shrink: 0; font-weight: 400; white-space: nowrap; font-size: 100%; }
+.ruler-arrow  { flex-shrink: 0; }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  #stage { width: 100vw; height: 100dvh; }
+}
+
+@media (orientation: portrait) {
+  #stage { width: 100vw; height: 100dvh; }
+
+  #shelf-wrap {
+    top: 60px;
+    bottom: 20px;
+    left: 0;
+    right: auto;
+    transform: none;
+    width: 40vw;
+    overflow: visible;
+    align-items: stretch;
+    justify-content: flex-start;
+    touch-action: auto;
+    padding: 0;
+  }
+
+  #shelf-rail {
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    gap: 0;
+    align-items: stretch;
+  }
+
+  .vhs-spine {
+    width: 100%;
+    height: auto;
+    flex: 1 0 0;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(0 -30px 0 0);
+    border-radius: 2px;
+    transition: transform 340ms cubic-bezier(0.4, 0, 1, 1),
+                margin   280ms cubic-bezier(0.22, 1, 0.36, 1),
+                width    600ms cubic-bezier(0.34, 1.8, 0.64, 1);
+  }
+
+  .vhs-spine.is-active { margin: 0; }
+
+  .vhs-visual {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 2px;
+  }
+
+  .vhs-png {
+    position: absolute;
+    top: 50%;
+    left: calc(100% - (100dvh - 80px) * 881 / 1872);
+    width: calc((100dvh - 80px) / 9);
+    height: calc((100dvh - 80px) * 777 / 936);
+    transform: translateY(-50%) rotate(-90deg);
+    object-fit: fill;
+  }
+
+  #home-btn {
+    top: 60px !important;
+    left: auto !important;
+    right: 16px;
+  }
+  #home-hit {
+    top: 60px !important;
+    left: auto !important;
+    right: 16px;
+  }
+  #home-fondo {
+    left: auto;
+    right: calc(14.26% - 2px);
+  }
+  #home-texto {
+    left: auto;
+    right: 105%;
+    clip-path: inset(0 0 0 100%);
+  }
+  #home-btn.hovered #home-texto {
+    clip-path: inset(0 0 0 0%);
+  }
+
+  .vhs-label {
+    inset: 0 auto 0 0;
+    width: calc(100% - (100dvh - 80px) * 121 / 936);
+    writing-mode: horizontal-tb;
+    transform: none;
+    font-size: 11px;
+    scale: 1;
+    text-align: left;
+    justify-content: flex-start;
+    align-items: center;
+    padding-left: 20px;
+    padding-right: 0;
+    opacity: 0.6;
+    transition: font-size 200ms ease, opacity 200ms ease;
+  }
+
+  .vhs-spine.is-active .vhs-label { opacity: 1; font-size: 13px; }
+}
+
+/* ── PORTRAIT FALLBACK ───────────────────────────────────────────────────── */
+body.is-portrait #stage { width: 100vw; height: 100dvh; }
+body.is-portrait #shelf-wrap {
+  top: 60px; bottom: 20px; left: 0; right: auto;
+  transform: none; width: 40vw; overflow: visible;
+  align-items: stretch; justify-content: flex-start;
+  touch-action: auto; padding: 0;
+}
+body.is-portrait #shelf-rail {
+  flex-direction: column; height: 100%; width: 100%; gap: 0; align-items: stretch;
+}
+body.is-portrait .vhs-spine {
+  width: 100%; height: auto; flex: 1 0 0; margin: 0;
+  overflow: hidden; clip-path: inset(0 -30px 0 0); border-radius: 2px;
+  transition: transform 340ms cubic-bezier(0.4,0,1,1),
+              margin 280ms cubic-bezier(0.22,1,0.36,1),
+              width 600ms cubic-bezier(0.34,1.8,0.64,1);
+}
+body.is-portrait .vhs-spine.is-active { margin: 0; }
+body.is-portrait .vhs-visual { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 2px; }
+body.is-portrait .vhs-png {
+  position: absolute; top: 50%;
+  left: calc(100% - (100dvh - 80px) * 881 / 1872);
+  width: calc((100dvh - 80px) / 9);
+  height: calc((100dvh - 80px) * 777 / 936);
+  transform: translateY(-50%) rotate(-90deg); object-fit: fill;
+}
+body.is-portrait #home-btn  { top: 60px !important; left: auto !important; right: 16px; }
+body.is-portrait #home-hit  { top: 60px !important; left: auto !important; right: 16px; }
+body.is-portrait #home-fondo { left: auto; right: calc(14.26% - 2px); }
+body.is-portrait #home-texto { left: auto; right: 105%; clip-path: inset(0 0 0 100%); }
+body.is-portrait #home-btn.hovered #home-texto { clip-path: inset(0 0 0 0%); }
+body.is-portrait .vhs-label {
+  inset: 0 auto 0 0;
+  width: calc(100% - (100dvh - 80px) * 121 / 936);
+  writing-mode: horizontal-tb; transform: none;
+  font-size: 11px; scale: 1; text-align: left;
+  justify-content: flex-start; align-items: center;
+  padding-left: 20px; padding-right: 0; opacity: 0.6;
+  transition: font-size 200ms ease, opacity 200ms ease;
+}
+body.is-portrait .vhs-spine.is-active .vhs-label { opacity: 1; font-size: 13px; }

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diego Tavella</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #armalogo {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      object-fit: contain;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <video id="armalogo" src="assets/videos/armalogo_hom6dtv.webm" preload="auto" playsinline muted></video>
+
+  <script>
+    var v = document.getElementById('armalogo');
+
+    // Armalogo: último frame
+    function seekToEnd() {
+      if (v.duration && isFinite(v.duration)) {
+        v.currentTime = v.duration;
+      }
+    }
+    v.addEventListener('loadedmetadata', seekToEnd, { once: true });
+    v.addEventListener('canplaythrough',  seekToEnd, { once: true });
+
+    var swipeTriggered = false;
+    var swipeBack      = false;
+    var touchStartY    = null;
+
+    function doSwipeDown() {
+      if (swipeBack) return;
+      swipeBack = true;
+      var cover = document.createElement('div');
+      cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;pointer-events:none;';
+      document.body.appendChild(cover);
+      cover.animate(
+        [{ transform: 'translateY(-100vh)' }, { transform: 'translateY(0)' }],
+        { duration: 500, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
+      );
+      setTimeout(function() { window.location.href = 'ajuste.html'; }, 510);
+    }
+
+    function doSwipeUp() {
+      if (swipeTriggered) return;
+      swipeTriggered = true;
+
+      var cover = document.createElement('div');
+      cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;pointer-events:none;';
+      document.body.appendChild(cover);
+      cover.animate(
+        [{ transform: 'translateY(100vh)' }, { transform: 'translateY(0)' }],
+        { duration: 500, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
+      );
+      sessionStorage.setItem('from_hom6dtv', '1');
+      setTimeout(function() { window.location.href = 'workka2.html'; }, 510);
+    }
+
+    window.addEventListener('touchstart', function(e) {
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    window.addEventListener('touchend', function(e) {
+      if (touchStartY === null) return;
+      var dy = touchStartY - e.changedTouches[0].clientY;
+      if (dy > 50)  doSwipeUp();
+      if (dy < -50) doSwipeDown();
+      touchStartY = null;
+    }, { passive: true });
+    window.addEventListener('mousedown', function(e) { touchStartY = e.clientY; });
+    window.addEventListener('mouseup', function(e) {
+      if (touchStartY === null) return;
+      var dy = touchStartY - e.clientY;
+      if (dy > 30)  doSwipeUp();
+      if (dy < -30) doSwipeDown();
+      touchStartY = null;
+    });
+    window.addEventListener('wheel', function(e) {
+      if (e.deltaY > 0) doSwipeUp();
+      if (e.deltaY < 0) doSwipeDown();
+    }, { passive: true });
+
+  </script>
+
+</body>
+</html>

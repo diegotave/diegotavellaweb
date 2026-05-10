@@ -167,14 +167,14 @@
     .panel-capture.visible { display: block; }
     /* Flechita SVG overlay */
     #flechita {
-      position: absolute;
+      position: fixed;
       left: 50%;
-      top: 26.50%;
-      height: 2.50%;
+      top: 26.50vh;
+      height: 2.50vh;
       width: auto;
       transform: translateX(calc(-50% + -1px));
       pointer-events: none;
-      z-index: 3;
+      z-index: 10001;
       opacity: 0;
       transition: opacity 350ms cubic-bezier(0.16, 1, 0.3, 1),
                   top 620ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -263,10 +263,10 @@
     }
     body.stage-expanded #stage {
       clip-path: inset(
-        21.25vh
-        max(0px, calc(50vw - 49.7vh))
-        22.25vh
-        max(0px, calc(50vw - 49.9vh))
+        13vh
+        max(0px, calc(50vw - 61.1vh + 6px))
+        13vh
+        max(0px, calc(50vw - 61.1vh + 6px))
         round 4px 4px 24px 24px
       );
       transition: clip-path 620ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -286,10 +286,10 @@
                   border-color 620ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     body.stage-expanded::after {
-      top:    21.25vh;
-      bottom: 22.25vh;
-      left:   max(10px, calc(50vw - 49.9vh));
-      right:  max(10px, calc(50vw - 49.7vh));
+      top:    13vh;
+      bottom: 13vh;
+      left:   max(10px, calc(50vw - 61.1vh + 6px));
+      right:  max(10px, calc(50vw - 61.1vh + 6px));
       border-radius: 4px 4px 24px 24px;
       border-color: #000;
     }
@@ -437,8 +437,8 @@
       </svg>
     </div>
     <img id="vhs-outline" src="assets/images/vhs-outline.svg" alt="">
-    <img id="flechita" src="assets/images/flechita.svg" alt="">
   </div>
+  <img id="flechita" src="assets/images/flechita.svg" alt="">
   <img id="logo-exacto" src="assets/images/logoexacto.png" alt="">
 
 <div id="blend-panel">
@@ -683,8 +683,13 @@
 
     function gotoWorkka() {
       sessionStorage.setItem('from-hom4dtv', '1');
-      document.body.classList.add('stage-goto-workka');
-      setTimeout(() => { window.location.href = 'workka.html'; }, 640);
+      sessionStorage.setItem('lomos-from-below', '1');
+      const exitT = "top 950ms cubic-bezier(0.55, 0, 1, 0.45), height 620ms cubic-bezier(0.16, 1, 0.3, 1)";
+      vhs4.style.transition        = exitT;
+      etiquetaWrap.style.transition = exitT;
+      vhs4.style.top = "-70%";
+      etiquetaWrap.style.top = "-70%";
+      setTimeout(() => { window.location.href = 'workka.html'; }, 1000);
     }
 
     stage.addEventListener("touchend", e => {

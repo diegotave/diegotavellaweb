@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diego Tavella — Contact</title>
+  <link rel="stylesheet" href="workka2.css">
+  <style>
+    #contact-label {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 26vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(1.2rem, 3vw, 2.8rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="stage">
+    <div id="shelf-wrap" style="visibility:hidden">
+      <div id="shelf-rail"></div>
+    </div>
+    <div id="contact-label">CONTACT</div>
+  </div>
+
+  <script>
+    const works = [
+      { title: "Demo Reel",            png: "assets/images/vhslomorojo.png"     },
+      { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png"  },
+      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png" },
+      { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png"    },
+      { title: "Video 05",             png: "assets/images/vhslomocian.png"     },
+      { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png"  },
+      { title: "Highlight Fox",        png: "assets/images/vhslomorosa.png"     },
+    ];
+
+    const stage = document.getElementById('stage');
+    const rail  = document.getElementById('shelf-rail');
+
+    works.forEach((work, i) => {
+      const spine  = document.createElement('div');
+      spine.className = 'vhs-spine';
+      spine.dataset.index = i;
+      const visual = document.createElement('div');
+      visual.className = 'vhs-visual';
+      const png = document.createElement('img');
+      png.className = 'vhs-png';
+      png.src = work.png;
+      png.alt = '';
+      const label = document.createElement('span');
+      label.className = 'vhs-label';
+      label.textContent = work.title;
+      visual.appendChild(png);
+      visual.appendChild(label);
+      spine.appendChild(visual);
+      rail.appendChild(spine);
+    });
+
+    function calibrate() {
+      const stageH = stage.getBoundingClientRect().height;
+      const railH  = (stageH - 40) / 0.85;
+      rail.style.height = railH + 'px';
+      // bottom: 26vh posiciona los VHS como continuación de workka2
+      // (shelf-wrap.bottom = -74vh en workka2 → 26vh aquí, independiente de railH)
+      document.getElementById('shelf-wrap').style.bottom = (window.innerHeight * 0.26) + 'px';
+    }
+
+    function activate() {
+      const sw     = document.getElementById('shelf-wrap');
+      sw.style.visibility = '';
+      Array.from(rail.querySelectorAll('.vhs-spine')).forEach(spine => {
+        spine.style.animation = 'none';
+        spine.style.opacity   = '1';
+        spine.classList.add('entered');
+      });
+    }
+
+    requestAnimationFrame(() => requestAnimationFrame(() => { calibrate(); activate(); }));
+    window.addEventListener('resize', calibrate);
+
+    // ── Entrada desde workka2 (push sync) ────────────────────────────────────
+    var t0  = +sessionStorage.getItem('workka2_exit_t0');
+    var dur = +sessionStorage.getItem('workka2_exit_dur') || 700;
+    if (t0) {
+      sessionStorage.removeItem('workka2_exit_t0');
+      sessionStorage.removeItem('workka2_exit_dur');
+      var elapsed = Date.now() - t0;
+      if (elapsed < dur) {
+        document.body.animate(
+          [{ transform: 'translateY(100vh)' }, { transform: 'translateY(0)' }],
+          { duration: dur, delay: -elapsed, easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'forwards' }
+        );
+      }
+    }
+
+    // ── Volver a workka2 ──────────────────────────────────────────────────────
+    var _back = false, _ty = null;
+
+    function goBack() {
+      if (_back) return; _back = true;
+      var d = 700;
+      document.documentElement.style.overflow = 'visible';
+      document.body.style.overflow            = 'visible';
+      document.body.animate(
+        [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
+        { duration: d, easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'forwards' }
+      );
+      sessionStorage.setItem('contact2_exit_t0',  Date.now());
+      sessionStorage.setItem('contact2_exit_dur', d);
+      setTimeout(function() { history.back(); }, d + 10);
+    }
+
+    window.addEventListener('touchstart', function(e) { _ty = e.touches[0].clientY; }, { passive: true });
+    window.addEventListener('touchend',   function(e) {
+      if (_ty === null) return;
+      if (e.changedTouches[0].clientY - _ty > 50) goBack();
+      _ty = null;
+    }, { passive: true });
+    window.addEventListener('mousedown', function(e) { _ty = e.clientY; });
+    window.addEventListener('mouseup',   function(e) {
+      if (_ty === null) return;
+      if (e.clientY - _ty > 30) goBack();
+      _ty = null;
+    });
+    window.addEventListener('wheel', function(e) { if (e.deltaY < 0) goBack(); }, { passive: true });
+  </script>
+
+  <script>
+    // ── Restaurar workka2 al volver (BFCache o fresh load) ───────────────────
+    window.addEventListener('pageshow', function() {
+      // si esta página persiste en historial pero no nos vamos, no pasa nada
+    });
+  </script>
+
+</body>
+</html>

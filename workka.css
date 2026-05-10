@@ -34,6 +34,25 @@ body {
 
 
 
+/* ── FONDO VIDEOTECA — acompaña body::after ─────────────────────────────── */
+#bg-fondo {
+  position: absolute;
+  top: 13vh;
+  bottom: 13vh;
+  left:  max(10px, calc(50vw - 61.1vh + 6px));
+  right: max(10px, calc(50vw - 61.1vh + 6px));
+  object-fit: cover;
+  z-index: 2;
+  pointer-events: none;
+  display: block;
+  opacity: 0;
+  transition: opacity 300ms ease,
+              top    500ms cubic-bezier(0.16, 1, 0.3, 1),
+              bottom 500ms cubic-bezier(0.16, 1, 0.3, 1),
+              left   500ms cubic-bezier(0.16, 1, 0.3, 1),
+              right  500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* ── INTRO VIDEO ─────────────────────────────────────────────────────────── */
 #v {
   position: absolute;
@@ -133,13 +152,18 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
 /* ── COVER (arte detrás) ─────────────────────────────────────────────────── */
 .vhs-cover {
   position: absolute;
-  inset: 5px;
-  width: calc(100% - 10px);
-  height: calc(100% - 10px);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center top;
   pointer-events: none;
-  background: #000;
+  -webkit-mask-image: url('assets/images/areathumb.png');
+  mask-image: url('assets/images/areathumb.png');
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 /* ── PNG overlay del lomo VHS ────────────────────────────────────────────── */
@@ -151,6 +175,9 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
   pointer-events: none;
   z-index: 1;
   filter: none;
+  opacity: 0.6;
+  mix-blend-mode: var(--vhs-blend, exclusion);
+  transition: opacity 180ms ease;
 }
 
 /* ── LABEL ───────────────────────────────────────────────────────────────── */
@@ -184,32 +211,32 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
 /* ── PLAYER ──────────────────────────────────────────────────────────────── */
 #player {
   display: none;
-  position: absolute;
-  top: 60px; left: 20px; right: 20px; bottom: 20px;
+  position: fixed;
+  top: 8vh;
+  bottom: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  aspect-ratio: 16 / 9;
+  max-width: calc(100vw - 20px);
   background: #000;
   z-index: 400;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
+  border-radius: 4px 4px 24px 24px;
   overflow: hidden;
 }
+
+#player.square { aspect-ratio: 1 / 1; }
 
 #player.open { display: flex; }
 
 #player-v {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   background: #000;
-}
-
-/* Video cuadrado (1:1): llena alto en landscape, ancho en portrait */
-@media (orientation: landscape) {
-  #player-v.square { width: auto; height: 100%; }
-}
-@media (orientation: portrait) {
-  #player-v.square { width: 100%; height: auto; }
 }
 
 #player-back {
@@ -237,6 +264,58 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
 
 /* ── MARGIN MASK ─────────────────────────────────────────────────────────── */
 
+/* ── FRAME FILL ──────────────────────────────────────────────────────────── */
+#frame-fill {
+  position: fixed;
+  top: 13vh;
+  bottom: 13vh;
+  left:  max(10px, calc(50vw - 61.1vh + 6px));
+  right: max(10px, calc(50vw - 61.1vh + 6px));
+  border-radius: min(0.278vw, 4px) min(0.278vw, 4px) min(1.667vw, 24px) min(1.667vw, 24px);
+  background: #000;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 9998;
+  transition: top          500ms cubic-bezier(0.16, 1, 0.3, 1),
+              bottom       500ms cubic-bezier(0.16, 1, 0.3, 1),
+              left         500ms cubic-bezier(0.16, 1, 0.3, 1),
+              right        500ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.vhs-elevated #frame-fill {
+  top: 5vh;
+  bottom: 5vh;
+  transition: top    700ms cubic-bezier(0.16, 1, 0.3, 1),
+              bottom 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.player-open #frame-fill {
+  top: 8vh;
+  bottom: 8vh;
+  left:  max(10px, calc(50vw - 672vh / 9));
+  right: max(10px, calc(50vw - 672vh / 9));
+  border-radius: 4px 4px 24px 24px;
+}
+
+/* ── FONDO VIDEOTECA ─────────────────────────────────────────────────────── */
+#bg-fondo {
+  position: fixed;
+  top: 13vh;
+  bottom: 13vh;
+  left: 50%;
+  transform: translateX(-50%);
+  aspect-ratio: 16 / 9;
+  max-width: calc(100vw - 20px);
+  object-fit: cover;
+  z-index: 2;
+  pointer-events: none;
+  display: block;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+
 /* ── FRAME ───────────────────────────────────────────────────────────────── */
 body::after {
   content: '';
@@ -251,6 +330,11 @@ body::after {
   box-shadow: 0 0 0 100vmax #000;
   pointer-events: none;
   z-index: 9999;
+  transition: top    500ms cubic-bezier(0.16, 1, 0.3, 1),
+              bottom 500ms cubic-bezier(0.16, 1, 0.3, 1),
+              left   500ms cubic-bezier(0.16, 1, 0.3, 1),
+              right  500ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 500ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.vhs-elevated::after {
@@ -259,6 +343,20 @@ body.vhs-elevated::after {
   transition: top    700ms cubic-bezier(0.16, 1, 0.3, 1),
               bottom 700ms cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+body.player-open::after {
+  top: 8vh;
+  bottom: 8vh;
+  left: max(10px, calc(50vw - 672vh / 9));
+  right: max(10px, calc(50vw - 672vh / 9));
+  border-radius: 4px 4px 24px 24px;
+}
+
+body.player-open.player-square::after {
+  left: max(10px, calc(50vw - 42vh));
+  right: max(10px, calc(50vw - 42vh));
+}
+
 
 /* ── HOME BUTTON ─────────────────────────────────────────────────────────── */
 #home-btn {
@@ -363,8 +461,8 @@ body.light                { background: #fff; }
 body.light #stage         { background: #fff; }
 body.light .vhs-label     { color: #000; }
 body.light::after         { border-color: #000; box-shadow: 0 0 0 100vmax #fff; }
-body.orange::after        { border-color: #fff; box-shadow: 0 0 0 100vmax rgb(255, 170, 0); }
-body.red::after           { border-color: #fff; box-shadow: 0 0 0 100vmax #FF2200; }
+body.orange::after        { border-color: #000; box-shadow: 0 0 0 100vmax rgb(255, 170, 0); }
+body.red::after           { border-color: #000; box-shadow: 0 0 0 100vmax #FF2200; }
 body.light #vhs-ruler     { color: #000; }
 body.orange #home-fondo   { background: #fff; }
 body.red    #home-fondo   { background: #fff; }
@@ -506,22 +604,22 @@ body.light  #blend-list li          { color: #000; }
     border-radius: 2px;
   }
 
-  /* Cover: centrado en ventana transparente del PNG + 2px sangría
-     Y-window = y=80–656 (576px), X-window = x=12–85 (74px), center-x=49 (offset 3px del centro del elemento)
-     width = (dvh-80)*37/468+4px (74/104*W + 2px*2), height = (dvh-80)*8/13+4px (576/936*H + 2px*2)
-     left = 100% - (dvh-80)*223/468 - 2px, top = 50% + (dvh-80)*3/936 (shift al centro de ventana X) */
   .vhs-cover {
     inset: auto;
     position: absolute;
-    top: calc(50% + (100dvh - 80px) * 3 / 936);
-    left: calc(100% - (100dvh - 80px) * 223 / 468 - 2px);
-    width: calc((100dvh - 80px) * 37 / 468 + 4px);
-    height: calc((100dvh - 80px) * 8 / 13 + 4px);
+    top: 50%;
+    left: calc(100% - (100dvh - 80px) * 881 / 1872);
+    width: calc((100dvh - 80px) / 9);
+    height: calc((100dvh - 80px) * 777 / 936);
     transform: translateY(-50%) rotate(-90deg);
     object-fit: cover;
     object-position: center center;
-    -webkit-mask-image: none;
-    mask-image: none;
+    -webkit-mask-image: url('assets/images/areathumb.png');
+    mask-image: url('assets/images/areathumb.png');
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
   }
 
   /* PNG: borde visual derecho alineado con borde derecho del strip
@@ -602,13 +700,18 @@ body.is-portrait .vhs-spine.is-active { margin: 0; }
 body.is-portrait .vhs-visual { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 2px; }
 body.is-portrait .vhs-cover {
   inset: auto; position: absolute;
-  top: calc(50% + (100dvh - 80px) * 3 / 936);
-  left: calc(100% - (100dvh - 80px) * 223 / 468 - 2px);
-  width: calc((100dvh - 80px) * 37 / 468 + 4px);
-  height: calc((100dvh - 80px) * 8 / 13 + 4px);
+  top: 50%;
+  left: calc(100% - (100dvh - 80px) * 881 / 1872);
+  width: calc((100dvh - 80px) / 9);
+  height: calc((100dvh - 80px) * 777 / 936);
   transform: translateY(-50%) rotate(-90deg);
   object-fit: cover; object-position: center center;
-  -webkit-mask-image: none; mask-image: none;
+  -webkit-mask-image: url('assets/images/areathumb.png');
+  mask-image: url('assets/images/areathumb.png');
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 body.is-portrait .vhs-png {
   position: absolute; top: 50%;
@@ -633,3 +736,67 @@ body.is-portrait .vhs-label {
 }
 body.is-portrait .vhs-spine.is-active .vhs-label { opacity: 1; font-size: 13px; }
 body.is-portrait #player-v.square { width: 100%; height: auto; }
+
+/* ── VHS CTRL PANEL ──────────────────────────────────────────────────────── */
+#vhs-ctrl {
+  position: fixed;
+  left: 16px;
+  top: 10px;
+  bottom: 10px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+#vhs-ctrl-label,
+#vhs-ctrl-label2 {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #fff;
+  opacity: 0.2;
+  padding: 0 0 4px 0;
+}
+#vhs-ctrl-label2 { margin-top: 8px; }
+
+#vhs-ctrl-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vhs-ctrl-item {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.35;
+  padding: 2px 0;
+  transition: opacity 120ms ease, font-size 180ms ease;
+  white-space: nowrap;
+  text-align: left;
+}
+.vhs-ctrl-item:hover  { opacity: 0.7; font-size: 16px; }
+.vhs-ctrl-item.active { opacity: 1; font-weight: 700; }
+
+body.orange #vhs-ctrl-label, body.orange #vhs-ctrl-label2,
+body.red    #vhs-ctrl-label, body.red    #vhs-ctrl-label2,
+body.light  #vhs-ctrl-label, body.light  #vhs-ctrl-label2 { color: #000; }
+
+body.orange .vhs-ctrl-item,
+body.red    .vhs-ctrl-item,
+body.light  .vhs-ctrl-item  { color: #000; }
+
+/* invert mode override */
+body.vhs-invert .vhs-png                              { filter: saturate(0) invert(1); }
+body.vhs-invert .vhs-spine.is-active .vhs-png         { filter: saturate(1) invert(1); }
+
+/* hide in portrait — panel overlaps with shelf */
+@media (orientation: portrait) { #vhs-ctrl { display: none; } }
+body.is-portrait #vhs-ctrl { display: none; }

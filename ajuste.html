@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Señal de Ajuste</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #screen {
+      position: relative;
+      width: 100vw; height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    #zona-a { flex: 67 0 0; display: flex; }
+    #zona-b { flex: 8  0 0; display: flex; }
+    #zona-c { flex: 25 0 0; display: flex; }
+    .franja  { flex: 1 0 0; }
+
+    #c-izq    { flex: 2 0 0; display: flex; }
+    #c-centro { flex: 7 0 0; display: flex; }
+    #c-der    { flex: 3 0 0; display: flex; }
+
+    .label {
+      position: fixed;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px; line-height: 1.6; letter-spacing: 0.04em;
+      color: #fff; opacity: 0.5;
+      white-space: nowrap; pointer-events: none;
+      z-index: 35;
+    }
+    #lbl-tl { top: 14px;    left: 16px; }
+    #lbl-tr { top: 14px;    right: 16px; text-align: right; }
+    #lbl-br { bottom: 14px; right: 16px; text-align: right; }
+
+    #btn {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 20;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #000;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px; letter-spacing: 0.15em;
+      padding: 18px 44px;
+      cursor: pointer; outline: none;
+      transition: border-color 200ms ease;
+    }
+    #btn:hover { border-color: rgba(255, 255, 255, 0.6); }
+
+    #blanco {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: #fff;
+      z-index: 9; display: none; pointer-events: none;
+    }
+
+    #ola {
+      position: fixed;
+      top: -150px; left: -150px;
+      width: calc(100vw + 300px);
+      height: calc(100vh + 300px);
+      display: flex; z-index: 10; pointer-events: none;
+    }
+    .barra { flex: 1 0 0; transform: translateY(calc(-100vh - 300px)); }
+    #ola > .barra:first-child,
+    #ola > .barra:last-child { flex: 1 0 150px; }
+
+    #negro {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: #000; z-index: 20;
+      transform: translateY(-100vh); pointer-events: none;
+    }
+
+    #video {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      object-fit: contain; z-index: 30;
+      opacity: 0; pointer-events: none;
+      transform-origin: 50% 50%;
+    }
+
+    #vhs {
+      position: fixed; top: 50%; left: 50%;
+      width: 55vw; height: auto;
+      transform: translate(-50%, calc(-50% + 100vh));
+      z-index: 29;
+      filter: invert(1);
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
+    #armalogo {
+      position: fixed; top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      object-fit: contain; z-index: 32;
+      opacity: 0; pointer-events: none;
+      transform-origin: 50% 50%;
+      mix-blend-mode: multiply;
+      filter: invert(1);
+    }
+  </style>
+</head>
+<body>
+
+<div id="screen">
+  <div id="zona-a">
+    <div class="franja" style="background:#FF4D1C"></div>
+    <div class="franja" style="background:#FF9B3D"></div>
+    <div class="franja" style="background:#FFE14D"></div>
+    <div class="franja" style="background:#5BFF8F"></div>
+    <div class="franja" style="background:#3DDFFF"></div>
+    <div class="franja" style="background:#7B6FFF"></div>
+    <div class="franja" style="background:#FF4D8F"></div>
+  </div>
+  <div id="zona-b">
+    <div class="franja" style="background:#3DDFFF"></div>
+    <div class="franja" style="background:#7B6FFF"></div>
+    <div class="franja" style="background:#090909"></div>
+    <div class="franja" style="background:#FFFFFF"></div>
+    <div class="franja" style="background:#FF4D1C"></div>
+    <div class="franja" style="background:#090909"></div>
+    <div class="franja" style="background:#FF4D8F"></div>
+  </div>
+  <div id="zona-c">
+    <div id="c-izq">
+      <div class="franja" style="background:#FFFFFF"></div>
+      <div class="franja" style="background:#404040"></div>
+    </div>
+    <div id="c-centro">
+      <div class="franja" style="background:#000000"></div>
+      <div class="franja" style="background:#2A2A2A"></div>
+      <div class="franja" style="background:#555555"></div>
+      <div class="franja" style="background:#808080"></div>
+      <div class="franja" style="background:#AAAAAA"></div>
+      <div class="franja" style="background:#D5D5D5"></div>
+      <div class="franja" style="background:#FFFFFF"></div>
+    </div>
+    <div id="c-der">
+      <div class="franja" style="background:#040404"></div>
+      <div class="franja" style="background:#000000"></div>
+      <div class="franja" style="background:#101010"></div>
+    </div>
+  </div>
+
+  <div class="label" id="lbl-tl">
+    SMPTE · COLOR REFERENCE · 1920×1080 · 29.97fps<br>
+    DT/WEB/IDENT · SIGNAL GENERATOR v1.0
+  </div>
+  <div class="label" id="lbl-tr">
+    IRE 100<br>
+    FORMAT: HD · BARS+TONE
+  </div>
+  <div class="label" id="lbl-br">
+    TC 00:00:00:00&nbsp;&nbsp;CH-A
+  </div>
+
+  <button id="btn">[ INICIAR ]</button>
+</div>
+
+<div id="ola">
+  <div class="barra" style="background:#FF4D1C"></div>
+  <div class="barra" style="background:#FF9B3D"></div>
+  <div class="barra" style="background:#FFE14D"></div>
+  <div class="barra" style="background:#5BFF8F"></div>
+  <div class="barra" style="background:#3DDFFF"></div>
+  <div class="barra" style="background:#7B6FFF"></div>
+  <div class="barra" style="background:#FF4D8F"></div>
+</div>
+
+<div id="blanco"></div>
+<div id="negro"></div>
+
+<video id="video"    src="assets/videos/nombrebrutal_colores.webm" preload="auto" playsinline></video>
+<video id="vhs"      src="assets/videos/vhsentero.webm"           preload="auto" playsinline loop muted></video>
+<video id="armalogo" src="assets/videos/armalogo_hom6dtv.webm"    preload="auto" playsinline muted></video>
+
+<script>
+  var btn      = document.getElementById('btn');
+  var ola      = document.getElementById('ola');
+  var blanco   = document.getElementById('blanco');
+  var negro    = document.getElementById('negro');
+  var video    = document.getElementById('video');
+  var vhs      = document.getElementById('vhs');
+  var armalogo = document.getElementById('armalogo');
+  var lblTl    = document.getElementById('lbl-tl');
+  var lblTr    = document.getElementById('lbl-tr');
+  var lblBr    = document.getElementById('lbl-br');
+
+  var F = 1000 / 60;
+
+  // ── Valores calibrados ────────────────────────────────────────────────────
+  var VIDEO_FINAL_SCALE = 0.233;
+  var VIDEO_OX = -0.32;
+  var VIDEO_OY = -1.30;
+
+  // armalogo arranca 11 frames antes de que nombrebrutal termine (animación 700ms a 30fps)
+  var ARMA_DELAY = Math.round(700 - 11 * 1000 / 30);  // ≈ 333ms
+
+  var swipeEnabled   = false;
+  var swipeTriggered = false;
+  var touchStartY    = null;
+
+  // ── TC timecode ──────────────────────────────────────────────────────────
+  var tcOrigin = performance.now();
+  function updateTC() {
+    var e  = performance.now() - tcOrigin;
+    var tf = Math.floor(e * 30 / 1000);
+    var ff = String(tf % 30).padStart(2, '0');
+    var s  = Math.floor(tf / 30);
+    var ss = String(s % 60).padStart(2, '0');
+    var m  = Math.floor(s / 60);
+    var mm = String(m % 60).padStart(2, '0');
+    var hh = String(Math.floor(m / 60)).padStart(2, '0');
+    lblBr.textContent = 'TC ' + hh + ':' + mm + ':' + ss + ':' + ff + '  CH-A';
+    requestAnimationFrame(updateTC);
+  }
+  updateTC();
+
+  // ── Labels fase 2 ────────────────────────────────────────────────────────
+  function switchLabels() {
+    var fade = { duration: 250, fill: 'forwards' };
+    function transition(el, html) {
+      el.animate([{ opacity: 0.5 }, { opacity: 0 }], fade).onfinish = function () {
+        el.innerHTML = html;
+        el.animate([{ opacity: 0 }, { opacity: 0.75 }], fade).onfinish = function () {
+          el.style.opacity = '0.75';
+        };
+      };
+    }
+    transition(lblTl,
+      'SMPTE · WELCOME · 1920×1080 · 29.97fps<br>' +
+      'DT/WEB/IDENT · TRANSMISSION ACTIVE'
+    );
+    transition(lblTr, 'IRE 100<br>SIGNAL: LIVE · /INDEX');
+    lblBr.animate([{ opacity: 0.5 }, { opacity: 0.75 }], { duration: 500, fill: 'forwards' })
+      .onfinish = function () { lblBr.style.opacity = '0.75'; };
+  }
+
+  // ── Filmstrip ─────────────────────────────────────────────────────────────
+  function buildFilmstrip() {
+    var rect  = vhs.getBoundingClientRect();
+    var tileW = rect.width;
+    var tileH = rect.height;
+    var P     = rect.top;   // distancia del top del VHS centrado al top del viewport
+    var vpH   = window.innerHeight;
+
+    var gaps = [];
+    var g = P;
+    while (g > 1) { gaps.push(g); g /= 2; }
+    gaps.push(1);
+
+    var numTiles = gaps.length + 1;
+    var totalH   = numTiles * tileH + gaps.reduce(function(s, x) { return s + x; }, 0);
+    var dur    = 2000;
+    var startY = -totalH;
+    var endY   = vpH;
+
+    // Filtro SVG de blur vertical (motion blur)
+    var NS  = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
+    var defs = document.createElementNS(NS, 'defs');
+    var filt = document.createElementNS(NS, 'filter');
+    filt.setAttribute('id', 'fs-vblur');
+    filt.setAttribute('x', '-5%');  filt.setAttribute('width',  '110%');
+    filt.setAttribute('y', '-40%'); filt.setAttribute('height', '180%');
+    var fgb = document.createElementNS(NS, 'feGaussianBlur');
+    fgb.setAttribute('in', 'SourceGraphic');
+    fgb.setAttribute('stdDeviation', '0 0');
+    filt.appendChild(fgb); defs.appendChild(filt); svg.appendChild(defs);
+    document.body.appendChild(svg);
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText =
+      'position:fixed;top:0;left:50%;transform:translateX(-50%);' +
+      'pointer-events:none;z-index:21;filter:url(#fs-vblur);';
+    var strip = document.createElement('div');
+    strip.style.cssText = 'display:flex;flex-direction:column;will-change:transform;';
+    wrap.appendChild(strip);
+    document.body.appendChild(wrap);
+
+    for (var i = 0; i < numTiles; i++) {
+      var v = document.createElement('video');
+      v.src = 'assets/videos/vhsentero.webm';
+      v.muted = true;
+      v.setAttribute('playsinline', '');
+      v.style.cssText =
+        'width:' + tileW + 'px;height:' + tileH + 'px;display:block;flex-shrink:0;' +
+        'filter:invert(1);mix-blend-mode:screen;';
+      if (i < gaps.length) v.style.marginBottom = gaps[i] + 'px';
+
+      if (i < 3) {
+        v.loop = true; v.preload = 'auto';
+        v.addEventListener('loadedmetadata', (function(el) {
+          return function() { el.play().catch(function() {}); };
+        })(v));
+      } else {
+        v.preload = 'metadata';
+        v.addEventListener('loadedmetadata', (function(el) {
+          return function() { el.currentTime = 1; };
+        })(v));
+      }
+      strip.appendChild(v);
+    }
+
+    var midY = Math.round(startY + (endY - startY) * 0.65);
+    strip.animate(
+      [
+        { transform: 'translateY(' + startY + 'px)', offset: 0,    easing: 'cubic-bezier(0.6, 0, 0.9, 1)' },
+        { transform: 'translateY(' + midY   + 'px)', offset: 0.65, easing: 'ease-out' },
+        { transform: 'translateY(' + endY   + 'px)', offset: 1 }
+      ],
+      { duration: dur, fill: 'forwards' }
+    );
+
+
+    // Blur sube hasta el pico (65%) y baja hasta 0 al final, siguiendo la velocidad
+    var blurT0  = performance.now();
+    var maxBlur = 14;
+    var peak    = 0.65;
+    (function animBlur() {
+      var t = Math.min(1, (performance.now() - blurT0) / dur);
+      var b = t <= peak
+        ? (t / peak) * maxBlur
+        : (1 - (t - peak) / (1 - peak)) * maxBlur;
+      fgb.setAttribute('stdDeviation', '0 ' + b.toFixed(1));
+      if (t < 1) requestAnimationFrame(animBlur);
+      else fgb.setAttribute('stdDeviation', '0 0');
+    })();
+
+  }
+
+  // ── Swipe ─────────────────────────────────────────────────────────────────
+  function doSwipeUp() {
+    if (swipeTriggered) return;
+    swipeTriggered = true;
+    swipeEnabled   = false;
+
+    vhs.animate(
+      [
+        { transform: 'translate(-50%, -50%)' },
+        { transform: 'translate(-50%, 120vh)' }
+      ],
+      { duration: 400, easing: 'cubic-bezier(0.5, 0, 1, 0.6)', fill: 'forwards' }
+    );
+
+    // Filmstrip arranca al mismo tiempo
+    buildFilmstrip();
+    [lblTl, lblTr, lblBr].forEach(function(el) {
+      el.animate(
+        [{ opacity: parseFloat(el.style.opacity) || 0.75 }, { opacity: 0 }],
+        { duration: 400, fill: 'forwards' }
+      );
+    });
+
+    video.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(' + VIDEO_FINAL_SCALE + ')' }
+      ],
+      { duration: 700, easing: 'ease-in-out', fill: 'forwards' }
+    );
+
+    setTimeout(function() {
+      video.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(3 * 1000 / 30), fill: 'forwards' })
+        .onfinish = function() { video.style.opacity = '0'; };
+    }, ARMA_DELAY + Math.round(4 * 1000 / 30) + 15);
+
+    // armalogo arranca 11 frames antes del final, fade-in corto
+    setTimeout(function() {
+      var ap = armalogo.play();
+      if (ap && ap.catch) ap.catch(function() {});
+      armalogo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' })
+        .onfinish = function() { armalogo.style.opacity = '1'; };
+      armalogo.addEventListener('ended', function() {
+        // Fundido a negro antes de navegar para tapar el flash del browser
+        var cover = document.createElement('div');
+        cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;opacity:0;pointer-events:none';
+        document.body.appendChild(cover);
+        requestAnimationFrame(function() {
+          cover.style.transition = 'opacity 120ms linear';
+          cover.style.opacity    = '1';
+          setTimeout(function() { window.location.href = 'hom6dtv.html'; }, 130);
+        });
+      }, { once: true });
+    }, ARMA_DELAY);
+  }
+
+  window.addEventListener('touchstart', function(e) {
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  window.addEventListener('touchend', function(e) {
+    if (!swipeEnabled || touchStartY === null) return;
+    if (touchStartY - e.changedTouches[0].clientY > 50) doSwipeUp();
+    touchStartY = null;
+  }, { passive: true });
+  window.addEventListener('mousedown', function(e) { touchStartY = e.clientY; });
+  window.addEventListener('mouseup', function(e) {
+    if (!swipeEnabled || touchStartY === null) return;
+    if (touchStartY - e.clientY > 30) doSwipeUp();
+    touchStartY = null;
+  });
+  window.addEventListener('wheel', function(e) {
+    if (swipeEnabled && e.deltaY > 0) doSwipeUp();
+  }, { passive: true });
+
+  // ── Secuencia principal ───────────────────────────────────────────────────
+  btn.addEventListener('click', function() {
+    btn.style.pointerEvents = 'none';
+    btn.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' });
+
+    Array.from(document.querySelectorAll('.barra')).forEach(function(b, i) {
+      b.animate(
+        [
+          { transform: 'translateY(calc(-100vh - 300px))' },
+          { transform: 'translateY(0)' }
+        ],
+        {
+          delay:    Math.abs(i - 3) * 100,
+          duration: 1000,
+          easing:   'cubic-bezier(0.34, 1.56, 0.64, 1)',
+          fill:     'forwards',
+        }
+      );
+    });
+
+    setTimeout(function() {
+      blanco.style.display = 'block';
+
+      var blurDur = Math.round(60 * F);
+
+      var blurAnim = ola.animate(
+        [{ filter: 'blur(0px)' }, { filter: 'blur(120px)' }],
+        { duration: blurDur, easing: 'linear', fill: 'forwards' }
+      );
+
+      blurAnim.onfinish = function() {
+        ola.style.filter = 'blur(120px)';
+        switchLabels();
+
+        video.style.opacity = '0';
+        var va = video.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: Math.round(15 * F), fill: 'forwards' }
+        );
+        va.onfinish = function() { video.style.opacity = '1'; };
+        var vp = video.play();
+        if (vp && vp.catch) vp.catch(function() {});
+        video.addEventListener('ended', function() { video.pause(); });
+      };
+
+      // negro y vhs arrancan 500ms antes de que termine el blur
+      setTimeout(function() {
+        negro.animate(
+          [{ transform: 'translateY(-100vh)' }, { transform: 'translateY(0)' }],
+          { duration: Math.round(30 * F), easing: 'ease-in', fill: 'forwards' }
+        );
+
+        vhs.animate(
+          [
+            { transform: 'translate(-50%, calc(-50% + 100vh))' },
+            { transform: 'translate(-50%, -50%)' }
+          ],
+          { duration: Math.round(30 * F), easing: 'ease-out', fill: 'forwards' }
+        ).onfinish = function() {
+          vhs.style.transform = 'translate(-50%, -50%)';
+          swipeEnabled = true;
+        };
+        var vhsp = vhs.play();
+        if (vhsp && vhsp.catch) vhsp.catch(function() {});
+      }, blurDur - 500);
+
+    }, 950);
+  });
+</script>
+
+</body>
+</html>
