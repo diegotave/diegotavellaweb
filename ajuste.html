@@ -44,16 +44,14 @@
       position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       z-index: 20;
+      width: 100%; height: 100%;
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.3);
+      border: none;
       color: #000;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 13px; letter-spacing: 0.15em;
-      padding: 18px 44px;
+      font-size: 26px; letter-spacing: 0.15em; font-weight: 700;
       cursor: pointer; outline: none;
-      transition: border-color 200ms ease;
     }
-    #btn:hover { border-color: rgba(255, 255, 255, 0.6); }
 
     #blanco {
       position: fixed; top: 0; left: 0;
@@ -107,9 +105,72 @@
       mix-blend-mode: multiply;
       filter: invert(1);
     }
+
+    /* ── GATE ──────────────────────────────────────────────────────────────── */
+    #gate {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.42);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+      transition: opacity 400ms ease;
+    }
+    #gate-box {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 20px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.2);
+      padding: 44px 36px;
+      min-width: min(300px, 80vw);
+    }
+    #gate-label {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: #000; opacity: 0.5;
+    }
+    #gate-field {
+      display: flex; width: 100%;
+      border: 1px solid rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    #gate-input {
+      flex: 1; border: none; outline: none;
+      padding: 9px 12px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px; letter-spacing: 0.12em;
+      background: #fff; color: #000;
+    }
+    #gate-input::placeholder { color: rgba(0,0,0,0.2); }
+    #gate-submit {
+      background: #000; border: none;
+      cursor: pointer; padding: 0 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 150ms ease;
+    }
+    #gate-submit:hover { background: #222; }
+    #gate-submit svg { width: 12px; height: 12px; display: block; }
+    #gate-err {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #000; opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    #gate-err.visible { opacity: 0.45; }
   </style>
 </head>
 <body>
+
+<div id="gate">
+  <div id="gate-box">
+    <div id="gate-label">señal de ajuste · acceso</div>
+    <div id="gate-field">
+      <input id="gate-input" type="password" placeholder="·····" autocomplete="off">
+      <button id="gate-submit">
+        <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div id="gate-err">acceso incorrecto</div>
+  </div>
+</div>
 
 <div id="screen">
   <div id="zona-a">
@@ -184,6 +245,33 @@
 <video id="armalogo" src="assets/videos/armalogo_hom6dtv.webm"    preload="auto" playsinline muted></video>
 
 <script>
+  // ── Gate ─────────────────────────────────────────────────────────────────
+  (function() {
+    var gate      = document.getElementById('gate');
+    var gateInput = document.getElementById('gate-input');
+    var gateErr   = document.getElementById('gate-err');
+    var PASS      = 'promo';
+
+    function tryPass() {
+      if (gateInput.value === PASS) {
+        gate.style.opacity = '0';
+        gate.style.pointerEvents = 'none';
+        setTimeout(function() { gate.style.display = 'none'; }, 420);
+        gateInput.removeEventListener('keydown', onKey);
+      } else {
+        gateErr.classList.add('visible');
+        gateInput.value = '';
+        gateInput.focus();
+      }
+    }
+
+    function onKey(e) { if (e.key === 'Enter') tryPass(); }
+
+    document.getElementById('gate-submit').addEventListener('click', tryPass);
+    gateInput.addEventListener('keydown', onKey);
+    gateInput.focus();
+  })();
+
   var btn      = document.getElementById('btn');
   var ola      = document.getElementById('ola');
   var blanco   = document.getElementById('blanco');
