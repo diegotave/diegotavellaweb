@@ -3,10 +3,74 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
   <title>Diego Tavella — Works</title>
+  <style>html,body{background:#000}</style>
   <link rel="stylesheet" href="workka2.css">
-  <link rel="prefetch" href="contact2.html">
-  <script type="speculationrules">{"prerender":[{"urls":["contact2.html"]}]}</script>
+  <style>
+    body { display: block; }
+    #pages-wrap {
+      width: 100%;
+      height: 200dvh;
+      display: flex;
+      flex-direction: column;
+      will-change: transform;
+      transition: transform 700ms cubic-bezier(0.4,0,0.2,1);
+    }
+    #screen-work {
+      width: 100%;
+      height: 100dvh;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #screen-contact {
+      width: 100%;
+      height: 100dvh;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    #contact-stage {
+      position: absolute;
+      width: min(100vw, 1920px);
+      height: min(100dvh, 1080px);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      overflow: hidden;
+    }
+    #contact-shelf-wrap {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 10;
+    }
+    #contact-shelf-rail {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    #contact-label {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 26vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(1.2rem, 3vw, 2.8rem);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 5;
+    }
+  </style>
 </head>
 <body><script>(function(){function s(){var p=screen.orientation?screen.orientation.type.startsWith("portrait"):window.innerHeight>=window.innerWidth;document.body.classList.toggle("is-portrait",p)}s();window.addEventListener("resize",s);if(screen.orientation)screen.orientation.addEventListener("change",s)})()</script><script>(function(){
   if(!sessionStorage.getItem('from_hom6dtv'))return;
@@ -37,6 +101,8 @@
   });
 })()</script>
 
+  <div id="pages-wrap">
+  <div id="screen-work">
   <div id="stage">
 
     <div id="work-title">WORK</div>
@@ -69,22 +135,56 @@
     </div>
 
   </div>
+  </div>
+
+  <div id="screen-contact">
+    <div id="contact-stage">
+      <div id="contact-label">CONTACT</div>
+      <div id="contact-shelf-wrap" style="visibility:hidden">
+        <div id="contact-shelf-rail"></div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <div id="player">
+    <video id="player-v" playsinline></video>
+    <button id="player-back" aria-label="Volver">
+      <svg viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
 
   <script>
+    const R2 = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
     const works = [
-      { title: "Demo Reel",            png: "assets/images/vhslomorojo.png"     },
-      { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png"  },
-      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png" },
-      { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png"    },
-      { title: "Video 05",             png: "assets/images/vhslomocian.png"     },
-      { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png"  },
-      { title: "Highlight Fox",        png: "assets/images/vhslomorosa.png"     },
+      { title: "Demo Reel",            png: "assets/images/vhslomorojo.png",    video: R2+"/WORKS/video1/video1reel.mp4",                                     ratio:"16/9", startAt:1 },
+      { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png", video: R2+"/WORKS/video2/Multideportes.mp4",                                  ratio:"16/9" },
+      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png",video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                    ratio:"16/9" },
+      { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png",   video: R2+"/WORKS/video4/video4.mp4",                                         ratio:"16/9" },
+      { title: "Video 05",             png: "assets/images/vhslomocian.png",    video: R2+"/WORKS/video5/efda.mp4",                                           ratio:"16/9" },
+      { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png", video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4",ratio:"16/9" },
+      { title: "Highlight Fox",        png: "assets/images/vhslomorosa.png",    video: R2+"/WORKS/video6/hltfoxviejo.mp4",                                    ratio:"16/9" },
     ];
 
     const stage = document.getElementById("stage");
     const rail  = document.getElementById("shelf-rail");
 
     // ── BUILD ─────────────────────────────────────────────────────────────────
+    function buildCover(work, visual) {
+      if (!work.video) return;
+      const vid = document.createElement("video");
+      vid.className = "vhs-cover";
+      vid.muted = true;
+      vid.setAttribute("playsinline", "");
+      vid.preload = "metadata";
+      vid.src = work.video;
+      vid.addEventListener("loadedmetadata", function() {
+        vid.currentTime = Math.random() * vid.duration;
+      }, { once: true });
+      visual.insertBefore(vid, visual.firstChild);
+    }
+
     (function buildShelf() {
       works.forEach((work, i) => {
         const spine = document.createElement("div");
@@ -105,6 +205,7 @@
 
         visual.appendChild(png);
         visual.appendChild(label);
+        buildCover(work, visual);
         spine.appendChild(visual);
         rail.appendChild(spine);
       });
@@ -130,14 +231,25 @@
       requestAnimationFrame(fitTitleToRail);
     }
 
+    let _titleTyped = false;
+
     function fitTitleToRail() {
       const targetW = rail.getBoundingClientRect().width;
       if (!targetW) return;
-      const title = document.getElementById("work-title");
-      const curW  = title.getBoundingClientRect().width;
-      if (!curW) return;
-      const curFS = parseFloat(getComputedStyle(title).fontSize) || 100;
+      const title  = document.getElementById("work-title");
+      const saved  = title.textContent;
+      title.textContent = "WORK";
+      const curW   = title.getBoundingClientRect().width;
+      if (!curW) { title.textContent = saved; return; }
+      const curFS  = parseFloat(getComputedStyle(title).fontSize) || 100;
       title.style.fontSize = (curFS * targetW / curW) + "px";
+      if (!_titleTyped) {
+        _titleTyped = true;
+        title.textContent = "";
+        "WORK".split("").forEach((c, i) => setTimeout(() => { title.textContent += c; }, i * 90));
+      } else {
+        title.textContent = saved;
+      }
     }
 
     requestAnimationFrame(() => requestAnimationFrame(calibrateBlock));
@@ -546,15 +658,28 @@
       rail.addEventListener("click", e => {
         const spine = e.target.closest(".vhs-spine");
         if (!spine) return;
-        const idx = +spine.dataset.index;
+        const idx  = +spine.dataset.index;
+        const work = works[idx];
         if (document.body.classList.contains("is-portrait")) {
           if (elevatedIdx === idx) {
+            if (!work.video) return;
             dropElevated(); setActive(-1);
+            spine.style.transition = "transform 340ms cubic-bezier(0.4, 0, 1, 1)";
+            spine.style.transform  = "translateX(110%)";
+            setTimeout(() => {
+              spine.style.transition = "";
+              spine.style.transform  = "";
+              openPlayer(spine, work.video, work.startAt, work.ratio);
+            }, 300);
           } else {
             dropElevated(); elevateVisual(idx);
           }
         } else {
-          if (elevatedIdx !== idx) elevateVisual(idx);
+          if (elevatedIdx === idx) {
+            if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
+          } else {
+            elevateVisual(idx);
+          }
         }
       });
 
@@ -579,8 +704,13 @@
       rail.addEventListener("click", e => {
         const spine = e.target.closest(".vhs-spine");
         if (!spine) return;
-        const idx = +spine.dataset.index;
-        if (elevatedIdx !== idx) elevateVisual(idx);
+        const idx  = +spine.dataset.index;
+        const work = works[idx];
+        if (elevatedIdx === idx) {
+          if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
+        } else {
+          elevateVisual(idx);
+        }
       });
     }
 
@@ -605,6 +735,12 @@
     // ── RESIZE ────────────────────────────────────────────────────────────────
     window.addEventListener("resize", () => {
       calibrateBlock();
+      calibrateContact();
+      if (_pageState === 'contact') {
+        pagesWrap.style.transition = 'none';
+        pagesWrap.style.transform  = 'translateY(-' + window.innerHeight + 'px)';
+        requestAnimationFrame(() => { pagesWrap.style.transition = ''; });
+      }
       if (elevatedIdx >= 0) elevateVisual(elevatedIdx);
     });
 
@@ -614,41 +750,166 @@
     activateShelf();
 
   
+// ── PLAYER ────────────────────────────────────────────────────────────────────
+const player     = document.getElementById('player');
+const playerV    = document.getElementById('player-v');
+const playerBack = document.getElementById('player-back');
+let   playerAnim = null;
+
+function openPlayer(spineEl, src, startAt, ratio) {
+  const rect     = spineEl.getBoundingClientRect();
+  const isSquare = ratio === '1/1';
+
+  if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
+
+  document.body.classList.remove('vhs-elevated');
+  document.body.classList.add('player-open');
+  if (isSquare) document.body.classList.add('player-square');
+  document.getElementById('shelf-wrap').style.visibility = 'hidden';
+  homeBtn.style.opacity        = '0';
+  homeHit.style.opacity        = '0';
+  homeHit.style.pointerEvents  = 'none';
+
+  player.classList.toggle('square', isSquare);
+  player.classList.add('open');
+  player.style.opacity  = '0';
+  playerBack.style.opacity = '0';
+
+  const playerRect = player.getBoundingClientRect();
+  const cx    = (rect.left + rect.width  / 2) - playerRect.left;
+  const cy    = (rect.top  + rect.height / 2) - playerRect.top;
+  const cxPct = (cx / playerRect.width  * 100).toFixed(1);
+  const cyPct = (cy / playerRect.height * 100).toFixed(1);
+
+  playerV.classList.toggle('square', isSquare);
+  playerV.src = src;
+  if (startAt) playerV.addEventListener('loadedmetadata', () => { playerV.currentTime = startAt; }, { once: true });
+  playerV.muted = false;
+  playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
+
+  playerAnim = player.animate(
+    [{ opacity: '0' }, { opacity: '1' }],
+    { duration: 300, easing: 'ease', fill: 'forwards' }
+  );
+  player.animate([
+    { clipPath: 'circle(0% at ' + cxPct + '% ' + cyPct + '%)' },
+    { clipPath: 'circle(150% at 50% 50%)' }
+  ], { duration: 500, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' });
+
+  playerAnim.finished.then(() => {
+    playerAnim.cancel();
+    player.style.opacity  = '1';
+    player.style.clipPath = 'none';
+    playerAnim = null;
+    playerBack.style.opacity = '1';
+  }).catch(() => {});
+}
+
+function closePlayer() {
+  if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
+  playerBack.style.opacity = '0';
+  playerV.pause();
+  playerV.src = '';
+
+  const anim = player.animate(
+    [{ opacity: '1' }, { opacity: '0' }],
+    { duration: 300, easing: 'ease', fill: 'forwards' }
+  );
+  playerAnim = anim;
+  anim.finished.then(() => {
+    anim.cancel();
+    player.classList.remove('open', 'square');
+    player.style.opacity  = '';
+    player.style.clipPath = '';
+    document.body.classList.remove('player-open', 'player-square');
+    document.getElementById('shelf-wrap').style.visibility = '';
+    homeBtn.style.opacity       = '';
+    homeHit.style.opacity       = '';
+    homeHit.style.pointerEvents = '';
+    dropElevated();
+  }).catch(() => {});
+}
+
+playerBack.addEventListener('click', e => { e.stopPropagation(); closePlayer(); });
+player.addEventListener('click', e => { if (e.target === player) closePlayer(); });
+
+// ── PAGE STATE ────────────────────────────────────────────────────────────────
+var _pageState     = 'work';
 var _exitTriggered = false;
 var _touchStartY   = null;
 var EXIT_DUR       = 700;
 var EXIT_EASE      = 'cubic-bezier(0.4, 0, 0.2, 1)';
+var pagesWrap      = document.getElementById('pages-wrap');
+
+// ── CONTACT SECTION ───────────────────────────────────────────────────────────
+(function buildContactShelf() {
+  var contactRail = document.getElementById('contact-shelf-rail');
+  works.forEach(function(work) {
+    var spine  = document.createElement('div');
+    spine.className = 'vhs-spine entered';
+    spine.style.cssText = 'animation:none;opacity:1';
+    var visual = document.createElement('div');
+    visual.className = 'vhs-visual';
+    var png = document.createElement('img');
+    png.className = 'vhs-png';
+    png.src = work.png;
+    png.alt = '';
+    var label = document.createElement('span');
+    label.className = 'vhs-label';
+    label.textContent = work.title;
+    visual.appendChild(png);
+    visual.appendChild(label);
+    buildCover(work, visual);
+    spine.appendChild(visual);
+    contactRail.appendChild(spine);
+  });
+})();
+
+function calibrateContact() {
+  var contactStage = document.getElementById('contact-stage');
+  var contactRail  = document.getElementById('contact-shelf-rail');
+  var sw           = document.getElementById('contact-shelf-wrap');
+  var stageH       = contactStage.getBoundingClientRect().height;
+  contactRail.style.height = ((stageH - 40) / 0.85) + 'px';
+  sw.style.bottom          = (window.innerHeight * 0.56) + 'px';
+  sw.style.visibility      = '';
+}
+
+requestAnimationFrame(function() { requestAnimationFrame(calibrateContact); });
+
+// ── PAGE TRANSITIONS ──────────────────────────────────────────────────────────
+function goToContact() {
+  _pageState = 'contact';
+  pagesWrap.style.transform = 'translateY(-' + window.innerHeight + 'px)';
+  setTimeout(function() { _exitTriggered = false; }, EXIT_DUR + 50);
+}
+
+function goToWork() {
+  _pageState = 'work';
+  pagesWrap.style.transform = 'translateY(0)';
+  setTimeout(function() { _exitTriggered = false; }, EXIT_DUR + 50);
+}
 
 function _doExitUp() {
-  if (_exitTriggered) return;
+  if (_exitTriggered || _pageState === 'contact') return;
   _exitTriggered = true;
-
-  document.documentElement.style.overflow = 'visible';
-  document.body.style.overflow            = 'visible';
-
-  document.body.animate(
-    [{ transform: 'translateY(0)' }, { transform: 'translateY(-100vh)' }],
-    { duration: EXIT_DUR, easing: EXIT_EASE, fill: 'forwards' }
-  );
-
-  sessionStorage.setItem('workka2_exit_t0',  Date.now());
-  sessionStorage.setItem('workka2_exit_dur', EXIT_DUR);
-  setTimeout(function() { window.location.href = 'contact2.html'; }, EXIT_DUR + 10);
+  goToContact();
 }
 
 function _doExitDown() {
   if (_exitTriggered) return;
   _exitTriggered = true;
-
-  document.documentElement.style.overflow = 'visible';
-  document.body.style.overflow            = 'visible';
-
-  document.body.animate(
-    [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
-    { duration: EXIT_DUR, easing: EXIT_EASE, fill: 'forwards' }
-  );
-
-  setTimeout(function() { window.location.href = 'hom6dtv.html'; }, EXIT_DUR + 10);
+  if (_pageState === 'contact') {
+    goToWork();
+  } else {
+    document.documentElement.style.overflow = 'visible';
+    document.body.style.overflow            = 'visible';
+    document.body.animate(
+      [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
+      { duration: EXIT_DUR, easing: EXIT_EASE, fill: 'forwards' }
+    );
+    setTimeout(function() { window.location.href = 'hom6dtv.html'; }, EXIT_DUR + 10);
+  }
 }
 
 window.addEventListener('touchstart', function(e) {
@@ -675,25 +936,12 @@ window.addEventListener('wheel', function(e) {
 }, { passive: true });
 
 window.addEventListener('pageshow', function() {
-  var t0  = +sessionStorage.getItem('contact2_exit_t0');
-  var dur = +sessionStorage.getItem('contact2_exit_dur') || 700;
-  if (!t0) return;
-  sessionStorage.removeItem('contact2_exit_t0');
-  sessionStorage.removeItem('contact2_exit_dur');
-
   _exitTriggered = false;
   _touchStartY   = null;
-  document.documentElement.style.overflow = '';
-  document.body.style.overflow            = '';
-
-  var elapsed = Date.now() - t0;
-  document.body.getAnimations().forEach(function(a) { a.cancel(); });
-  document.body.animate(
-    [{ transform: 'translateY(-100vh)' }, { transform: 'translateY(0)' }],
-    { duration: dur, delay: -Math.min(elapsed, dur - 1), easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'both' }
-  ).onfinish = function() {
-    document.body.getAnimations().forEach(function(a) { a.cancel(); });
-  };
+  _pageState     = 'work';
+  pagesWrap.style.transition = 'none';
+  pagesWrap.style.transform  = 'translateY(0)';
+  requestAnimationFrame(function() { pagesWrap.style.transition = ''; });
 });
 </script>
 

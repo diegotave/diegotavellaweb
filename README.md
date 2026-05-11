@@ -1,6 +1,6 @@
 # diegotavellaweb
 
-Portfolio personal de Diego Tavella. Sitio web de acceso restringido (password gate) con videoteca de works.
+Portfolio personal de Diego Tavella. Sitio web de acceso restringido (password gate) con videoteca de works y sección de contacto.
 
 ---
 
@@ -8,13 +8,14 @@ Portfolio personal de Diego Tavella. Sitio web de acceso restringido (password g
 
 | Archivo | Rol |
 |---|---|
-| `index.html` | Entrada — password gate + video intro (`logointro.webm` / `logointrodark.webm` en dark mode) → redirige a `hom3dtv.html` |
-| `index.css` | Estilos compartidos por `index.html` y `hom3dtv.html` |
-| `hom3dtv.html` | Home — VHS cassette animado, botón "play demo" y "watch some work" |
-| `workka.html` | Works — videoteca de VHS spines + player |
-| `workka.css` | Estilos de `workka.html` |
+| `index.html` | Entrada — password gate + video intro → redirige a `hom6dtv.html` |
+| `index.css` | Estilos compartidos |
+| `hom6dtv.html` | Home — logo animado (`armalogo_hom6dtv.webm`), swipe up → `workka2.html`, swipe down → `ajuste.html` |
+| `workka2.html` | Works + Contact — página única de `200dvh`, dos secciones en `#pages-wrap` |
+| `workka2.css` | Estilos de `workka2.html` |
+| `hom4dtv.html` | Destino del botón home dentro de workka2 |
 
-> `work.html`, `works.html`, `texture-diagonal.html` son archivos legacy/experimentales, no están en el flujo activo.
+> `hom3dtv.html`, `workka.html`, `workka.css`, `contact.html`, `contact2.html` son archivos legacy/experimentales, no están en el flujo activo.
 
 ---
 
@@ -22,137 +23,104 @@ Portfolio personal de Diego Tavella. Sitio web de acceso restringido (password g
 
 ```
 index.html (gate + logointro.webm)
-    → hom3dtv.html (VHS cassette)
-        → [click "play demo"]  → workka.html (autoplay video 1)
-        → [click "watch work"] → introwork.webm overlay → workka.html
-        → [back desde workka]  → pushBack animation → hom3dtv.html
+    → hom6dtv.html (armalogo animado)
+        → [swipe up]   → workka2.html — sección WORK
+            → [swipe up]   → workka2.html — sección CONTACT (mismo DOM, push in-page)
+            → [swipe down] → workka2.html — sección WORK
+            → [swipe down desde WORK] → hom6dtv.html
+            → [botón home] → hom4dtv.html
+        → [swipe down] → ajuste.html
 ```
 
-**Transición index → hom3dtv:** navegación directa sin fade (hom3dtv está prefetcheada).
+---
 
-**Transición hom3dtv → workka:** se crea un `<video>` overlay con `introwork.webm` sobre la página, `hom3dtv` se oculta a los 5 frames (~167ms), workka arranca cuando el video termina (`skipIntro` en sessionStorage).
+## Sistema de página única (workka2.html)
 
-**Transición workka → hom3dtv:** botón home setea `pushBack` en sessionStorage, hom3dtv lo lee al cargar y hace un slide-in desde arriba.
+Work y Contact son dos secciones de `100dvh` dentro de un `#pages-wrap` de `200dvh`.
+
+```html
+<div id="pages-wrap">          <!-- 200dvh, transición con translateY -->
+  <div id="screen-work">       <!-- 100dvh — videoteca VHS -->
+    <div id="stage"> … </div>
+  </div>
+  <div id="screen-contact">    <!-- 100dvh — sección CONTACT -->
+    <div id="contact-stage"> … </div>
+  </div>
+</div>
+```
+
+- `body` tiene `overflow: hidden` y `height: 100dvh` — actúa como viewport.
+- La transición entre secciones es un `translateY` sobre `#pages-wrap` con `transition: transform 700ms cubic-bezier(0.4,0,0.2,1)`.
+- Estado gestionado por `_pageState = 'work' | 'contact'` + `_exitTriggered` con cooldown.
+- Al hacer resize mientras se está en contact, se recalcula el offset sin transición.
+- `pageshow` resetea el estado a `work` al volver desde hom6dtv (BFCache).
 
 ---
 
-## Sistema de temas
-
-Persiste en `localStorage` bajo la clave `"theme"`. Valores: `orange` (default) · `dark` · `red` · `light`.
-
-El tema se aplica como clase en `<body>` mediante un inline script al inicio del body (evita FOUC).
-
-| Clase body | Fondo | Frame border |
-|---|---|---|
-| `.orange` (default) | `rgb(255,170,0)` | blanco |
-| `.dark` | `#000` | blanco |
-| `.red` | `#FF2200` | blanco |
-| *(ninguna = light)* | `#fff` | negro |
-
-El frame visible es un `body::after` con `position:fixed; inset:10px; box-shadow: 0 0 0 20px [color]` — se define en `index.css` (para index/hom3dtv) y en `workka.css` (para workka).
-
-El panel de temas está en ambas páginas como `#blend-panel` (fixed, derecha).
-
----
-
-## VHS scrub (hom3dtv)
-
-El cassette responde a arrastres del mouse y touch, acelerando y desacelerando el video con inercia.
-
-- **Mouse**: mousedown + mouseup en `#vhs-frame` — velocidad = Δx / Δt, escalada × 80.
-- **Touch**: solo `#vhs-etiqueta`. El dedo arrastra en tiempo real (velocidad instantánea → `playbackRate`). Al soltar, la velocidad pico lanza una deceleración suave por RAF (`rate += (1 - rate) * 0.025`).
-- **Dirección**: swipe derecha = forward (`vhs`), swipe izquierda = reverse (`vhs-reverse`).
-- **Reverse**: usa `vhsindex-reverse.webm` (generado con ffmpeg `reverse` filter). Se sincroniza por posición: `vhsRev.currentTime = (dur - vhs.currentTime) % dur`. Al terminar la inercia, hace `swap()` — espera `seeked` en vhs antes de ocultar vhs-reverse para evitar frame negro.
-- **Lock**: mientras hay inercia activa (`locked = true`) no se acepta nuevo input.
-
----
-
-## avediting-video overlay (hom3dtv)
-
-`#avediting-video` reproduce `avediting.webm` superpuesto sobre el stage, detrás del tape (z-index: 0), con blend mode por tema.
-
-- **Trigger**: RAF polling en `checkNearEnd()` — dispara `playAvediting()` cuando `currentTime >= duration - 1`, tanto en `vhs` como en `vhs-reverse`.
-- **Landscape**: `width: 100%; height: 100%; object-fit: cover`.
-- **Portrait** (`orientation: portrait`): rotado 90° CCW, `width: 100vh; height: 56.25vh`, centrado con `translate(-50%, -50%)`.
-
-### Blend mode y opacidad por tema
-
-| Tema | blend-mode | opacity | invert |
-|---|---|---|---|
-| orange | multiply | 0.30 | sí |
-| red | screen | 0.76 | no |
-| dark | screen | 0.49 | no |
-| white | multiply | 0.74 | sí |
-
----
-
-## Botones en hom3dtv
-
-### `#boton-demo` / hit: `#boton-hit`
-Botón circular — "play demo" — reproduce el reel (video 1) al navegar a workka.
-
-### `#boton-cuadrado` / hit: `#boton-hit-cuadrado`
-Botón rectangular — "watch some work" — navega a workka mostrando la videoteca.
-- El fondo naranja (`#boton-fondo`) se expande hacia la derecha en hover via `width` CSS transition.
-- El texto se revela con `clip-path: inset(0 100% 0 0)` → `inset(0 0% 0 0)`.
-- El triángulo de play parpadea (`play-blink` keyframe) y se detiene en hover.
-- El ancho del hover se calcula dinámicamente en JS (`setFondoWidth`).
-- En touch: tap 1 activa hover, tap 2 navega.
-- Al hover se reproduce `video-somework` (preview del reel).
-
----
-
-## Videoteca (workka)
+## Videoteca VHS (sección WORK)
 
 ### Estructura DOM generada por JS
 ```
 #shelf-wrap
   └─ #shelf-rail
-       └─ .vhs-spine[data-index]  ×9
+       └─ .vhs-spine[data-index]  ×7
             └─ .vhs-visual
-                 ├─ .vhs-cover   (thumbnail, img)
-                 ├─ .vhs-png     (overlay lomo VHS, img)
+                 ├─ .vhs-png     (imagen lomo coloreado)
                  └─ .vhs-label   (título)
 ```
 
-- `#shelf-wrap` posicionado con `bottom: -44vh` dentro de `#stage` (overflow hidden), creando el efecto de estantería emergente desde abajo.
-- `calibrateBlock()` calcula el `height` del rail para que los visuals llenen exactamente el frame interior.
+- `#shelf-wrap` posicionado con `bottom: -74vh` dentro de `#stage` (overflow hidden).
+- `calibrateBlock()` calcula el `height` del rail para que los visuals llenen el frame interior.
+- Los spines entran animados desde abajo (`spine-enter` keyframe) con stagger de 60ms.
 - Hover en landscape: el spine activo sube al centro del frame (`translateY`), los demás bajan fuera del stage.
-- Click: abre el player (`openPlayer`) con animación `clipPath circle`.
 - Tilt: efecto de inclinación por velocidad del mouse (`rotateZ`).
+- Ruler: línea de dashes con el título del video activo.
 
-### Filtros de color por tema
-- Default (dark): `filter: saturate(0)` en reposo, `saturate(1) invert(1)` en activo (excepto `vhslomo2`).
-- Orange/light: `saturate(1)` sin invert en activo.
-
-### Ruler
-Línea de texto con dashes que aparece al elevar un spine, mostrando el título del video.
+### Portrait
+- El rail se convierte en columna vertical a la izquierda (40vw).
+- Las imágenes `.vhs-png` se rotan 90° y se posicionan en la derecha del spine.
+- El botón home se mueve a la esquina superior derecha.
 
 ---
 
-## Botón home (workka → hom3dtv)
+## Sección CONTACT
 
-Mismo diseño que `#boton-cuadrado` de hom3dtv. Texto: "home".
+Mismos VHS que WORK pero pre-renderizados (sin animación de entrada), posicionados con:
 
-- Posicionado por JS (`positionHomeBtn`) en `#stage` como `position: absolute`.
+- `calibrateContact()`: `railHeight = (stageH - 40) / 0.85`, `shelf-wrap.bottom = window.innerHeight * 0.26`
+- El `bottom: 26vh` alinea el borde inferior de los VHS con el borde superior del viewport de WORK (`-74vh`), creando continuidad visual tipo rompecabezas en la transición.
+
+---
+
+## Botón home (workka2 → hom4dtv)
+
+- Posicionado por JS en `#stage` como `position: absolute`.
 - **Landscape**: top ~6% del stage, left alineado con el primer VHS spine.
-- **Portrait phone**: top 60px (alineado con primer spine), right 16px (mismo margen que blend-panel). Hover se expande hacia la **izquierda**.
-- Hit area separada (`#home-hit`) que se expande al ancho del hover para evitar flickering.
-- Click: setea `pushBack` en sessionStorage y navega a `hom3dtv.html`.
+- **Portrait**: top 60px, right 16px. Hover se expande hacia la izquierda.
+- Hit area separada (`#home-hit`) que se expande al ancho del hover.
+- Parpadeo del triángulo de play (`home-blink`) que se detiene en hover.
 
 ---
 
-## Sizing de video (index + hom3dtv)
+## Transición hom6dtv → workka2
 
-`#v` (logointro) y `#vhs` (vhsindex1) usan el mismo modelo de sizing:
+`hom6dtv.html` setea `sessionStorage('from_hom6dtv', '1')` antes de navegar.
 
-```css
-height: 100%; width: auto; left: 50%; transform: translateX(-50%); bottom: 0;
-```
+`workka2.html` lo lee al cargar: crea un `<video>` overlay con `armalogo_hom6dtv.webm` pausado en el último frame, anima el logo hacia la posición del botón home y lo desvanece. Esto crea la ilusión de continuidad visual entre las dos páginas.
 
-- En stage 16:9 (1920×1080 máximo): ancho natural = 1920px, llena el stage completo.
-- En viewports angostos o en portrait: el alto llena el stage, el ancho desborda y se cropea por `overflow: hidden` del stage.
-- La transición entre páginas es continua (sin fade): ambos videos tienen el mismo tamaño y posición al corte.
+---
+
+## Imágenes VHS (lomos)
+
+| Archivo | Color |
+|---|---|
+| `vhslomorojo.png` | Rojo |
+| `vhslomonaranja.png` | Naranja |
+| `vhslomoamarillo.png` | Amarillo |
+| `vhslomoverde.png` | Verde |
+| `vhslomocian.png` | Cian |
+| `vhslomovioleta.png` | Violeta |
+| `vhslomorosa.png` | Rosa |
 
 ---
 
@@ -160,12 +128,7 @@ height: 100%; width: auto; left: 50%; transform: translateX(-50%); bottom: 0;
 
 | Archivo | Uso |
 |---|---|
-| `logointro.webm` | Intro animada en index.html (todos los temas excepto dark) |
-| `logointrodark.webm` | Intro animada en index.html en dark mode |
-| `vhsindex1.webm` | VHS cassette animado en hom3dtv (forward) |
-| `vhsindex-reverse.webm` | VHS cassette en reversa — generado con `ffmpeg -vf reverse` |
-| `avediting.webm` | Overlay de avediting que dispara cerca del final de cada loop VHS |
-| `introwork.webm` | Transición hom3dtv → workka |
-| `tagsomework.webm` | Preview en hover del botón "watch some work" |
+| `armalogo_hom6dtv.webm` | Logo animado en hom6dtv + overlay de transición en workka2 |
+| `fondo_videoteca.webm` | Fondo animado (videoteca) |
 
 Videos de works: alojados en Cloudflare R2 (`https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/...`).

@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
   <title>Diego Tavella — Contact</title>
+  <style>html,body{background:#000}</style>
   <link rel="stylesheet" href="workka2.css">
   <style>
-    #contact-label {
+#contact-label {
       position: absolute;
       bottom: 0; left: 0; right: 0;
       height: 26vh;
@@ -87,36 +89,12 @@
     requestAnimationFrame(() => requestAnimationFrame(() => { calibrate(); activate(); }));
     window.addEventListener('resize', calibrate);
 
-    // ── Entrada desde workka2 (push sync) ────────────────────────────────────
-    var t0  = +sessionStorage.getItem('workka2_exit_t0');
-    var dur = +sessionStorage.getItem('workka2_exit_dur') || 700;
-    if (t0) {
-      sessionStorage.removeItem('workka2_exit_t0');
-      sessionStorage.removeItem('workka2_exit_dur');
-      var elapsed = Date.now() - t0;
-      if (elapsed < dur) {
-        document.body.animate(
-          [{ transform: 'translateY(100vh)' }, { transform: 'translateY(0)' }],
-          { duration: dur, delay: -elapsed, easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'forwards' }
-        );
-      }
-    }
-
     // ── Volver a workka2 ──────────────────────────────────────────────────────
     var _back = false, _ty = null;
 
     function goBack() {
       if (_back) return; _back = true;
-      var d = 700;
-      document.documentElement.style.overflow = 'visible';
-      document.body.style.overflow            = 'visible';
-      document.body.animate(
-        [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
-        { duration: d, easing: 'cubic-bezier(0.4,0,0.2,1)', fill: 'forwards' }
-      );
-      sessionStorage.setItem('contact2_exit_t0',  Date.now());
-      sessionStorage.setItem('contact2_exit_dur', d);
-      setTimeout(function() { history.back(); }, d + 10);
+      history.back();
     }
 
     window.addEventListener('touchstart', function(e) { _ty = e.touches[0].clientY; }, { passive: true });
@@ -134,12 +112,6 @@
     window.addEventListener('wheel', function(e) { if (e.deltaY < 0) goBack(); }, { passive: true });
   </script>
 
-  <script>
-    // ── Restaurar workka2 al volver (BFCache o fresh load) ───────────────────
-    window.addEventListener('pageshow', function() {
-      // si esta página persiste en historial pero no nos vamos, no pasa nada
-    });
-  </script>
 
 </body>
 </html>
