@@ -262,6 +262,67 @@ body:not(.orange):not(.light) .vhs-spine.is-active .vhs-png:not([src*="vhslomo2"
 
 #player-back svg { width: 50%; height: 50%; }
 
+/* ── VOLUME SLIDER ───────────────────────────────────────────────────────── */
+#player-vol {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(0,0,0,0.52);
+  border-radius: 20px;
+  padding: 7px 13px;
+  opacity: 0;
+  transition: opacity 350ms ease;
+  z-index: 3;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#player:hover #player-vol,
+#player-vol:focus-within { opacity: 1; pointer-events: auto; }
+#player-vol svg { flex-shrink: 0; opacity: 0.85; }
+
+#player-vol-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 130px;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+}
+#player-vol-input::-webkit-slider-runnable-track {
+  height: 2px;
+  background: rgba(255,255,255,0.35);
+  border-radius: 1px;
+}
+#player-vol-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  margin-top: -4px;
+  transition: transform 150ms ease;
+}
+#player-vol-input:hover::-webkit-slider-thumb { transform: scale(1.4); }
+#player-vol-input:hover::-webkit-slider-runnable-track { background: rgba(255,255,255,0.65); }
+#player-vol-input::-moz-range-track {
+  height: 2px;
+  background: rgba(255,255,255,0.35);
+  border-radius: 1px;
+}
+#player-vol-input::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+}
+
 /* ── MARGIN MASK ─────────────────────────────────────────────────────────── */
 
 /* ── FRAME FILL ──────────────────────────────────────────────────────────── */
@@ -330,11 +391,12 @@ body::after {
   box-shadow: 0 0 0 100vmax #000;
   pointer-events: none;
   z-index: 9999;
-  transition: top    500ms cubic-bezier(0.16, 1, 0.3, 1),
-              bottom 500ms cubic-bezier(0.16, 1, 0.3, 1),
-              left   500ms cubic-bezier(0.16, 1, 0.3, 1),
-              right  500ms cubic-bezier(0.16, 1, 0.3, 1),
-              border-radius 500ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: top          500ms cubic-bezier(0.16, 1, 0.3, 1),
+              bottom       500ms cubic-bezier(0.16, 1, 0.3, 1),
+              left         500ms cubic-bezier(0.16, 1, 0.3, 1),
+              right        500ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-radius 500ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color  300ms ease;
 }
 
 body.vhs-elevated::after {
@@ -350,6 +412,7 @@ body.player-open::after {
   left: max(10px, calc(50vw - 672vh / 9));
   right: max(10px, calc(50vw - 672vh / 9));
   border-radius: 4px 4px 24px 24px;
+  border-color: #fff;
 }
 
 body.player-open.player-square::after {

@@ -65,6 +65,11 @@
       <button id="player-back" aria-label="Volver">
         <svg viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <div id="player-vol">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="white"/></svg>
+        <input id="player-vol-input" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volumen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="white"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
     </div>
 
     <div id="vhs-ruler">
@@ -745,6 +750,8 @@
       playerV.src = src;
       if (startAt) playerV.addEventListener("loadedmetadata", () => { playerV.currentTime = startAt; }, { once: true });
       playerV.muted = false;
+      playerV.volume = 1;
+      document.getElementById("player-vol-input").value = 1;
       playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
 
       playerAnim = player.animate(
@@ -792,6 +799,11 @@
 
     playerBack.addEventListener("click", e => { e.stopPropagation(); closePlayer(); });
     player.addEventListener("click",     e => { if (e.target === player) closePlayer(); });
+
+    document.getElementById("player-vol-input").addEventListener("input", function() {
+      playerV.volume = +this.value;
+      playerV.muted  = (+this.value === 0);
+    });
 
 
     // ── THEME TOGGLE ──────────────────────────────────────────────────────────

@@ -153,18 +153,23 @@
     <button id="player-back" aria-label="Volver">
       <svg viewBox="0 0 16 16" fill="none"><path d="M10 3L4 8l6 5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
+    <div id="player-vol">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="white"/></svg>
+      <input id="player-vol-input" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volumen">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="white"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
   </div>
 
   <script>
     const R2 = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
     const works = [
-      { title: "Demo Reel",            png: "assets/images/vhslomorojo.png",    video: R2+"/WORKS/video1/video1reel.mp4",                                     ratio:"16/9", startAt:1 },
-      { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png", video: R2+"/WORKS/video2/Multideportes.mp4",                                  ratio:"16/9" },
-      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png",video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                    ratio:"16/9" },
-      { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png",   video: R2+"/WORKS/video4/video4.mp4",                                         ratio:"16/9" },
-      { title: "Video 05",             png: "assets/images/vhslomocian.png",    video: R2+"/WORKS/video5/efda.mp4",                                           ratio:"16/9" },
-      { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png", video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4",ratio:"16/9" },
-      { title: "Highlight Fox",        png: "assets/images/vhslomorosa.png",    video: R2+"/WORKS/video6/hltfoxviejo.mp4",                                    ratio:"16/9" },
+      { title: "Demo Reel",            png: "assets/images/vhslomorojo.png",    thumb: "assets/images/thumb_video1.png", video: R2+"/WORKS/video1/video1reel.mp4",                                     ratio:"16/9", startAt:1 },
+      { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png", thumb: "assets/images/thumb_video2.png", video: R2+"/WORKS/video2/Multideportes.mp4",                                  ratio:"16/9" },
+      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png",thumb: "assets/images/thumb_video3.png", video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                    ratio:"16/9" },
+      { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png",   thumb: "assets/images/thumb_video4.png", video: R2+"/WORKS/video4/video4.mp4",                                         ratio:"16/9" },
+      { title: "Video 05",             png: "assets/images/vhslomocian.png",    thumb: "assets/images/thumb_video5.png", video: R2+"/WORKS/video5/efda.mp4",                                           ratio:"16/9" },
+      { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png", thumb: "assets/images/thumb_video6.png", video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4",ratio:"16/9" },
+      { title: "Highlight Fox",        png: "assets/images/vhslomorosa.png",    thumb: "assets/images/thumb_video7.png", video: R2+"/WORKS/video6/hltfoxviejo.mp4",                                    ratio:"16/9" },
     ];
 
     const stage = document.getElementById("stage");
@@ -172,17 +177,19 @@
 
     // ── BUILD ─────────────────────────────────────────────────────────────────
     function buildCover(work, visual) {
-      if (!work.video) return;
-      const vid = document.createElement("video");
-      vid.className = "vhs-cover";
-      vid.muted = true;
-      vid.setAttribute("playsinline", "");
-      vid.preload = "metadata";
-      vid.src = work.video;
-      vid.addEventListener("loadedmetadata", function() {
-        vid.currentTime = Math.random() * vid.duration;
-      }, { once: true });
-      visual.insertBefore(vid, visual.firstChild);
+      if (!work.thumb) return;
+      const img = document.createElement("img");
+      img.className = "vhs-cover";
+      img.alt = "";
+      img.dataset.src = work.thumb;
+      visual.insertBefore(img, visual.firstChild);
+    }
+
+    function loadCovers() {
+      document.querySelectorAll(".vhs-cover[data-src]").forEach(img => {
+        img.src = img.dataset.src;
+        delete img.dataset.src;
+      });
     }
 
     (function buildShelf() {
@@ -214,9 +221,11 @@
     function activateShelf() {
       document.getElementById("shelf-wrap").style.visibility = "";
       const spines = document.querySelectorAll(".vhs-spine");
+      const lastDelay = 80 + (spines.length - 1) * 60;
       spines.forEach((spine, i) => {
         setTimeout(() => spine.classList.add("entered"), 80 + i * 60);
       });
+      setTimeout(loadCovers, lastDelay + 300);
       requestAnimationFrame(positionHomeBtn);
     }
 
@@ -760,6 +769,11 @@ function openPlayer(spineEl, src, startAt, ratio) {
   const rect     = spineEl.getBoundingClientRect();
   const isSquare = ratio === '1/1';
 
+  // Measure visual position BEFORE any state changes (still elevated)
+  const visual  = spineEl.querySelector('.vhs-visual');
+  const coverEl = spineEl.querySelector('.vhs-cover');
+  const fromR   = (visual || spineEl).getBoundingClientRect();
+
   if (playerAnim) { playerAnim.cancel(); playerAnim = null; }
 
   document.body.classList.remove('vhs-elevated');
@@ -781,10 +795,34 @@ function openPlayer(spineEl, src, startAt, ratio) {
   const cxPct = (cx / playerRect.width  * 100).toFixed(1);
   const cyPct = (cy / playerRect.height * 100).toFixed(1);
 
+  // Hero: thumbnail vuela desde el lomo hasta el player
+  if (coverEl && coverEl.src) {
+    const scaleX = fromR.width  / playerRect.width;
+    const scaleY = fromR.height / playerRect.height;
+    const tx = (fromR.left + fromR.width  / 2) - (playerRect.left + playerRect.width  / 2);
+    const ty = (fromR.top  + fromR.height / 2) - (playerRect.top  + playerRect.height / 2);
+
+    const hero = new Image();
+    hero.src = coverEl.src;
+    hero.style.cssText = `position:fixed;left:${playerRect.left}px;top:${playerRect.top}px;width:${playerRect.width}px;height:${playerRect.height}px;object-fit:cover;object-position:center top;z-index:399;pointer-events:none;border-radius:4px 4px 24px 24px;`;
+    document.body.appendChild(hero);
+
+    hero.animate([
+      { transform: `translate(${tx.toFixed(1)}px,${ty.toFixed(1)}px) scale(${scaleX.toFixed(4)},${scaleY.toFixed(4)})` },
+      { transform: 'translate(0,0) scale(1)' }
+    ], { duration: 500, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' })
+    .finished.then(() => {
+      hero.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' })
+      .finished.then(() => hero.remove());
+    });
+  }
+
   playerV.classList.toggle('square', isSquare);
   playerV.src = src;
   if (startAt) playerV.addEventListener('loadedmetadata', () => { playerV.currentTime = startAt; }, { once: true });
   playerV.muted = false;
+  playerV.volume = 1;
+  document.getElementById('player-vol-input').value = 1;
   playerV.play().catch(() => { playerV.muted = true; playerV.play().catch(() => {}); });
 
   playerAnim = player.animate(
@@ -832,6 +870,11 @@ function closePlayer() {
 
 playerBack.addEventListener('click', e => { e.stopPropagation(); closePlayer(); });
 player.addEventListener('click', e => { if (e.target === player) closePlayer(); });
+
+document.getElementById('player-vol-input').addEventListener('input', function() {
+  playerV.volume = +this.value;
+  playerV.muted  = (+this.value === 0);
+});
 
 // ── PAGE STATE ────────────────────────────────────────────────────────────────
 var _pageState     = 'work';
