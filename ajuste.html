@@ -282,7 +282,21 @@
     var wrap = document.createElement('div');
     wrap.style.cssText =
       'position:fixed;top:0;left:50%;transform:translateX(-50%);' +
-      'pointer-events:none;z-index:21;filter:url(#fs-vblur);';
+      'pointer-events:none;z-index:21;filter:url(#fs-vblur);' +
+      '-webkit-mask-image:linear-gradient(to right,transparent,#000 0px,#000 100%,transparent);' +
+      'mask-image:linear-gradient(to right,transparent,#000 0px,#000 100%,transparent);';
+    setTimeout(function() {
+      var dur = 600;
+      var t0  = performance.now();
+      (function animMask() {
+        var t = Math.min(1, (performance.now() - t0) / dur);
+        var w = (t * 40).toFixed(1);
+        var m = 'linear-gradient(to right,transparent,#000 ' + w + 'px,#000 calc(100% - ' + w + 'px),transparent)';
+        wrap.style.webkitMaskImage = m;
+        wrap.style.maskImage       = m;
+        if (t < 1) requestAnimationFrame(animMask);
+      })();
+    }, 1000);
     var strip = document.createElement('div');
     strip.style.cssText = 'display:flex;flex-direction:column;will-change:transform;';
     wrap.appendChild(strip);
@@ -345,53 +359,40 @@
     swipeTriggered = true;
     swipeEnabled   = false;
 
+    var WIPE_DUR  = 700;
+    var WIPE_EASE = 'cubic-bezier(0.4, 0, 0.8, 1)';
+
+    // Labels y video se esfuman rápido
+    [lblTl, lblTr, lblBr, video].forEach(function(el) {
+      el.animate([{}, { opacity: 0 }], { duration: 250, fill: 'forwards' });
+    });
+
+    // Ola desaparece para que quede blanco limpio bajo el sólido
+    ola.animate([{}, { opacity: 0 }], { duration: 150, fill: 'forwards' });
+
+    // Filmstrip corre mientras dura el wipe
+    buildFilmstrip();
+
+    // El sólido (negro + vhs) se desliza hacia abajo como una unidad
+    document.body.style.background = '#fff';
+
+    negro.animate(
+      [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
+      { duration: WIPE_DUR, easing: WIPE_EASE, fill: 'forwards' }
+    );
     vhs.animate(
       [
         { transform: 'translate(-50%, -50%)' },
-        { transform: 'translate(-50%, 120vh)' }
+        { transform: 'translate(-50%, calc(-50% + 100vh))' }
       ],
-      { duration: 400, easing: 'cubic-bezier(0.5, 0, 1, 0.6)', fill: 'forwards' }
+      { duration: WIPE_DUR, easing: WIPE_EASE, fill: 'forwards' }
     );
 
-    // Filmstrip arranca al mismo tiempo
-    buildFilmstrip();
-    [lblTl, lblTr, lblBr].forEach(function(el) {
-      el.animate(
-        [{ opacity: parseFloat(el.style.opacity) || 0.75 }, { opacity: 0 }],
-        { duration: 400, fill: 'forwards' }
-      );
-    });
-
-    video.animate(
-      [
-        { transform: 'scale(1)' },
-        { transform: 'scale(' + VIDEO_FINAL_SCALE + ')' }
-      ],
-      { duration: 700, easing: 'ease-in-out', fill: 'forwards' }
-    );
-
+    // Cuando el sólido llegó abajo, navegamos a hom6dtv ya "revelado"
     setTimeout(function() {
-      video.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(3 * 1000 / 30), fill: 'forwards' })
-        .onfinish = function() { video.style.opacity = '0'; };
-    }, ARMA_DELAY + Math.round(4 * 1000 / 30) + 15);
-
-    // armalogo arranca 11 frames antes del final, fade-in corto
-    setTimeout(function() {
-      var ap = armalogo.play();
-      if (ap && ap.catch) ap.catch(function() {});
-      armalogo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' })
-        .onfinish = function() { armalogo.style.opacity = '1'; };
-      armalogo.addEventListener('ended', function() {
-        var cover = document.createElement('div');
-        cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;opacity:0;pointer-events:none';
-        document.body.appendChild(cover);
-        requestAnimationFrame(function() {
-          cover.style.transition = 'opacity 120ms linear';
-          cover.style.opacity    = '1';
-          setTimeout(function() { window.location.href = 'hom6dtv.html'; }, 130);
-        });
-      }, { once: true });
-    }, ARMA_DELAY);
+      sessionStorage.setItem('from_ajuste_wipe', '1');
+      window.location.href = 'hom6dtv.html';
+    }, WIPE_DUR + 30);
   }
 
   window.addEventListener('touchstart', function(e) {
