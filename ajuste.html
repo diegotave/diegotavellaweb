@@ -106,71 +106,10 @@
       filter: invert(1);
     }
 
-    /* ── GATE ──────────────────────────────────────────────────────────────── */
-    #gate {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.42);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-      transition: opacity 400ms ease;
-    }
-    #gate-box {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 20px;
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.2);
-      padding: 44px 36px;
-      min-width: min(300px, 80vw);
-    }
-    #gate-label {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 11px; letter-spacing: 0.18em;
-      text-transform: uppercase; color: #000; opacity: 0.5;
-    }
-    #gate-field {
-      display: flex; width: 100%;
-      border: 1px solid rgba(0,0,0,0.2);
-      overflow: hidden;
-    }
-    #gate-input {
-      flex: 1; border: none; outline: none;
-      padding: 9px 12px;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px; letter-spacing: 0.12em;
-      background: #fff; color: #000;
-    }
-    #gate-input::placeholder { color: rgba(0,0,0,0.2); }
-    #gate-submit {
-      background: #000; border: none;
-      cursor: pointer; padding: 0 14px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 150ms ease;
-    }
-    #gate-submit:hover { background: #222; }
-    #gate-submit svg { width: 12px; height: 12px; display: block; }
-    #gate-err {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 10px; letter-spacing: 0.1em;
-      text-transform: uppercase; color: #000; opacity: 0;
-      transition: opacity 200ms ease;
-    }
-    #gate-err.visible { opacity: 0.45; }
   </style>
 </head>
 <body>
 
-<div id="gate">
-  <div id="gate-box">
-    <div id="gate-label">señal de ajuste · acceso</div>
-    <div id="gate-field">
-      <input id="gate-input" type="password" placeholder="·····" autocomplete="off">
-      <button id="gate-submit">
-        <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </div>
-    <div id="gate-err">acceso incorrecto</div>
-  </div>
-</div>
 
 <div id="screen">
   <div id="zona-a">
@@ -245,33 +184,6 @@
 <video id="armalogo" src="assets/videos/armalogo_hom6dtv.webm"    preload="auto" playsinline muted></video>
 
 <script>
-  // ── Gate ─────────────────────────────────────────────────────────────────
-  (function() {
-    var gate      = document.getElementById('gate');
-    var gateInput = document.getElementById('gate-input');
-    var gateErr   = document.getElementById('gate-err');
-    var PASS      = 'promo';
-
-    function tryPass() {
-      if (gateInput.value === PASS) {
-        gate.style.opacity = '0';
-        gate.style.pointerEvents = 'none';
-        setTimeout(function() { gate.style.display = 'none'; }, 420);
-        gateInput.removeEventListener('keydown', onKey);
-      } else {
-        gateErr.classList.add('visible');
-        gateInput.value = '';
-        gateInput.focus();
-      }
-    }
-
-    function onKey(e) { if (e.key === 'Enter') tryPass(); }
-
-    document.getElementById('gate-submit').addEventListener('click', tryPass);
-    gateInput.addEventListener('keydown', onKey);
-    gateInput.focus();
-  })();
-
   var btn      = document.getElementById('btn');
   var ola      = document.getElementById('ola');
   var blanco   = document.getElementById('blanco');
@@ -470,7 +382,6 @@
       armalogo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' })
         .onfinish = function() { armalogo.style.opacity = '1'; };
       armalogo.addEventListener('ended', function() {
-        // Fundido a negro antes de navegar para tapar el flash del browser
         var cover = document.createElement('div');
         cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9999;opacity:0;pointer-events:none';
         document.body.appendChild(cover);
@@ -569,6 +480,45 @@
 
     }, 950);
   });
+
+  // ── Resume desde hom6dtv — estado post-INICIAR sin animaciones ────────────
+  if (sessionStorage.getItem('resume_ajuste')) {
+    sessionStorage.removeItem('resume_ajuste');
+
+    btn.style.opacity       = '0';
+    btn.style.pointerEvents = 'none';
+
+    Array.from(document.querySelectorAll('.barra')).forEach(function(b) {
+      b.style.transform = 'translateY(0)';
+    });
+    ola.style.filter = 'blur(120px)';
+
+    blanco.style.display  = 'block';
+    negro.style.transform = 'translateY(0)';
+
+    // video freezado en último frame
+    function seekVideoEnd() {
+      if (video.duration && isFinite(video.duration)) {
+        video.currentTime = video.duration;
+      }
+    }
+    video.addEventListener('loadedmetadata', seekVideoEnd, { once: true });
+    video.addEventListener('canplaythrough',  seekVideoEnd, { once: true });
+    video.style.opacity = '1';
+
+    // vhs centrado, en play, sin animación de entrada
+    vhs.style.transform = 'translate(-50%, -50%)';
+    var vhsp = vhs.play();
+    if (vhsp && vhsp.catch) vhsp.catch(function() {});
+
+    lblTl.innerHTML  = 'SMPTE · WELCOME · 1920×1080 · 29.97fps<br>DT/WEB/IDENT · TRANSMISSION ACTIVE';
+    lblTr.innerHTML  = 'IRE 100<br>SIGNAL: LIVE · /INDEX';
+    lblTl.style.opacity = '0.75';
+    lblTr.style.opacity = '0.75';
+    lblBr.style.opacity = '0.75';
+
+    swipeEnabled = true;
+  }
 </script>
 
 </body>

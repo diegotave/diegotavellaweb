@@ -444,6 +444,11 @@ body.is-portrait .vhs-spine.is-active .vhs-label { opacity: 1; font-size: 13px; 
   background: #000;
 }
 
+#player-v.cover-height {
+  transform: scale(1.476);
+  transform-origin: center;
+}
+
 #player-back {
   position: absolute;
   top: min(1.4vw, 20px);

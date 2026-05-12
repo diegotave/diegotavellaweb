@@ -41,20 +41,6 @@
       transform: translate(-50%, -50%);
       overflow: hidden;
     }
-    #contact-shelf-wrap {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      z-index: 10;
-    }
-    #contact-shelf-rail {
-      display: flex;
-      align-items: center;
-      position: relative;
-    }
     #contact-label {
       position: absolute;
       bottom: 0; left: 0; right: 0;
@@ -102,7 +88,7 @@
 })()</script>
 
   <div id="pages-wrap">
-  <div id="screen-work">
+  <div id="screen-work" style="position:relative">
   <div id="stage">
 
     <div id="work-title">WORK</div>
@@ -123,11 +109,6 @@
     </div>
     <button id="home-hit" aria-label="Volver a inicio"></button>
 
-    <!-- Videoteca -->
-    <div id="shelf-wrap" style="visibility:hidden">
-      <div id="shelf-rail"></div>
-    </div>
-
     <div id="vhs-ruler">
       <span id="ruler-left"><span class="ruler-dashes"></span><span class="ruler-title"></span><span class="ruler-arrow"> &gt;</span></span>
       <span id="ruler-gap"></span>
@@ -135,14 +116,16 @@
     </div>
 
   </div>
+
+  <div id="shelf-wrap" style="visibility:hidden">
+    <div id="shelf-rail"></div>
+  </div>
+
   </div>
 
   <div id="screen-contact">
     <div id="contact-stage">
       <div id="contact-label">CONTACT</div>
-      <div id="contact-shelf-wrap" style="visibility:hidden">
-        <div id="contact-shelf-rail"></div>
-      </div>
     </div>
   </div>
 
@@ -165,7 +148,7 @@
     const works = [
       { title: "Demo Reel",            png: "assets/images/vhslomorojo.png",    thumb: "assets/images/thumb_video1.png", video: R2+"/WORKS/video1/video1reel.mp4",                                     ratio:"16/9", startAt:1 },
       { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png", thumb: "assets/images/thumb_video2.png", video: R2+"/WORKS/video2/Multideportes.mp4",                                  ratio:"16/9" },
-      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png",thumb: "assets/images/thumb_video3.png", video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                    ratio:"16/9" },
+      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png",thumb: "assets/images/thumb_video3.png", video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                    ratio:"16/9", coverHeight:true },
       { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png",   thumb: "assets/images/thumb_video4.png", video: R2+"/WORKS/video4/video4.mp4",                                         ratio:"16/9" },
       { title: "Video 05",             png: "assets/images/vhslomocian.png",    thumb: "assets/images/thumb_video5.png", video: R2+"/WORKS/video5/efda.mp4",                                           ratio:"16/9" },
       { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png", thumb: "assets/images/thumb_video6.png", video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4",ratio:"16/9" },
@@ -394,12 +377,12 @@
       document.getElementById("vhs-ruler").classList.remove("visible");
     }
 
-    function dropElevated() {
+    function dropElevated(dur) {
       if (elevatedIdx < 0) return;
       const v = getVisual(elevatedIdx);
       if (v) {
         if (v._leaveHandler) { v.removeEventListener("mouseleave", v._leaveHandler); delete v._leaveHandler; }
-        v.style.transition = "transform 280ms cubic-bezier(0.55, 0, 1, 0.45)";
+        v.style.transition = "transform " + (dur || 280) + "ms cubic-bezier(0.55, 0, 1, 0.45)";
         v.style.transform  = "";
         v.addEventListener("transitionend", () => { v.style.transition = ""; }, { once: true });
       }
@@ -678,14 +661,14 @@
             setTimeout(() => {
               spine.style.transition = "";
               spine.style.transform  = "";
-              openPlayer(spine, work.video, work.startAt, work.ratio);
+              openPlayer(spine, work.video, work.startAt, work.ratio, work.coverHeight);
             }, 300);
           } else {
             dropElevated(); elevateVisual(idx);
           }
         } else {
           if (elevatedIdx === idx) {
-            if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
+            if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio, work.coverHeight);
           } else {
             elevateVisual(idx);
           }
@@ -716,7 +699,7 @@
         const idx  = +spine.dataset.index;
         const work = works[idx];
         if (elevatedIdx === idx) {
-          if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio);
+          if (work.video) openPlayer(spine, work.video, work.startAt, work.ratio, work.coverHeight);
         } else {
           elevateVisual(idx);
         }
@@ -744,7 +727,6 @@
     // ── RESIZE ────────────────────────────────────────────────────────────────
     window.addEventListener("resize", () => {
       calibrateBlock();
-      calibrateContact();
       if (_pageState === 'contact') {
         pagesWrap.style.transition = 'none';
         pagesWrap.style.transform  = 'translateY(-' + window.innerHeight + 'px)';
@@ -765,7 +747,7 @@ const playerV    = document.getElementById('player-v');
 const playerBack = document.getElementById('player-back');
 let   playerAnim = null;
 
-function openPlayer(spineEl, src, startAt, ratio) {
+function openPlayer(spineEl, src, startAt, ratio, coverHeight) {
   const rect     = spineEl.getBoundingClientRect();
   const isSquare = ratio === '1/1';
 
@@ -818,6 +800,7 @@ function openPlayer(spineEl, src, startAt, ratio) {
   }
 
   playerV.classList.toggle('square', isSquare);
+  playerV.classList.toggle('cover-height', !!coverHeight);
   playerV.src = src;
   if (startAt) playerV.addEventListener('loadedmetadata', () => { playerV.currentTime = startAt; }, { once: true });
   playerV.muted = false;
@@ -857,6 +840,7 @@ function closePlayer() {
   anim.finished.then(() => {
     anim.cancel();
     player.classList.remove('open', 'square');
+    playerV.classList.remove('cover-height');
     player.style.opacity  = '';
     player.style.clipPath = '';
     document.body.classList.remove('player-open', 'player-square');
@@ -870,6 +854,7 @@ function closePlayer() {
 
 playerBack.addEventListener('click', e => { e.stopPropagation(); closePlayer(); });
 player.addEventListener('click', e => { if (e.target === player) closePlayer(); });
+playerV.addEventListener('ended', closePlayer);
 
 document.getElementById('player-vol-input').addEventListener('input', function() {
   playerV.volume = +this.value;
@@ -883,42 +868,6 @@ var _touchStartY   = null;
 var EXIT_DUR       = 700;
 var EXIT_EASE      = 'cubic-bezier(0.4, 0, 0.2, 1)';
 var pagesWrap      = document.getElementById('pages-wrap');
-
-// ── CONTACT SECTION ───────────────────────────────────────────────────────────
-(function buildContactShelf() {
-  var contactRail = document.getElementById('contact-shelf-rail');
-  works.forEach(function(work) {
-    var spine  = document.createElement('div');
-    spine.className = 'vhs-spine entered';
-    spine.style.cssText = 'animation:none;opacity:1';
-    var visual = document.createElement('div');
-    visual.className = 'vhs-visual';
-    var png = document.createElement('img');
-    png.className = 'vhs-png';
-    png.src = work.png;
-    png.alt = '';
-    var label = document.createElement('span');
-    label.className = 'vhs-label';
-    label.textContent = work.title;
-    visual.appendChild(png);
-    visual.appendChild(label);
-    buildCover(work, visual);
-    spine.appendChild(visual);
-    contactRail.appendChild(spine);
-  });
-})();
-
-function calibrateContact() {
-  var contactStage = document.getElementById('contact-stage');
-  var contactRail  = document.getElementById('contact-shelf-rail');
-  var sw           = document.getElementById('contact-shelf-wrap');
-  var stageH       = contactStage.getBoundingClientRect().height;
-  contactRail.style.height = ((stageH - 40) / 0.85) + 'px';
-  sw.style.bottom          = (window.innerHeight * 0.56) + 'px';
-  sw.style.visibility      = '';
-}
-
-requestAnimationFrame(function() { requestAnimationFrame(calibrateContact); });
 
 // ── PAGE TRANSITIONS ──────────────────────────────────────────────────────────
 function goToContact() {
@@ -936,6 +885,7 @@ function goToWork() {
 function _doExitUp() {
   if (_exitTriggered || _pageState === 'contact') return;
   _exitTriggered = true;
+  if (elevatedIdx >= 0) dropElevated(100);
   goToContact();
 }
 

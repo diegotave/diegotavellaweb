@@ -2,7 +2,201 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0;url=ajuste.html">
-  <script>window.location.replace('ajuste.html');</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Señal de Ajuste</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #screen {
+      position: relative;
+      width: 100vw; height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    #zona-a { flex: 67 0 0; display: flex; }
+    #zona-b { flex: 8  0 0; display: flex; }
+    #zona-c { flex: 25 0 0; display: flex; }
+    .franja  { flex: 1 0 0; }
+
+    #c-izq    { flex: 2 0 0; display: flex; }
+    #c-centro { flex: 7 0 0; display: flex; }
+    #c-der    { flex: 3 0 0; display: flex; }
+
+    .label {
+      position: fixed;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px; line-height: 1.6; letter-spacing: 0.04em;
+      color: #fff; opacity: 0.5;
+      white-space: nowrap; pointer-events: none;
+      z-index: 35;
+    }
+    #lbl-tl { top: 14px;    left: 16px; }
+    #lbl-tr { top: 14px;    right: 16px; text-align: right; }
+    #lbl-br { bottom: 14px; right: 16px; text-align: right; }
+
+    #gate {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.42);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    #gate-box {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 20px;
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.2);
+      padding: 44px 36px;
+      min-width: min(300px, 80vw);
+    }
+    #gate-label {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: #000; opacity: 0.5;
+    }
+    #gate-field {
+      display: flex; width: 100%;
+      border: 1px solid rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    #gate-input {
+      flex: 1; border: none; outline: none;
+      padding: 9px 12px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px; letter-spacing: 0.12em;
+      background: #fff; color: #000;
+    }
+    #gate-input::placeholder { color: rgba(0,0,0,0.2); }
+    #gate-submit {
+      background: #000; border: none;
+      cursor: pointer; padding: 0 14px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 150ms ease;
+    }
+    #gate-submit:hover { background: #222; }
+    #gate-submit svg { width: 12px; height: 12px; display: block; }
+    #gate-err {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #000; opacity: 0;
+      transition: opacity 200ms ease;
+    }
+    #gate-err.visible { opacity: 0.45; }
+  </style>
 </head>
+<body>
+
+<div id="screen">
+  <div id="zona-a">
+    <div class="franja" style="background:#FF4D1C"></div>
+    <div class="franja" style="background:#FF9B3D"></div>
+    <div class="franja" style="background:#FFE14D"></div>
+    <div class="franja" style="background:#5BFF8F"></div>
+    <div class="franja" style="background:#3DDFFF"></div>
+    <div class="franja" style="background:#7B6FFF"></div>
+    <div class="franja" style="background:#FF4D8F"></div>
+  </div>
+  <div id="zona-b">
+    <div class="franja" style="background:#3DDFFF"></div>
+    <div class="franja" style="background:#7B6FFF"></div>
+    <div class="franja" style="background:#090909"></div>
+    <div class="franja" style="background:#FFFFFF"></div>
+    <div class="franja" style="background:#FF4D1C"></div>
+    <div class="franja" style="background:#090909"></div>
+    <div class="franja" style="background:#FF4D8F"></div>
+  </div>
+  <div id="zona-c">
+    <div id="c-izq">
+      <div class="franja" style="background:#FFFFFF"></div>
+      <div class="franja" style="background:#404040"></div>
+    </div>
+    <div id="c-centro">
+      <div class="franja" style="background:#000000"></div>
+      <div class="franja" style="background:#2A2A2A"></div>
+      <div class="franja" style="background:#555555"></div>
+      <div class="franja" style="background:#808080"></div>
+      <div class="franja" style="background:#AAAAAA"></div>
+      <div class="franja" style="background:#D5D5D5"></div>
+      <div class="franja" style="background:#FFFFFF"></div>
+    </div>
+    <div id="c-der">
+      <div class="franja" style="background:#040404"></div>
+      <div class="franja" style="background:#000000"></div>
+      <div class="franja" style="background:#101010"></div>
+    </div>
+  </div>
+
+  <div class="label" id="lbl-tl">
+    SMPTE · COLOR REFERENCE · 1920×1080 · 29.97fps<br>
+    DT/WEB/IDENT · SIGNAL GENERATOR v1.0
+  </div>
+  <div class="label" id="lbl-tr">
+    IRE 100<br>
+    FORMAT: HD · BARS+TONE
+  </div>
+  <div class="label" id="lbl-br">TC 00:00:00:00&nbsp;&nbsp;CH-A</div>
+</div>
+
+<div id="gate">
+  <div id="gate-box">
+    <div id="gate-label">señal de ajuste · acceso</div>
+    <div id="gate-field">
+      <input id="gate-input" type="password" placeholder="·····" autocomplete="off">
+      <button id="gate-submit">
+        <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <div id="gate-err">acceso incorrecto</div>
+  </div>
+</div>
+
+<script>
+  var PASS = 'promo';
+
+  var gate      = document.getElementById('gate');
+  var gateInput = document.getElementById('gate-input');
+  var gateErr   = document.getElementById('gate-err');
+  var lblBr     = document.getElementById('lbl-br');
+
+  // Timecode
+  var tcOrigin = performance.now();
+  function updateTC() {
+    var e  = performance.now() - tcOrigin;
+    var tf = Math.floor(e * 30 / 1000);
+    var ff = String(tf % 30).padStart(2, '0');
+    var s  = Math.floor(tf / 30);
+    var ss = String(s % 60).padStart(2, '0');
+    var m  = Math.floor(s / 60);
+    var mm = String(m % 60).padStart(2, '0');
+    var hh = String(Math.floor(m / 60)).padStart(2, '0');
+    lblBr.textContent = 'TC ' + hh + ':' + mm + ':' + ss + ':' + ff + '  CH-A';
+    requestAnimationFrame(updateTC);
+  }
+  updateTC();
+
+  function tryPass() {
+    if (gateInput.value === PASS) {
+      sessionStorage.setItem('bypass_gate', '1');
+      gate.style.transition = 'opacity 400ms ease';
+      gate.style.opacity = '0';
+      gate.style.pointerEvents = 'none';
+      setTimeout(function() { window.location.href = 'ajuste.html'; }, 420);
+    } else {
+      gateErr.classList.add('visible');
+      gateInput.value = '';
+      gateInput.focus();
+    }
+  }
+
+  document.getElementById('gate-submit').addEventListener('click', tryPass);
+  gateInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') tryPass(); });
+  gateInput.focus();
+</script>
+
+</body>
 </html>
