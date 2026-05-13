@@ -103,7 +103,6 @@
       opacity: 0; pointer-events: none;
       transform-origin: 50% 50%;
       mix-blend-mode: multiply;
-      filter: invert(1);
     }
 
   </style>
@@ -181,7 +180,7 @@
 
 <video id="video"    src="assets/videos/nombrebrutal_colores.webm" preload="auto" playsinline></video>
 <video id="vhs"      src="assets/videos/vhsentero.webm"           preload="auto" playsinline loop muted></video>
-<video id="armalogo" src="assets/videos/armalogo_hom6dtv.webm"    preload="auto" playsinline muted></video>
+<video id="armalogo" src="assets/videos/armalogoblack_hom6dtv.webm" preload="auto" playsinline muted></video>
 
 <script>
   var btn      = document.getElementById('btn');
@@ -326,26 +325,21 @@
       strip.appendChild(v);
     }
 
-    var midY = Math.round(startY + (endY - startY) * 0.65);
     strip.animate(
       [
-        { transform: 'translateY(' + startY + 'px)', offset: 0,    easing: 'cubic-bezier(0.6, 0, 0.9, 1)' },
-        { transform: 'translateY(' + midY   + 'px)', offset: 0.65, easing: 'ease-out' },
-        { transform: 'translateY(' + endY   + 'px)', offset: 1 }
+        { transform: 'translateY(' + startY + 'px)' },
+        { transform: 'translateY(' + endY   + 'px)' }
       ],
-      { duration: dur, fill: 'forwards' }
+      { duration: dur, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
     );
 
 
-    // Blur sube hasta el pico (65%) y baja hasta 0 al final, siguiendo la velocidad
+    // Blur sube al pico (50%) y baja simétricamente
     var blurT0  = performance.now();
     var maxBlur = 14;
-    var peak    = 0.65;
     (function animBlur() {
       var t = Math.min(1, (performance.now() - blurT0) / dur);
-      var b = t <= peak
-        ? (t / peak) * maxBlur
-        : (1 - (t - peak) / (1 - peak)) * maxBlur;
+      var b = (1 - Math.abs(t * 2 - 1)) * maxBlur;
       fgb.setAttribute('stdDeviation', '0 ' + b.toFixed(1));
       if (t < 1) requestAnimationFrame(animBlur);
       else fgb.setAttribute('stdDeviation', '0 0');
@@ -359,40 +353,72 @@
     swipeTriggered = true;
     swipeEnabled   = false;
 
-    var WIPE_DUR  = 700;
-    var WIPE_EASE = 'cubic-bezier(0.4, 0, 0.8, 1)';
-
-    // Labels y video se esfuman rápido
-    [lblTl, lblTr, lblBr, video].forEach(function(el) {
-      el.animate([{}, { opacity: 0 }], { duration: 250, fill: 'forwards' });
-    });
-
-    // Ola desaparece para que quede blanco limpio bajo el sólido
-    ola.animate([{}, { opacity: 0 }], { duration: 150, fill: 'forwards' });
-
-    // Filmstrip corre mientras dura el wipe
-    buildFilmstrip();
-
-    // El sólido (negro + vhs) se desliza hacia abajo como una unidad
-    document.body.style.background = '#fff';
-
-    negro.animate(
-      [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
-      { duration: WIPE_DUR, easing: WIPE_EASE, fill: 'forwards' }
-    );
     vhs.animate(
       [
         { transform: 'translate(-50%, -50%)' },
-        { transform: 'translate(-50%, calc(-50% + 100vh))' }
+        { transform: 'translate(-50%, 120vh)' }
       ],
-      { duration: WIPE_DUR, easing: WIPE_EASE, fill: 'forwards' }
+      { duration: 400, easing: 'cubic-bezier(0.5, 0, 1, 0.6)', fill: 'forwards' }
     );
 
-    // Cuando el sólido llegó abajo, navegamos a hom6dtv ya "revelado"
+    // Sólido negro se desliza hacia abajo revelando blanco + viñeta
+    ola.animate([{}, { opacity: 0 }], { duration: 300, fill: 'forwards' });
+    blanco.style.display = 'block';
+    var vig = document.createElement('div');
+    vig.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:11;' +
+      'background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.45) 100%);';
+    document.body.appendChild(vig);
+    negro.animate(
+      [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
+      { duration: 1200, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
+    );
+
+    buildFilmstrip();
+
+    // Cuando el filmstrip sale de cuadro, snap armalogo al último frame y parpadeo de salida
     setTimeout(function() {
-      sessionStorage.setItem('from_ajuste_wipe', '1');
-      window.location.href = 'hom6dtv.html';
-    }, WIPE_DUR + 30);
+      armalogo.pause();
+      if (armalogo.duration && isFinite(armalogo.duration)) {
+        armalogo.currentTime = armalogo.duration;
+      }
+      // Parpadeo solo del logo: flickers irregulares, termina en opacity 0 → corte
+      var seq = [[0,1],[20,0],[42,0.7],[62,0],[88,0.85],[108,0],[132,0.55],[158,0],[185,0.4],[210,0]];
+      var t0 = performance.now(), si = 0;
+      function flickOut() {
+        var t = performance.now() - t0;
+        while (si < seq.length && seq[si][0] <= t) { armalogo.style.opacity = seq[si][1]; si++; }
+        if (si < seq.length) requestAnimationFrame(flickOut);
+        else { sessionStorage.setItem('from_ajuste_wipe', '1'); window.location.href = 'hom6dtv.html'; }
+      }
+      requestAnimationFrame(flickOut);
+    }, 2000);
+
+    [lblTl, lblTr, lblBr].forEach(function(el) {
+      el.animate(
+        [{ opacity: parseFloat(el.style.opacity) || 0.75 }, { opacity: 0 }],
+        { duration: 400, fill: 'forwards' }
+      );
+    });
+
+    video.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(' + VIDEO_FINAL_SCALE + ')' }
+      ],
+      { duration: 700, easing: 'ease-in-out', fill: 'forwards' }
+    );
+
+    setTimeout(function() {
+      video.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(3 * 1000 / 30), fill: 'forwards' })
+        .onfinish = function() { video.style.opacity = '0'; };
+    }, ARMA_DELAY + Math.round(4 * 1000 / 30) + 15);
+
+    setTimeout(function() {
+      var ap = armalogo.play();
+      if (ap && ap.catch) ap.catch(function() {});
+      armalogo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, fill: 'forwards' })
+        .onfinish = function() { armalogo.style.opacity = '1'; };
+    }, ARMA_DELAY);
   }
 
   window.addEventListener('touchstart', function(e) {

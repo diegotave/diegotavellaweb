@@ -27,7 +27,6 @@
       width: 100vw; height: 100vh;
       object-fit: contain;
       pointer-events: none;
-      filter: invert(1);
     }
 
     body::after {
@@ -39,9 +38,20 @@
     }
   </style>
 </head>
-<body><script>(function(){if(sessionStorage.getItem('from_ajuste_wipe')){sessionStorage.removeItem('from_ajuste_wipe');document.documentElement.style.cssText+='';var s=document.createElement('style');s.textContent='body{animation:none!important;clip-path:none!important}';document.head.appendChild(s);}})()</script>
+<body><script>(function(){
+  if(!sessionStorage.getItem('from_ajuste_wipe')) return;
+  sessionStorage.removeItem('from_ajuste_wipe');
+  var s=document.createElement('style');
+  s.textContent='body{animation:none!important;clip-path:none!important}';
+  document.head.appendChild(s);
+  // Ocultar armalogo hasta que esté en el último frame y listo para el flicker de entrada
+  var s2=document.createElement('style');
+  s2.id='hide-armalogo';
+  s2.textContent='#armalogo{opacity:0!important}';
+  document.head.appendChild(s2);
+})()</script>
 
-  <video id="armalogo" src="assets/videos/armalogo_hom6dtv.webm" preload="auto" playsinline muted></video>
+  <video id="armalogo" src="assets/videos/armalogoblack_hom6dtv.webm" preload="auto" playsinline muted></video>
 
   <script>
     var v = document.getElementById('armalogo');
@@ -54,6 +64,21 @@
     }
     v.addEventListener('loadedmetadata', seekToEnd, { once: true });
     v.addEventListener('canplaythrough',  seekToEnd, { once: true });
+
+    // Flicker de entrada solo del logo: desde 0 hasta opacity 1
+    v.addEventListener('seeked', function() {
+      var hideStyle = document.getElementById('hide-armalogo');
+      if (hideStyle) hideStyle.remove();
+      var seq = [[0,0],[25,0.7],[52,0],[80,0.85],[105,0],[135,0.55],[162,0],[188,0.4],[215,1]];
+      var t0 = performance.now(), si = 0;
+      function flickIn() {
+        var t = performance.now() - t0;
+        while (si < seq.length && seq[si][0] <= t) { v.style.opacity = seq[si][1]; si++; }
+        if (si < seq.length) requestAnimationFrame(flickIn);
+        else v.style.opacity = '1';
+      }
+      requestAnimationFrame(flickIn);
+    }, { once: true });
 
     var swipeTriggered = false;
     var swipeBack      = false;
