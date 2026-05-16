@@ -180,7 +180,7 @@
 
 <video id="video"    src="assets/videos/nombrebrutal_colores.webm" preload="auto" playsinline></video>
 <video id="vhs"      src="assets/videos/vhsentero.webm"           preload="auto" playsinline loop muted></video>
-<video id="armalogo" src="assets/videos/armalogoblack_hom6dtv.webm" preload="auto" playsinline muted></video>
+<video id="armalogo" src="assets/videos/armalogo_ajuste.webm" preload="auto" playsinline muted></video>
 
 <script>
   var btn      = document.getElementById('btn');
@@ -281,25 +281,37 @@
     var wrap = document.createElement('div');
     wrap.style.cssText =
       'position:fixed;top:0;left:50%;transform:translateX(-50%);' +
-      'pointer-events:none;z-index:21;filter:url(#fs-vblur);' +
-      '-webkit-mask-image:linear-gradient(to right,transparent,#000 0px,#000 100%,transparent);' +
-      'mask-image:linear-gradient(to right,transparent,#000 0px,#000 100%,transparent);';
-    setTimeout(function() {
-      var dur = 600;
-      var t0  = performance.now();
-      (function animMask() {
-        var t = Math.min(1, (performance.now() - t0) / dur);
-        var w = (t * 40).toFixed(1);
-        var m = 'linear-gradient(to right,transparent,#000 ' + w + 'px,#000 calc(100% - ' + w + 'px),transparent)';
-        wrap.style.webkitMaskImage = m;
-        wrap.style.maskImage       = m;
-        if (t < 1) requestAnimationFrame(animMask);
-      })();
-    }, 1000);
+      'pointer-events:none;z-index:21;filter:url(#fs-vblur);';
     var strip = document.createElement('div');
     strip.style.cssText = 'display:flex;flex-direction:column;will-change:transform;';
     wrap.appendChild(strip);
     document.body.appendChild(wrap);
+
+    // Blur lateral: dos overlays encima del wrap (z-index 22) con backdrop-filter
+    var cx        = window.innerWidth / 2;
+    var halfTile  = tileW / 2;
+    var blurZoneW = 60;
+    var blurMax   = 80;
+    var blurDurMs = Math.round(dur * 0.8);
+    [
+      { pos: cx - halfTile,              grad: 'linear-gradient(to right, black, transparent)' },
+      { pos: cx + halfTile - blurZoneW,  grad: 'linear-gradient(to left,  black, transparent)' }
+    ].forEach(function(cfg) {
+      var el = document.createElement('div');
+      el.style.cssText =
+        'position:fixed;top:0;bottom:0;left:' + cfg.pos + 'px;width:' + blurZoneW + 'px;' +
+        'pointer-events:none;z-index:22;' +
+        '-webkit-mask-image:' + cfg.grad + ';mask-image:' + cfg.grad + ';';
+      document.body.appendChild(el);
+      var t0 = performance.now();
+      (function animEdge() {
+        var t = Math.min(1, (performance.now() - t0) / blurDurMs);
+        var b = 'blur(' + (t * blurMax).toFixed(1) + 'px)';
+        el.style.backdropFilter = b;
+        el.style.webkitBackdropFilter = b;
+        if (t < 1) requestAnimationFrame(animEdge);
+      })();
+    });
 
     for (var i = 0; i < numTiles; i++) {
       var v = document.createElement('video');
@@ -353,6 +365,12 @@
     swipeTriggered = true;
     swipeEnabled   = false;
 
+    var vig = document.createElement('div');
+    vig.style.cssText =
+      'position:fixed;inset:0;pointer-events:none;z-index:25;' +
+      'background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%);';
+    document.body.appendChild(vig);
+
     vhs.animate(
       [
         { transform: 'translate(-50%, -50%)' },
@@ -361,13 +379,8 @@
       { duration: 400, easing: 'cubic-bezier(0.5, 0, 1, 0.6)', fill: 'forwards' }
     );
 
-    // Sólido negro se desliza hacia abajo revelando blanco + viñeta
     ola.animate([{}, { opacity: 0 }], { duration: 300, fill: 'forwards' });
     blanco.style.display = 'block';
-    var vig = document.createElement('div');
-    vig.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:11;' +
-      'background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,0.45) 100%);';
-    document.body.appendChild(vig);
     negro.animate(
       [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
       { duration: 1200, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
@@ -375,14 +388,12 @@
 
     buildFilmstrip();
 
-    // Cuando el filmstrip sale de cuadro, snap armalogo al último frame y parpadeo de salida
-    setTimeout(function() {
-      armalogo.pause();
+    // Cuando armalogo termina: freeze en último frame, parpadeo de salida, corte
+    armalogo.addEventListener('ended', function onArmaEnd() {
       if (armalogo.duration && isFinite(armalogo.duration)) {
         armalogo.currentTime = armalogo.duration;
       }
-      // Parpadeo solo del logo: flickers irregulares, termina en opacity 0 → corte
-      var seq = [[0,1],[20,0],[42,0.7],[62,0],[88,0.85],[108,0],[132,0.55],[158,0],[185,0.4],[210,0]];
+      var seq = [[0,1],[11,0],[24,0.82],[34,0],[58,0.91],[66,0],[74,0.38],[81,0],[112,0.68],[121,0],[132,0.47],[140,0.12],[146,0],[173,0.28],[180,0],[196,0.08],[210,0]];
       var t0 = performance.now(), si = 0;
       function flickOut() {
         var t = performance.now() - t0;
@@ -391,7 +402,7 @@
         else { sessionStorage.setItem('from_ajuste_wipe', '1'); window.location.href = 'hom6dtv.html'; }
       }
       requestAnimationFrame(flickOut);
-    }, 2000);
+    }, { once: true });
 
     [lblTl, lblTr, lblBr].forEach(function(el) {
       el.animate(

@@ -13,13 +13,17 @@
       background: #fff;
     }
 
-    @keyframes bg-open {
-      from { clip-path: inset(58% 0 0 0); }
-      to   { clip-path: inset(0%  0 0 0); }
+    #push-cover {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 58vh;
+      background: #fff;
+      z-index: 50;
+      pointer-events: none;
+      animation: push-up 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
-
-    body {
-      animation: bg-open 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    @keyframes push-up {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-100%); }
     }
 
     #armalogo {
@@ -29,28 +33,35 @@
       pointer-events: none;
     }
 
-    body::after {
+    html::after {
       content: '';
       position: fixed; inset: 0;
       background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%);
       pointer-events: none;
       z-index: 1;
     }
+
   </style>
 </head>
 <body><script>(function(){
-  if(!sessionStorage.getItem('from_ajuste_wipe')) return;
-  sessionStorage.removeItem('from_ajuste_wipe');
-  var s=document.createElement('style');
-  s.textContent='body{animation:none!important;clip-path:none!important}';
-  document.head.appendChild(s);
-  // Ocultar armalogo hasta que esté en el último frame y listo para el flicker de entrada
-  var s2=document.createElement('style');
-  s2.id='hide-armalogo';
-  s2.textContent='#armalogo{opacity:0!important}';
-  document.head.appendChild(s2);
+  var s = document.createElement('style');
+  if (sessionStorage.getItem('from_ajuste_wipe')) {
+    sessionStorage.removeItem('from_ajuste_wipe');
+    s.textContent = '#push-cover{display:none!important}';
+    document.head.appendChild(s);
+    var s2 = document.createElement('style');
+    s2.id = 'hide-armalogo';
+    s2.textContent = '#armalogo{opacity:0!important}';
+    document.head.appendChild(s2);
+  } else if (sessionStorage.getItem('resume_hom6dtv')) {
+    sessionStorage.removeItem('resume_hom6dtv');
+    s.textContent = '#push-cover{display:none!important}#armalogo{opacity:1!important}';
+    document.head.appendChild(s);
+    window._resumeHom = true;
+  }
 })()</script>
 
+  <div id="push-cover"></div>
   <video id="armalogo" src="assets/videos/armalogoblack_hom6dtv.webm" preload="auto" playsinline muted></video>
 
   <script>
@@ -62,23 +73,37 @@
         v.currentTime = v.duration;
       }
     }
-    v.addEventListener('loadedmetadata', seekToEnd, { once: true });
-    v.addEventListener('canplaythrough',  seekToEnd, { once: true });
 
-    // Flicker de entrada solo del logo: desde 0 hasta opacity 1
-    v.addEventListener('seeked', function() {
-      var hideStyle = document.getElementById('hide-armalogo');
-      if (hideStyle) hideStyle.remove();
-      var seq = [[0,0],[25,0.7],[52,0],[80,0.85],[105,0],[135,0.55],[162,0],[188,0.4],[215,1]];
-      var t0 = performance.now(), si = 0;
-      function flickIn() {
-        var t = performance.now() - t0;
-        while (si < seq.length && seq[si][0] <= t) { v.style.opacity = seq[si][1]; si++; }
-        if (si < seq.length) requestAnimationFrame(flickIn);
-        else v.style.opacity = '1';
-      }
-      requestAnimationFrame(flickIn);
-    }, { once: true });
+    if (window._resumeHom) {
+      v.addEventListener('loadedmetadata', seekToEnd, { once: true });
+      v.addEventListener('canplaythrough',  seekToEnd, { once: true });
+
+      var cover = document.createElement('div');
+      cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:100;pointer-events:none;';
+      document.body.appendChild(cover);
+      cover.animate(
+        [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
+        { duration: 400, easing: 'cubic-bezier(0, 0, 0.2, 1)', fill: 'forwards' }
+      );
+    } else {
+      v.addEventListener('loadedmetadata', seekToEnd, { once: true });
+      v.addEventListener('canplaythrough',  seekToEnd, { once: true });
+
+      // Flicker de entrada solo del logo: desde 0 hasta opacity 1
+      v.addEventListener('seeked', function() {
+        var hideStyle = document.getElementById('hide-armalogo');
+        if (hideStyle) hideStyle.remove();
+        var seq = [[0,0],[19,0.58],[30,0],[52,0.88],[61,0],[68,0.32],[75,0],[108,0.72],[118,0],[130,0.61],[139,0.15],[145,0],[168,0.86],[178,0],[198,1]];
+        var t0 = performance.now(), si = 0;
+        function flickIn() {
+          var t = performance.now() - t0;
+          while (si < seq.length && seq[si][0] <= t) { v.style.opacity = seq[si][1]; si++; }
+          if (si < seq.length) requestAnimationFrame(flickIn);
+          else v.style.opacity = '1';
+        }
+        requestAnimationFrame(flickIn);
+      }, { once: true });
+    }
 
     var swipeTriggered = false;
     var swipeBack      = false;

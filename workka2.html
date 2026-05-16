@@ -31,6 +31,7 @@
       flex-shrink: 0;
       position: relative;
       overflow: hidden;
+      background: #fff;
     }
     #contact-stage {
       position: absolute;
@@ -48,7 +49,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
+      color: #000;
       font-family: 'Courier New', Courier, monospace;
       font-size: clamp(1.2rem, 3vw, 2.8rem);
       letter-spacing: 0.2em;
@@ -895,13 +896,19 @@ function _doExitDown() {
   if (_pageState === 'contact') {
     goToWork();
   } else {
-    document.documentElement.style.overflow = 'visible';
-    document.body.style.overflow            = 'visible';
-    document.body.animate(
-      [{ transform: 'translateY(0)' }, { transform: 'translateY(100vh)' }],
-      { duration: EXIT_DUR, easing: EXIT_EASE, fill: 'forwards' }
+    var curtain = document.createElement('div');
+    curtain.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9999;pointer-events:none;transform:translateY(-100vh);';
+    document.body.appendChild(curtain);
+    curtain.animate(
+      [{ transform: 'translateY(-100vh)' }, { transform: 'translateY(0)' }],
+      { duration: 400, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' }
     );
-    setTimeout(function() { window.location.href = 'hom6dtv.html'; }, EXIT_DUR + 10);
+    document.body.animate(
+      [{ transform: 'translateY(0)' }, { transform: 'translateY(22vh)' }],
+      { duration: 400, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' }
+    );
+    sessionStorage.setItem('resume_hom6dtv', '1');
+    setTimeout(function() { window.location.href = 'hom6dtv.html'; }, 405);
   }
 }
 
