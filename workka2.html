@@ -24,6 +24,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #fff;
     }
     #screen-contact {
       width: 100%;
@@ -31,7 +32,7 @@
       flex-shrink: 0;
       position: relative;
       overflow: hidden;
-      background: #fff;
+      background: #000;
     }
     #contact-stage {
       position: absolute;
@@ -48,67 +49,25 @@
       height: 26vh;
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: #000;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: clamp(1.2rem, 3vw, 2.8rem);
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
+      justify-content: flex-end;
+      color: #fff;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 900;
+      font-size: 12vh;
+      letter-spacing: -0.03em;
       pointer-events: none;
       z-index: 5;
     }
   </style>
 </head>
-<body><script>(function(){function s(){var p=screen.orientation?screen.orientation.type.startsWith("portrait"):window.innerHeight>=window.innerWidth;document.body.classList.toggle("is-portrait",p)}s();window.addEventListener("resize",s);if(screen.orientation)screen.orientation.addEventListener("change",s)})()</script><script>(function(){
-  if(!sessionStorage.getItem('from_hom6dtv'))return;
-  sessionStorage.removeItem('from_hom6dtv');
-  document.addEventListener('DOMContentLoaded',function(){
-    var logo=document.createElement('video');
-    logo.src='assets/videos/armalogo_hom6dtv.webm';
-    logo.muted=true;logo.setAttribute('playsinline','');
-    logo.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:contain;z-index:9998;pointer-events:none;transform-origin:50% 50%';
-    logo.addEventListener('loadedmetadata',function(){if(logo.duration&&isFinite(logo.duration))logo.currentTime=logo.duration;},{once:true});
-    document.body.appendChild(logo);
-    setTimeout(function(){
-      var btn=document.getElementById('home-btn');
-      if(!btn)return;
-      var r=btn.getBoundingClientRect();
-      var vpW=window.innerWidth,vpH=window.innerHeight;
-      var tx=(r.left+r.width/2)-vpW/2;
-      var ty=(r.top+r.height/2)-vpH/2;
-      var s=r.width/vpW;
-      btn.style.visibility='hidden';
-      logo.animate(
-        [{transform:'translate(0,0) scale(1)'},{transform:'translate('+tx+'px,'+ty+'px) scale('+s+')'}],
-        {duration:700,easing:'cubic-bezier(0.4,0,0.2,1)',fill:'forwards'}
-      ).onfinish=function(){
-        logo.animate([{opacity:1},{opacity:0}],{duration:200,fill:'forwards'}).onfinish=function(){logo.remove()};
-      };
-    },150);
-  });
-})()</script>
-
+<body><script>(function(){function s(){var p=screen.orientation?screen.orientation.type.startsWith("portrait"):window.innerHeight>=window.innerWidth;document.body.classList.toggle("is-portrait",p)}s();window.addEventListener("resize",s);if(screen.orientation)screen.orientation.addEventListener("change",s)})()</script>
   <div id="pages-wrap">
   <div id="screen-work" style="position:relative">
   <div id="stage">
 
-    <div id="work-title">WORK</div>
+    <img id="work-logo" src="assets/images/logoexacto.png" alt="">
+    <div id="work-title"></div>
 
-    <!-- Home button -->
-    <div id="home-btn">
-      <div id="home-fondo"></div>
-      <svg id="home-icon" viewBox="0 0 222.3876 214.063" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <mask id="home-mask">
-            <rect width="222.3876" height="214.063" fill="white"/>
-            <path id="home-mask-path" fill="black" transform="translate(154.63,48.26) scale(-0.72,0.72)" d="M17.3353,2.0513l98.7013,70.2095c6.1132,4.3485,6.1583,13.4121.0887,17.8213L18.2873,161.1548c-7.2294,5.2517-17.3692.1237-17.4238-8.8117L.0002,11.0609C-.0544,2.1141,10.0447-3.1347,17.3353,2.0513Z"/>
-          </mask>
-        </defs>
-        <rect width="222.3876" height="214.063" rx="22.2965" ry="22.2965" fill="black" mask="url(#home-mask)"/>
-      </svg>
-      <div id="home-texto">home</div>
-    </div>
-    <button id="home-hit" aria-label="Volver a inicio"></button>
 
     <div id="vhs-ruler">
       <span id="ruler-left"><span class="ruler-dashes"></span><span class="ruler-title"></span><span class="ruler-arrow"> &gt;</span></span>
@@ -126,7 +85,7 @@
 
   <div id="screen-contact">
     <div id="contact-stage">
-      <div id="contact-label">CONTACT</div>
+      <div id="contact-label">Contact</div>
     </div>
   </div>
 
@@ -147,13 +106,16 @@
   <script>
     const R2 = "https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev";
     const works = [
-      { title: "Demo Reel",            png: "assets/images/vhslomorojo.png",    thumb: "assets/images/thumb_video1.png", video: R2+"/WORKS/video1/video1reel.mp4",                                     ratio:"16/9", startAt:1 },
-      { title: "Multideportes · ESPN", png: "assets/images/vhslomonaranja.png", thumb: "assets/images/thumb_video2.png", video: R2+"/WORKS/video2/Multideportes.mp4",                                  ratio:"16/9" },
-      { title: "Autocine Tenaris",     png: "assets/images/vhslomoamarillo.png",thumb: "assets/images/thumb_video3.png", video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                    ratio:"16/9", coverHeight:true },
-      { title: "El Escuerzo",          png: "assets/images/vhslomoverde.png",   thumb: "assets/images/thumb_video4.png", video: R2+"/WORKS/video4/video4.mp4",                                         ratio:"16/9" },
-      { title: "Video 05",             png: "assets/images/vhslomocian.png",    thumb: "assets/images/thumb_video5.png", video: R2+"/WORKS/video5/efda.mp4",                                           ratio:"16/9" },
-      { title: "Fox Channel",          png: "assets/images/vhslomovioleta.png", thumb: "assets/images/thumb_video6.png", video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4",ratio:"16/9" },
-      { title: "Highlight Fox",        png: "assets/images/vhslomorosa.png",    thumb: "assets/images/thumb_video7.png", video: R2+"/WORKS/video6/hltfoxviejo.mp4",                                    ratio:"16/9" },
+      { title: "Demo Reel",            png: "assets/images/vhslomocarmin.png",   thumb: "assets/images/thumb_video1.png", video: R2+"/WORKS/video1/video1reel.mp4",                                      ratio:"16/9", startAt:1 },
+      { title: "Multideportes · ESPN", png: "assets/images/vhslomorojo.png",     thumb: "assets/images/thumb_video2.png", video: R2+"/WORKS/video2/Multideportes.mp4",                                   ratio:"16/9" },
+      { title: "Autocine Tenaris",     png: "assets/images/vhslomonaranja.png",  thumb: "assets/images/thumb_video3.png", video: R2+"/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4",                     ratio:"16/9", coverHeight:true },
+      { title: "El Escuerzo",          png: "assets/images/vhslomoamarillo.png", thumb: "assets/images/thumb_video4.png", video: R2+"/WORKS/video4/video4.mp4",                                          ratio:"16/9" },
+      { title: "Video 05",             png: "assets/images/vhslomolima.png",     thumb: "assets/images/thumb_video5.png", video: R2+"/WORKS/video5/efda.mp4",                                            ratio:"16/9" },
+      { title: "Fox Channel",          png: "assets/images/vhslomoverde.png",    thumb: "assets/images/thumb_video6.png", video: R2+"/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4", ratio:"16/9" },
+      { title: "Highlight Fox",        png: "assets/images/vhslomocian.png",     thumb: "assets/images/thumb_video7.png", video: R2+"/WORKS/video6/hltfoxviejo.mp4",                                     ratio:"16/9" },
+      { title: "—",                    png: "assets/images/vhslomovioleta.png"  },
+      { title: "—",                    png: "assets/images/vhslomolila.png"      },
+      { title: "—",                    png: "assets/images/vhslomorosa.png"      },
     ];
 
     const stage = document.getElementById("stage");
@@ -222,26 +184,49 @@
       rail.style.height = railH + "px";
       positionHomeBtn();
       requestAnimationFrame(fitTitleToRail);
+      requestAnimationFrame(positionContactLabel);
+    }
+
+    function positionContactLabel() {
+      const spines = rail.querySelectorAll(".vhs-spine");
+      if (!spines.length) return;
+      const stageR     = stage.getBoundingClientRect();
+      const lastSpineR = spines[spines.length - 1].getBoundingClientRect();
+      const rightPx    = stageR.right - lastSpineR.right;
+      const label      = document.getElementById("contact-label");
+      if (label) label.style.paddingRight = rightPx + "px";
     }
 
     let _titleTyped = false;
 
     function fitTitleToRail() {
-      const targetW = rail.getBoundingClientRect().width;
-      if (!targetW) return;
-      const title  = document.getElementById("work-title");
-      const saved  = title.textContent;
-      title.textContent = "WORK";
-      const curW   = title.getBoundingClientRect().width;
-      if (!curW) { title.textContent = saved; return; }
-      const curFS  = parseFloat(getComputedStyle(title).fontSize) || 100;
-      title.style.fontSize = (curFS * targetW / curW) + "px";
+      const title = document.getElementById("work-title");
+      const logo  = document.getElementById("work-logo");
+      if (!title || !logo) return;
+
+      const spines = rail.querySelectorAll(".vhs-spine");
+      if (!spines.length) return;
+
+      const stageR = stage.getBoundingClientRect();
+      const spineR = spines[0].getBoundingClientRect();
+      const leftPx = (spineR.left - stageR.left);
+      title.style.left = (leftPx - 7) + "px";
+      logo.style.left  = leftPx + "px";
+      logo.style.right = "";
+
+      const stageH   = stageR.height;
+      const titleH   = window.innerHeight * 0.16;
+      const titleTop = stageH * 0.30 - titleH / 2;
+
+      logo.style.top        = (window.innerHeight * 0.07) + "px";
+      title.style.top       = titleTop + "px";
+      title.style.transform = "none";
+
       if (!_titleTyped) {
         _titleTyped = true;
         title.textContent = "";
-        "WORK".split("").forEach((c, i) => setTimeout(() => { title.textContent += c; }, i * 90));
-      } else {
-        title.textContent = saved;
+        "Movie Shelf".split("").forEach((c, i) =>
+          setTimeout(() => { title.textContent += c; }, i * 90));
       }
     }
 
@@ -421,9 +406,37 @@
       });
     }
 
+    const _noteFreqs = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25];
+    let _audioCtx = null;
+
+    function _playNote(idx) {
+      try {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx  = _audioCtx;
+        const freq = _noteFreqs[idx % _noteFreqs.length];
+        const now  = ctx.currentTime;
+
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.10, now + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+        osc.start(now);
+        osc.stop(now + 0.55);
+      } catch(e) {}
+    }
+
     function setActive(idx) {
       if (activeIndex === idx) return;
       activeIndex = idx;
+      if (idx >= 0) _playNote(idx);
       const spines = Array.from(rail.querySelectorAll(".vhs-spine"));
       spines.forEach((spine, i) => {
         spine.classList.toggle("is-active", idx >= 0 && i === idx);
@@ -504,74 +517,7 @@
     // ── EVENTS ────────────────────────────────────────────────────────────────
     const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
-    // ── HOME BUTTON ───────────────────────────────────────────────────────────
-    const homeBtn   = document.getElementById("home-btn");
-    const homeHit   = document.getElementById("home-hit");
-    const homeFondo = document.getElementById("home-fondo");
-    const homeTexto = document.getElementById("home-texto");
-    let homeBtnOrigW    = 0;
-    let homeTouchActive = false;
-
-    function setHomeHoverW() {
-      if (!homeBtnOrigW) return;
-      const pct = 120 + (homeTexto.scrollWidth / homeBtnOrigW * 100);
-      homeBtn.style.setProperty("--home-hover-w", pct.toFixed(2) + "%");
-    }
-
-    function positionHomeBtn() {
-      const dvh        = Math.min(window.innerHeight, 1080);
-      const btnSize    = (dvh - 20) * 0.04813;
-      homeBtnOrigW     = btnSize;
-      const isPortrait = document.body.classList.contains("is-portrait");
-
-      homeBtn.style.width  = btnSize + "px";
-      homeBtn.style.height = btnSize + "px";
-      homeBtn.style.setProperty("--home-btn-size", btnSize + "px");
-      homeHit.style.width  = btnSize + "px";
-      homeHit.style.height = btnSize + "px";
-
-      if (isPortrait) {
-        homeBtn.style.top   = "60px";
-        homeBtn.style.right = "16px";
-        homeBtn.style.left  = "";
-        homeHit.style.top   = "60px";
-        homeHit.style.right = "16px";
-        homeHit.style.left  = "";
-      } else {
-        const topPx = dvh * 0.06;
-        homeBtn.style.top   = topPx + "px";
-        homeBtn.style.right = "";
-        homeHit.style.top   = topPx + "px";
-        homeHit.style.right = "";
-        const spines = rail.querySelectorAll(".vhs-spine");
-        if (spines.length) {
-          const stageR = stage.getBoundingClientRect();
-          const spineR = spines[0].getBoundingClientRect();
-          const leftPx = spineR.left - stageR.left;
-          homeBtn.style.left = leftPx + "px";
-          homeHit.style.left = leftPx + "px";
-        }
-      }
-      setHomeHoverW();
-    }
-
-    function activateHomeBtn() {
-      homeBtn.classList.add("hovered");
-      const hoverPct = parseFloat(homeBtn.style.getPropertyValue("--home-hover-w")) || 300;
-      homeHit.style.width = (homeBtnOrigW * hoverPct / 100) + "px";
-    }
-
-    function deactivateHomeBtn() {
-      homeBtn.classList.remove("hovered");
-      homeHit.style.width = homeBtnOrigW + "px";
-      homeTouchActive = false;
-    }
-
-    function goHome() {
-      window.location.href = "hom4dtv.html";
-    }
-
-    document.fonts.ready.then(setHomeHoverW);
+    function positionHomeBtn() {}
 
     // Swipe down para volver a hom4dtv
     let _swipeY0 = 0, _swipeX0 = 0;
@@ -707,24 +653,6 @@
       });
     }
 
-    // ── HOME HIT EVENTS ───────────────────────────────────────────────────────
-    if (!isTouch) {
-      homeHit.addEventListener("mouseenter", activateHomeBtn);
-      homeHit.addEventListener("mouseleave", deactivateHomeBtn);
-      homeHit.addEventListener("click", goHome);
-    } else {
-      homeHit.addEventListener("touchend", e => {
-        e.preventDefault();
-        if (homeTouchActive) {
-          deactivateHomeBtn();
-          goHome();
-        } else {
-          homeTouchActive = true;
-          activateHomeBtn();
-        }
-      }, { passive: false });
-    }
-
     // ── RESIZE ────────────────────────────────────────────────────────────────
     window.addEventListener("resize", () => {
       calibrateBlock();
@@ -763,9 +691,6 @@ function openPlayer(spineEl, src, startAt, ratio, coverHeight) {
   document.body.classList.add('player-open');
   if (isSquare) document.body.classList.add('player-square');
   document.getElementById('shelf-wrap').style.visibility = 'hidden';
-  homeBtn.style.opacity        = '0';
-  homeHit.style.opacity        = '0';
-  homeHit.style.pointerEvents  = 'none';
 
   player.classList.toggle('square', isSquare);
   player.classList.add('open');
@@ -846,9 +771,6 @@ function closePlayer() {
     player.style.clipPath = '';
     document.body.classList.remove('player-open', 'player-square');
     document.getElementById('shelf-wrap').style.visibility = '';
-    homeBtn.style.opacity       = '';
-    homeHit.style.opacity       = '';
-    homeHit.style.pointerEvents = '';
     dropElevated();
   }).catch(() => {});
 }

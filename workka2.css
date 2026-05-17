@@ -22,24 +22,44 @@ body {
   height: min(100vh, 1080px);
   height: min(100dvh, 1080px);
   overflow: hidden;
-  background: #000;
+  background: #fff;
+}
+
+/* ── VIGNETTE ────────────────────────────────────────────────────────────── */
+#stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, transparent 45%, rgba(0,0,0,0.38) 100%);
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ── WORK LOGO ───────────────────────────────────────────────────────────── */
+#work-logo {
+  position: absolute;
+  left: 0;
+  top: 7vh;
+  width: 20.1vh;
+  height: auto;
+  pointer-events: none;
+  z-index: 5;
 }
 
 /* ── WORK TITLE ──────────────────────────────────────────────────────────── */
 #work-title {
   position: absolute;
-  left: 50%;
-  top: 22%;
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-weight: 700;
-  font-size: 37vh;
-  color: #fff;
+  font-size: 16vh;
+  color: #000;
   white-space: nowrap;
   pointer-events: none;
   z-index: 5;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 /* ── SHELF WRAP ──────────────────────────────────────────────────────────── */
@@ -145,7 +165,8 @@ body {
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-top: 44vh;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
