@@ -139,7 +139,7 @@ body {
   mask-size: 100% 100%;
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
-  opacity: 0.95;
+  opacity: 1;
 }
 
 /* ── PNG del lomo (imagen coloreada) ─────────────────────────────────────── */
@@ -166,7 +166,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  padding-top: 44vh;
+  padding-top: 36vh;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;

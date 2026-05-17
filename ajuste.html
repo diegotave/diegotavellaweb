@@ -194,6 +194,9 @@
   // armalogo arranca 11 frames antes de que nombrebrutal termine (animación 700ms a 30fps)
   var ARMA_DELAY = Math.round(700 - 11 * 1000 / 30);  // ≈ 333ms
 
+  var fsPng = new Image();
+  fsPng.src = 'assets/images/vhsfilmstrip.png';
+
   var swipeEnabled   = false;
   var swipeTriggered = false;
   var touchStartY    = null;
@@ -207,11 +210,12 @@
 
   // ── Filmstrip ─────────────────────────────────────────────────────────────
   function buildFilmstrip() {
-    var rect  = vhs.getBoundingClientRect();
-    var tileW = rect.width;
-    var tileH = rect.height;
-    var P     = rect.top;   // distancia del top del VHS centrado al top del viewport
-    var vpH   = window.innerHeight;
+    var vpH  = window.innerHeight;
+    var rect = vhs.getBoundingClientRect();
+    var P    = rect.top;
+    function run() {
+      var tileW = fsPng.naturalWidth;
+      var tileH = fsPng.naturalHeight;
 
     var gaps = [];
     var g = P;
@@ -224,7 +228,6 @@
     var startY = -totalH;
     var endY   = vpH;
 
-    // Filtro SVG de blur vertical (motion blur)
     var NS  = 'http://www.w3.org/2000/svg';
     var svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
@@ -248,7 +251,6 @@
     wrap.appendChild(strip);
     document.body.appendChild(wrap);
 
-    // Blur lateral: dos overlays encima del wrap (z-index 22) con backdrop-filter
     var cx        = window.innerWidth / 2;
     var halfTile  = tileW / 2;
     var blurZoneW = 60;
@@ -275,26 +277,12 @@
     });
 
     for (var i = 0; i < numTiles; i++) {
-      var v = document.createElement('video');
-      v.src = 'assets/videos/vhsentero.webm';
-      v.muted = true;
-      v.setAttribute('playsinline', '');
+      var v = document.createElement('img');
+      v.src = 'assets/images/vhsfilmstrip.png';
       v.style.cssText =
-        'width:' + tileW + 'px;height:' + tileH + 'px;display:block;flex-shrink:0;' +
-        'filter:invert(1);mix-blend-mode:screen;';
+        'width:' + tileW + 'px;height:auto;display:block;flex-shrink:0;' +
+        'mix-blend-mode:screen;';
       if (i < gaps.length) v.style.marginBottom = gaps[i] + 'px';
-
-      if (i < 3) {
-        v.loop = true; v.preload = 'auto';
-        v.addEventListener('loadedmetadata', (function(el) {
-          return function() { el.play().catch(function() {}); };
-        })(v));
-      } else {
-        v.preload = 'metadata';
-        v.addEventListener('loadedmetadata', (function(el) {
-          return function() { el.currentTime = 1; };
-        })(v));
-      }
       strip.appendChild(v);
     }
 
@@ -306,8 +294,6 @@
       { duration: dur, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
     );
 
-
-    // Blur sube al pico (50%) y baja simétricamente
     var blurT0  = performance.now();
     var maxBlur = 14;
     (function animBlur() {
@@ -317,7 +303,10 @@
       if (t < 1) requestAnimationFrame(animBlur);
       else fgb.setAttribute('stdDeviation', '0 0');
     })();
+    }  // end run()
 
+    if (fsPng.complete && fsPng.naturalWidth) run();
+    else fsPng.onload = run;
   }
 
   // ── Swipe ─────────────────────────────────────────────────────────────────
