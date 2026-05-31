@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Old Remote</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    html::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%);
+      pointer-events: none;
+      z-index: 10000;
+    }
+
+    #oldremote,
+    #remote-pressed {
+      position: fixed;
+      left: 50%;
+      width: 17vw;
+      bottom: -10vh;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #oldremote {
+      animation: remote-in 1000ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    #remote-pressed {
+      transform: translateX(-50%);
+      z-index: 6;
+      opacity: 0;
+    }
+
+    /*
+      Hitbox calculado del bounding box de btn_play_pressed.png (389×1085 → 17vw):
+      bbox px: left=237 top=554 right=275 bottom=621  (w=39 h=68)
+      scale: 17/389 vw/px
+      left desde 50%: (237 × 17/389)vw − 8.5vw = +1.857vw
+      bottom desde viewport: −10vh + (1085−621)×17/389 vw = −10vh + 20.278vw
+      +3px expansión en cada lado
+    */
+    #remote-hit {
+      position: fixed;
+      left:   calc(50% + 1.857vw - 3px);
+      bottom: calc(-10vh + 20.278vw - 3px);
+      width:  calc(1.704vw + 6px);
+      height: calc(2.972vw + 6px);
+      z-index: 7;
+      cursor: pointer;
+    }
+
+    @keyframes remote-in {
+      from { transform: translateX(-50%) translateY(calc(-100vh - 100%)); }
+      to   { transform: translateX(-50%) translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <img id="oldremote"      src="assets/images/oldremote.png"        alt="">
+  <img id="remote-pressed" src="assets/images/btn_play_pressed.png"  alt="">
+  <div id="remote-hit"></div>
+
+  <script>
+    var hit     = document.getElementById('remote-hit');
+    var pressed = document.getElementById('remote-pressed');
+    function show() { pressed.style.opacity = '1'; }
+    function hide() { pressed.style.opacity = '0'; }
+    hit.addEventListener('mousedown',   show);
+    hit.addEventListener('mouseup',     hide);
+    hit.addEventListener('touchstart',  show,  { passive: true });
+    hit.addEventListener('touchend',    hide,  { passive: true });
+    hit.addEventListener('touchcancel', hide,  { passive: true });
+    document.addEventListener('mouseup', hide);
+  </script>
+
+  <script src="labels.js"></script>
+
+</body>
+</html>

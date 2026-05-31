@@ -13,24 +13,12 @@
       background: #fff;
     }
 
-    #push-cover {
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 58vh;
-      background: #fff;
-      z-index: 50;
-      pointer-events: none;
-      animation: push-up 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-    @keyframes push-up {
-      from { transform: translateY(0); }
-      to   { transform: translateY(-100%); }
-    }
-
     #armalogo {
       position: fixed; top: 0; left: 0;
       width: 100vw; height: 100vh;
       object-fit: contain;
       pointer-events: none;
+      z-index: 2;
     }
 
     html::after {
@@ -41,42 +29,72 @@
       z-index: 10000;
     }
 
+    #oldremote,
+    #remote-pressed {
+      position: fixed;
+      left: 50%;
+      width: 17vw;
+      bottom: -10vh;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    #oldremote {
+      transform: translateX(-50%) translateY(calc(-100vh - 100%));
+    }
+
+    #remote-pressed {
+      transform: translateX(-50%);
+      z-index: 6;
+      opacity: 0;
+    }
+
+    #remote-hit {
+      position: fixed;
+      left:   calc(50% + 1.857vw - 3px);
+      bottom: calc(-10vh + 20.278vw - 3px);
+      width:  calc(1.704vw + 6px);
+      height: calc(2.972vw + 6px);
+      z-index: 7;
+      cursor: pointer;
+    }
+
+    @keyframes remote-in {
+      from { transform: translateX(-50%) translateY(calc(-100vh - 100%)); }
+      to   { transform: translateX(-50%) translateY(0); }
+    }
+
   </style>
 </head>
-<body><script>(function(){
-  var s = document.createElement('style');
-  if (sessionStorage.getItem('from_ajuste_wipe')) {
-    sessionStorage.removeItem('from_ajuste_wipe');
-    s.textContent = '#push-cover{display:none!important}';
-    document.head.appendChild(s);
-    var s2 = document.createElement('style');
-    s2.id = 'hide-armalogo';
-    s2.textContent = '#armalogo{opacity:0!important}';
-    document.head.appendChild(s2);
-  } else if (sessionStorage.getItem('resume_hom6dtv')) {
+<body><script>
+  if (sessionStorage.getItem('from_ajuste_wipe')) sessionStorage.removeItem('from_ajuste_wipe');
+  if (sessionStorage.getItem('resume_hom6dtv')) {
     sessionStorage.removeItem('resume_hom6dtv');
-    s.textContent = '#push-cover{display:none!important}#armalogo{opacity:1!important}';
-    document.head.appendChild(s);
     window._resumeHom = true;
   }
-})()</script>
+</script>
 
-  <div id="push-cover"></div>
-  <video id="armalogo" src="assets/videos/armalogoblack_hom6dtv.webm" preload="auto" playsinline muted></video>
+  <video id="armalogo" src="assets/videos/intro_hom6dtv.webm" preload="auto" playsinline muted></video>
+  <img id="oldremote"      src="assets/images/oldremote.png"       alt="">
+  <img id="remote-pressed" src="assets/images/btn_play_pressed.png" alt="">
+  <div id="remote-hit"></div>
 
   <script>
     var v = document.getElementById('armalogo');
 
-    // Armalogo: último frame
+    function triggerRemote() {
+      document.getElementById('oldremote').style.animation =
+        'remote-in 1000ms cubic-bezier(0.16, 1, 0.3, 1) forwards';
+    }
+
     function seekToEnd() {
-      if (v.duration && isFinite(v.duration)) {
-        v.currentTime = v.duration;
-      }
+      if (v.duration && isFinite(v.duration)) v.currentTime = v.duration;
     }
 
     if (window._resumeHom) {
       v.addEventListener('loadedmetadata', seekToEnd, { once: true });
       v.addEventListener('canplaythrough',  seekToEnd, { once: true });
+      v.addEventListener('seeked', triggerRemote, { once: true });
 
       var cover = document.createElement('div');
       cover.style.cssText = 'position:fixed;inset:0;background:#000;z-index:100;pointer-events:none;';
@@ -86,23 +104,8 @@
         { duration: 400, easing: 'cubic-bezier(0, 0, 0.2, 1)', fill: 'forwards' }
       );
     } else {
-      v.addEventListener('loadedmetadata', seekToEnd, { once: true });
-      v.addEventListener('canplaythrough',  seekToEnd, { once: true });
-
-      // Flicker de entrada solo del logo: desde 0 hasta opacity 1
-      v.addEventListener('seeked', function() {
-        var hideStyle = document.getElementById('hide-armalogo');
-        if (hideStyle) hideStyle.remove();
-        var seq = [[0,0],[19,0.58],[30,0],[52,0.88],[61,0],[68,0.32],[75,0],[108,0.72],[118,0],[130,0.61],[139,0.15],[145,0],[168,0.86],[178,0],[198,1]];
-        var t0 = performance.now(), si = 0;
-        function flickIn() {
-          var t = performance.now() - t0;
-          while (si < seq.length && seq[si][0] <= t) { v.style.opacity = seq[si][1]; si++; }
-          if (si < seq.length) requestAnimationFrame(flickIn);
-          else v.style.opacity = '1';
-        }
-        requestAnimationFrame(flickIn);
-      }, { once: true });
+      v.addEventListener('ended', triggerRemote, { once: true });
+      v.addEventListener('canplay', function() { v.play(); }, { once: true });
     }
 
     var swipeTriggered = false;
@@ -162,6 +165,19 @@
 
   </script>
 
+<script>
+    var hit     = document.getElementById('remote-hit');
+    var pressed = document.getElementById('remote-pressed');
+    function showPressed() { pressed.style.opacity = '1'; }
+    function hidePressed() { pressed.style.opacity = '0'; }
+    hit.addEventListener('mousedown',   showPressed);
+    hit.addEventListener('touchstart',  showPressed, { passive: true });
+    hit.addEventListener('touchend',    hidePressed, { passive: true });
+    hit.addEventListener('touchcancel', hidePressed, { passive: true });
+    document.addEventListener('mouseup', hidePressed);
+  </script>
+
 <script src="labels.js"></script>
+
 </body>
 </html>
