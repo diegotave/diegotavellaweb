@@ -1,202 +1,1597 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Señal de Ajuste</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Landing</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-    html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
-      background: #000;
-    }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    /* always white, all the way to the viewport's own edges - not just
+       behind the rect, so the page never reads as a white card floating
+       on some other background. Stays white through every state; only
+       the rect's own fill/stroke and the logo's color flip (see .rect
+       and the press handling in the script). */
+    background: #fff;
+  }
 
-    #screen {
-      position: relative;
-      width: 100vw; height: 100vh;
-      display: flex; flex-direction: column;
-    }
+  /* full-screen viewport that centers a fixed 1920x1080 canvas - the
+     canvas itself is scaled uniformly (via JS, transform: scale()) to
+     fit whatever the real viewport is, so every element placed inside
+     it can use the exact same px coordinates as the 1920x1080 After
+     Effects comp this animation was exported from, with no per-element
+     unit conversion needed */
+  .viewport {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-    #zona-a { flex: 67 0 0; display: flex; }
-    #zona-b { flex: 8  0 0; display: flex; }
-    #zona-c { flex: 25 0 0; display: flex; }
-    .franja  { flex: 1 0 0; }
+  .canvas {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    flex: none;
+    /* the whole comp is almost always scaled DOWN by fitCanvas() below
+       (1920x1080 rarely fits inside the real viewport as-is) - without
+       will-change, both Chrome and Firefox can rasterize this subtree at
+       its native 1x size first and then resample that bitmap down to fit
+       the transform, which is what reads as jagged/soft edges on
+       border-radius corners and thin/light text (worst on Firefox, but
+       visible in Chrome too on fine detail). will-change promotes this to
+       its own compositing layer, which both engines rasterize against the
+       actual on-screen (post-scale) resolution instead. */
+    will-change: transform;
+  }
 
-    #c-izq    { flex: 2 0 0; display: flex; }
-    #c-centro { flex: 7 0 0; display: flex; }
-    #c-der    { flex: 3 0 0; display: flex; }
+  /* Rectangulo Central: AE shape layer "RECTANGULO CENTRAL STROKE 2" -
+     2px stroke, fill disabled (empty interior), layer Position fixed,
+     Scale/Position never animated - only the rect's own Size and
+     Roundness are keyframed, so it's placed here anchored on its own
+     center via translate(-50%,-50%) and grown/shrunk via
+     width/height/border-radius (not transform:scale, so the 2px stroke
+     stays a constant 2px instead of scaling with the box, same as in AE).
+     Center is (960, 539.5) - the bracket mark's own true center (bracket
+     bbox is 876-1044 x 487-592) - so the rest-state box gives it an
+     equal 19.075px margin on all four sides. See RECT_CENTER_Y below,
+     which the logo sync math reuses to stay consistent with wherever
+     this box is actually centered. */
+  .rect {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    /* starts as a solid "button": 80%-black fill (#333, not pure #000 -
+       see IDLE_BLACK below, shared with the two JS spots that restore
+       this same idle look), 10% bigger than the 206.15x143.15 it settles
+       to once pressed (see PRESS_SCALE in the script) - first click
+       presses it down to that size and, once pressed, swaps fill to
+       white and stroke to black (the page itself stays white always -
+       only the rect/logo colors flip), right before the existing
+       grow-to-overshoot animation takes over. Stroke is transparent by
+       default before that first click - it only reveals white on hover
+       (see #rect-hover-zone below), not shown outright. Stroke width is
+       1.5px here (0.5px thinner than the 2px it becomes once pressed -
+       see press.finished in the script) - only the pre-click button
+       (idle or hovered) is this thin. */
+    background: #333;
+    border: 1.5px solid transparent;
+    width: 226.765px;
+    height: 157.465px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+  }
+  /* invisible hit-area, 10% bigger than the button in both dimensions
+     and centered the same way, so hovering just outside the visible
+     button edge still previews the pressed look - forwards its
+     hover/click to #rect in the script (see setButtonHover), rather than
+     duplicating the button logic here */
+  #rect-hover-zone {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    width: 249.4415px;
+    height: 173.2115px;
+    cursor: pointer;
+  }
 
-    .label {
-      position: fixed;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px; line-height: 1.6; letter-spacing: 0.04em;
-      color: #fff; opacity: 0.5;
-      white-space: nowrap; pointer-events: none;
-      z-index: 35;
-    }
-    #lbl-tl { top: 14px;    left: 16px; }
-    #lbl-tr { top: 14px;    right: 16px; text-align: right; }
-    #lbl-br { bottom: 14px; right: 16px; text-align: right; }
+  /* password gate: sits where the compact logo mark normally shows,
+     replacing it until "promo" is typed - see the input handler in the
+     script. The brackets framing the typed value are the REAL
+     #bracket-left/#bracket-right (see .password-mode further down)
+     rather than a separate placeholder - a separate glyph stand-in was
+     tried first and reads as an obvious swap/pop the moment it hands off
+     to the real asset, however closely it's sized; animating the real
+     sprite's own transform the whole time can't have that seam since
+     there's only ever the one element. #password-gate itself is just a
+     grouping div (not positioned) so unlockPassword can hide both
+     children in one shot.
+     "ENTER PASSWORD" sits OUTSIDE the button, above it (black text, on
+     the white page - not white-on-black like the rest of this gate,
+     since it's no longer over the black rect), width-matched to the
+     rect's own 226.765px via letter-spacing (see matchPasswordLabelWidth
+     in the script - the same technique playCenterTagline already uses to
+     balance "Video Editor"/"motion graphics" against each other). */
+  /* fixed-width (matched to the rect - see matchPasswordLabelWidth) clip
+     box around the label itself, so its exit (see #password-label.exiting
+     below) can blow its letter-spacing WAY out without spilling past the
+     rect's own edges - text-align:center means the overflow clips evenly
+     on both sides, reading as the text dissolving outward from its own
+     middle rather than growing off to one side. */
+  #password-label-clip {
+    position: absolute;
+    left: 960px;
+    top: 441px;
+    transform: translate(-50%, -100%);
+    overflow: hidden;
+    text-align: center;
+  }
+  #password-label {
+    display: inline-block;
+    white-space: nowrap;
+    color: #000;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    letter-spacing: 2px;
+    user-select: none;
+    transition: opacity 0.25s ease, letter-spacing 0.25s ease;
+  }
+  #password-label.exiting {
+    opacity: 0;
+    letter-spacing: 40px;
+  }
+  /* the typed value - a real (invisible) input for actual keystroke
+     handling, with a visible mask span underneath standing in for what's
+     shown (literal asterisks, not the native password dot) and a
+     terminal-style blinking block cursor (same blink-square-flash
+     steps(1,end) pattern as the button's own blink square, for one
+     consistent "blinking" language across the page) rather than the
+     native line caret, which is hidden (caret-color: transparent) in
+     favor of this one. Fixed width (not sized to content) so it doesn't
+     grow/shift as characters are typed - sized for "promo"'s own 5
+     characters plus the cursor, with a little slack. Anchored on its
+     bottom edge rather than centered, so the taller box only grows
+     upward - keeps the same base while giving the cursor equal room to
+     the bracket's own top/bottom (552.5 rather than the brackets' own
+     notional 539.5+13 center - measured directly via
+     getBoundingClientRect against the actual rendered bracket-left, not
+     derived by hand, since the bracket PNG's own ink isn't perfectly
+     centered in its declared box - see the 4px crop padding comment
+     elsewhere in this file). Nudged left of the brackets' shared x=960 to
+     sit closer to the left bracket (not centered between both - see the
+     prompt this was built from) without touching it. Exits before the
+     brackets normalize (see unlockPassword). */
+  #password-value-wrap {
+    position: absolute;
+    left: 945px;
+    top: 552.5px;
+    transform: translate(-50%, -100%);
+    width: 76px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    transition: opacity 0.25s ease;
+  }
+  /* macOS-style wrong-password shake: several quick back-and-forth
+     oscillations rather than a single wiggle, bigger amplitude too (9px
+     vs the original 6px) - see SHAKE_MS in the script, which the
+     asterisk-clearing timeout matches so they stay visible for the whole
+     shake instead of vanishing the instant it starts. */
+  #password-value-wrap.shake {
+    animation: password-shake 0.4s ease;
+  }
+  @keyframes password-shake {
+    10%, 30%, 50%, 70%, 90% { transform: translate(calc(-50% - 9px), -100%); }
+    20%, 40%, 60%, 80% { transform: translate(calc(-50% + 9px), -100%); }
+  }
+  #password-value-wrap.exiting {
+    opacity: 0;
+  }
+  #password-mask {
+    color: #fff;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    letter-spacing: 3px;
+    white-space: pre;
+  }
+  #password-cursor {
+    width: 8px;
+    height: 15px;
+    background: #fff;
+    margin-left: 2px;
+    animation: blink-square-flash 0.6s steps(1, end) infinite;
+  }
+  #password-input {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    color: transparent;
+    caret-color: transparent;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    letter-spacing: 3px;
+  }
+  /* single shared window (unlike the tagline's own two separate windows
+     above) - the exact interior rectangle the brackets frame, i.e.
+     #logo-text's own box (895,504) to (1026,576). Same fixed-window
+     mechanic as "Video Editor"/"motion graphics": the window itself
+     never moves, so a sliding element is only visible for whatever part
+     of it currently overlaps this rectangle - one shared window here
+     instead of two since both halves land in the same place, they just
+     arrive from opposite sides. */
+  #logo-text-window {
+    clip-path: inset(504px 894px 504px 895px);
+  }
+  /* "Diego"/"Tavella" split entrance: two copies of the same text.png
+     (there's no separate asset per word - see the script), each cropped
+     to just its own half via clip-path (this is which half of the image
+     each one is, independent of the window above) - "Diego" (the top
+     half) slides in from the left, "Tavella" (the bottom half) slides in
+     from the right, both landing at translateX(0) exactly on #logo-text's
+     own default left/top/width/height, so the handoff to the real
+     element is a no-op swap. filter: invert(1) matches #logo-text's own
+     treatment (black ink -> white against the black button) - without it
+     these read as black ink the whole time they're sliding, only
+     flipping to white at the handoff, which looks like a color change
+     rather than the reveal it's supposed to be. No opacity fade here
+     (see the swap-slide comment in playCenterTagline for why) -
+     #logo-text-window's clip-path is what actually governs visibility
+     while these are off to the side. Start position is comfortably past
+     the OTHER bracket's own rest position (872-895 for bracket-left,
+     1026-1048 for bracket-right) - Β±190 clears either one's box by
+     ~35-40px, not just past the window's own (895-1026) edge - so both
+     visibly start beyond the brackets themselves, not just outside the
+     invisible clip. Runs at the same time the brackets normalize below.
+     filter lives on the #logo-text-invert wrapper below rather than here
+     directly - Chromium rasterizes a filter into its own backing buffer,
+     and combining that with clip-path+transform on the SAME element makes
+     that buffer get created at a lower effective resolution than the rest
+     of the page, which reads as soft/blurry on non-Retina displays (masked
+     on a Retina screen by its extra pixel density). Isolating the filter
+     on a plain, non-transformed, non-clipped wrapper keeps its rasterization
+     independent of the sliding/clipping children. */
+  #logo-text-invert {
+    filter: invert(1);
+  }
+  #text-diego-half, #text-tavella-half {
+    left: 895px;
+    top: 504px;
+    width: 131px;
+    height: 72px;
+    transition: transform 0.75s ease-in;
+  }
+  #text-diego-half {
+    clip-path: inset(0 0 50% 0);
+    transform: translateX(-190px);
+  }
+  #text-tavella-half {
+    clip-path: inset(50% 0 0 0);
+    transform: translateX(190px);
+  }
+  #text-diego-half.entered, #text-tavella-half.entered {
+    transform: translateX(0);
+  }
+  /* #logo-text stays hidden until the Diego/Tavella halves above finish
+     converging (identical end state to what they just animated into, so
+     the swap itself is invisible) */
+  #logo-text {
+    opacity: 0;
+  }
+  #logo-text.revealed {
+    opacity: 1;
+  }
 
-    #gate {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.42);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
-    #gate-box {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 20px;
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.2);
-      padding: 44px 36px;
-      min-width: min(300px, 80vw);
-    }
-    #gate-label {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 11px; letter-spacing: 0.18em;
-      text-transform: uppercase; color: #000; opacity: 0.5;
-    }
-    #gate-field {
-      display: flex; width: 100%;
-      border: 1px solid rgba(0,0,0,0.2);
-      overflow: hidden;
-    }
-    #gate-input {
-      flex: 1; border: none; outline: none;
-      padding: 9px 12px;
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 13px; letter-spacing: 0.12em;
-      background: #fff; color: #000;
-    }
-    #gate-input::placeholder { color: rgba(0,0,0,0.2); }
-    #gate-submit {
-      background: #000; border: none;
-      cursor: pointer; padding: 0 14px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 150ms ease;
-    }
-    #gate-submit:hover { background: #222; }
-    #gate-submit svg { width: 12px; height: 12px; display: block; }
-    #gate-err {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 10px; letter-spacing: 0.1em;
-      text-transform: uppercase; color: #000; opacity: 0;
-      transition: opacity 200ms ease;
-    }
-    #gate-err.visible { opacity: 0.45; }
-  </style>
+  /* "logo desarme": three sprites cropped directly out of the real AE
+     render (logodesarme_1_100.png, 4px padding for anti-aliasing) rather
+     than reconstructed in a web font - neither the brackets nor the
+     wordmark ever change size in the source frames, they only translate
+     (brackets slide out horizontally, staying vertically centered; the
+     text slides from screen-center up to the top-left), so a single crop
+     of each piece is all that's needed, just moved around by JS. Positions
+     below are frame 100's own bbox minus the 4px crop padding, in the
+     comp's 1920x1080 coordinates. */
+  .logo-sprite {
+    position: absolute;
+    user-select: none;
+    pointer-events: none;
+  }
+  /* scaled up to match the button's own 10%-bigger un-pressed size,
+     each around the same shared point the button itself is centered on
+     (960, 539.5) - expressed as a transform-origin local to each
+     element's own box, since a single shared-origin scale isn't
+     possible across three separate elements without a wrapper. Presses
+     back down to scale(1) in the same duration as the button (see
+     PRESS_DURATION in the script - keep this in sync if that changes),
+     which is also what leaves it there ever after - nothing later
+     re-touches transform, only left/top. */
+  #bracket-left { left: 872px; top: 483px; width: 23px; height: 113px; transform: scale(1.1); transform-origin: 88px 56.5px; }
+  #bracket-right { left: 1026px; top: 483px; width: 22px; height: 113px; transform: scale(1.1); transform-origin: -66px 56.5px; }
+  #logo-text { left: 895px; top: 504px; width: 131px; height: 72px; transform: scale(1.1); transform-origin: 65px 35.5px; }
+  /* password gate's own look for the real brackets - half their already-
+     shrunk 0.5 scale (now 0.25 of normal) and, this time, pushed OUTWARD
+     rather than together: translateX is negative here (translateX listed
+     before scale keeps it a fixed, scale-independent px offset - same
+     reasoning as the AE-stroke border-radius comment elsewhere in this
+     file), moving each bracket away from center for 3x the gap the
+     previous (closer-together) version had - measured directly via
+     getBoundingClientRect rather than derived by hand, since scale and
+     translateX compound with each bracket's own transform-origin in a
+     way that isn't simple to eyeball. normalizeBrackets in the script
+     animates away from this via WAAPI once "promo" is entered, landing
+     back on that exact scale(1.1) rest transform. */
+  #bracket-left.password-mode { transform: translateX(-37px) scale(0.375); }
+  #bracket-right.password-mode { transform: translateX(37px) scale(0.375); }
+  /* filter: black ink on transparent, so invert() reads as solid white
+     against the button's black fill - matches the button state above,
+     swaps off at the same moment the fill does (see the press handling
+     in the script). blink-square is excluded (it's a plain red div, not
+     one of these sprites) since inverting red would turn it cyan.
+     transition covers both properties in one rule - a second `transition`
+     declaration for the same selector would replace this one outright
+     instead of adding to it. */
+  #bracket-left, #bracket-right, #logo-text {
+    filter: invert(1);
+    transition: filter 0.2s ease, transform 0.09s ease-out;
+  }
+
+  /* small red indicator that blinks on once the rect is nearly done
+     growing - side length matches the bracket's own width (its
+     horizontal "arm"), right-aligned with the right bracket, sitting
+     the same EDGE_MARGIN_Y above the rect's bottom edge that the wordmark
+     sits below its top edge */
+  #blink-square {
+    background: #f00;
+    display: none;
+    /* square, as an explicit 4-point polygon rather than no clip-path at
+       all - .triangle below re-shapes it to a 4-point polygon too (with
+       its 2nd/3rd points collapsed onto each other), same point count in
+       both so clip-path can actually interpolate between them instead of
+       hard-cutting from one shape to the other */
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+    transition: clip-path 0.5s ease, transform 0.5s ease;
+  }
+  #blink-square.visible {
+    display: block;
+    animation: blink-square-flash 0.6s steps(1, end) infinite;
+  }
+  /* 0.75, not 1, is the square's own "on" opacity - the blink still
+     alternates between this and fully transparent */
+  @keyframes blink-square-flash {
+    0%, 100% { opacity: 0.75; }
+    50% { opacity: 0; }
+  }
+  /* hover state for #blink-square-hover-zone (see below): the square's
+     own top-right/bottom-right corners (points 2 and 3 of the polygon
+     above) slide to the same point at the vertical middle of the right
+     edge, turning the square into an equilateral-ish triangle pointing
+     right - plus a 50% scale-up, from its own center (default
+     transform-origin). Also goes fully opaque and stops blinking
+     (`animation: none` overrides .visible's blink-square-flash here,
+     same specificity but declared later) - once it's a triangle it reads
+     as "click here" clearly enough on its own, no need to keep flashing. */
+  #blink-square.triangle {
+    clip-path: polygon(0% 0%, 100% 50%, 100% 50%, 0% 100%);
+    transform: scale(1.5);
+    opacity: 1;
+    animation: none;
+  }
+  /* the second click's actual hit target - see advanceFromOvershoot -
+     once the blink square appears, THIS is what has to be clicked to
+     move on from the overshoot hold, not the big rect/its own hover-zone
+     anymore. Sized/positioned in JS (syncLogoToRect's tick), 5px larger
+     than the blink square on every side, and invisible itself (no fill,
+     just the hit area) since the blink square's own flashing red already
+     shows what to click. */
+  #blink-square-hover-zone {
+    position: absolute;
+    display: none;
+  }
+  #blink-square-hover-zone.visible {
+    display: block;
+    cursor: pointer;
+  }
+
+  /* center tagline: a "+" at screen center, "Video Editor" sliding out
+     to its left and "motion graphics" to its right, in Helvetica Thin.
+     Text height is 85% of the bracket's own ink height (105px), and
+     everything shares one vertical center (540, screen center) via
+     top:540px + translateY(-50%). Plays once, after the rect finishes
+     growing. The open (slid-out) right/left values are computed in JS
+     (playCenterTagline) against the brackets' actual current position,
+     not a fixed distance here - text length varies and the brackets'
+     own position is viewport-dependent, so only a live measurement can
+     guarantee the words never reach them. */
+  .tagline {
+    position: absolute;
+    top: 540px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 100;
+    font-size: 89.25px;
+    line-height: 1;
+    color: #000;
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s ease, right 0.8s ease, left 0.8s ease;
+  }
+  #tagline-plus {
+    left: 960px;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.8s ease, transform 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* the "+" is two independent bars (not the glyph) so the spin trick
+     below can retract one and stretch the other. Actual width/height/
+     margin are set in JS (playCenterTagline) since the arm span is
+     scaled at runtime (see PLUS_SCALE) - #tagline-plus itself also gets
+     an explicit width/height there, since with only absolutely-positioned
+     children it would otherwise report 0 for offsetWidth, and other
+     tagline math (plusHalfWidth) depends on that being real. */
+  .plus-arm {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: #000;
+    transition: transform 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* spins the whole cross 2 turns + 23.33deg clockwise - not 45, which
+     would draw a mathematically perfect diagonal but not what a real "/"
+     looks like. Measured Helvetica Neue's own slash glyph directly
+     (rendered at 800px, traced its ink from top to bottom): it leans
+     23.33deg off vertical, not 45. That's the angle used here so the
+     vertical arm, once tilted, reads as an actual slash instead of a
+     generic diagonal. The other arm retracts to 0 at the same time this
+     class lands, and the surviving arm stretches to read as a deliberate
+     "/" rather than a shrunk "+" */
+  #tagline-plus.spin {
+    transform: translate(-50%, -50%) rotate(743.33deg);
+  }
+  #tagline-plus.spin .plus-arm-h {
+    transform: scaleX(0);
+  }
+  #tagline-plus.spin .plus-arm-v {
+    transform: scaleY(1.5);
+  }
+  /* "Video Editor"/"motion graphics" don't fade in - opacity has no
+     transition here (it's absent from this rule's own `transition`, which
+     fully replaces .tagline's), so adding .visible flips it to 1 instantly.
+     The reveal itself isn't done on these elements at all - each one sits
+     inside its own #tagline-*-window (below), a fixed mask at that word's
+     own final resting spot. Both start swapped (Video Editor's left/right
+     set to where motion graphics ends up, and vice versa - see
+     playCenterTagline) then slide to their own true final position; since
+     each is clipped by a window fixed at its OWN destination, it stays
+     invisible while sitting at the other's spot (wrong window, or none)
+     and only appears as it slides into alignment with its own window. */
+  #tagline-left {
+    right: 984px; /* 960 + 24px gap from the plus, closed position */
+    transform: translateY(-50%);
+    text-align: right;
+    /* bold (not thin like the rest) plus tracking is what brings "Video
+       Editor" up toward "motion graphics" own rendered width - permanent,
+       not a later hover/reveal effect */
+    font-weight: 700;
+    letter-spacing: 3px;
+    /* opacity deliberately left out - see the comment above - so only
+       right/left (the swap-slide) animate; opacity itself just jumps */
+    transition: right 0.8s ease, left 0.8s ease;
+  }
+  #tagline-right {
+    left: 984px; /* 960 + 24px gap from the plus, closed position */
+    transform: translateY(-50%);
+    font-weight: 300; /* Helvetica Neue Light - .tagline's base 100 (Thin) is the next cut down, but 150 isn't a real cut and would just resolve back to 100 */
+    transition: right 0.8s ease, left 0.8s ease;
+  }
+  .tagline.visible {
+    opacity: 1;
+  }
+  /* fixed masks the "Video Editor"/"motion graphics" slide-swap plays out
+     under - see playCenterTagline. Sized/positioned exactly like .canvas
+     itself (not scoped tighter to the text) so a child's existing
+     left/top/right math (already written in canvas-space coordinates)
+     keeps working completely unchanged; only the clip-path differs
+     between the two, cut along a line parallel to the "/" glyph's own
+     23.33deg tilt (see #tagline-plus.spin's rotate(743.33deg), which is
+     23.33deg past two full turns) so the seam between the two words reads
+     as a continuation of the slash once it forms. Each window's inner
+     edge sits 5px off from the slash's own centerline (960,539.5) at that
+     line's reference height, motion-graphics' to the right of it,
+     video-editor's to the left, then follows the same 23.33deg slope up
+     to y=0 and down to y=1080 (offset - tan(23.33deg) * (y - 539.5)) -
+     hardcoded rather than a CSS trig expression since the tilt is a fixed
+     design constant that never changes at runtime. Windows exist (and
+     clip) before the "+" ever spins into the "/" they align with. */
+  .tagline-window {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    pointer-events: none;
+  }
+  #tagline-left-window {
+    clip-path: polygon(0 0, 1187.68px 0, 721.89px 1080px, 0 1080px);
+  }
+  #tagline-right-window {
+    clip-path: polygon(1197.68px 0, 1920px 0, 1920px 1080px, 731.89px 1080px);
+  }
+
+  /* ondamagenta.webm: hover-only preview on the blink-square/triangle
+     hit zone (see its mouseenter/mouseleave listeners in the script) -
+     the second-click
+     target that only exists after the first click, once the rect is
+     sitting at its overshoot size. Sits BEHIND #bg-video in the DOM
+     (painted first, so #bg-video layers on top of it once that one's own
+     visible), but still after #rect so it's in front of the rect's own
+     fill, same no-z-index-needed convention as the rest of this file.
+     width/height/border-radius here are just a placeholder - like
+     #bg-video, the real per-viewport overshoot size is set inline by JS
+     (onRectClick's step===0 handler) right alongside #bg-video's own, so
+     the two always match exactly. border-radius clips a video element's
+     own rendered frame the same way it does a background image, so the
+     rect's rounded corners crop it directly with no separate mask
+     needed. 60% opacity, not a fade - the webm's own alpha channel
+     handles transparency, this opacity is just an intentional overall
+     dimming on top of that. */
+  #onda-video {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    width: 1108.30055123673px;
+    height: 1108.30055123673px;
+    border-radius: 31px;
+    object-fit: cover;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  #onda-video.visible {
+    opacity: 0.6;
+  }
+
+  /* fdo_invloop.webm: revealed the moment "Video Editor"/"motion graphics"
+     start sliding out to their sides (see the showBgVideo() call in
+     playCenterTagline, right next to that reveal's own classList.add
+     calls). width/height/border-radius here are just a placeholder - the
+     real, per-viewport overshoot size is set inline by
+     JS (onRectClick's step===0 handler, right where overshootValues() is
+     computed for the rect itself) before the video is ever made visible,
+     since the box it needs to match scales with the viewport. Placed
+     right after #rect in the DOM so it paints above the rect's own white
+     fill but below the brackets/text/tagline (no z-index needed anywhere
+     else on this page, so DOM order alone already gives the right
+     stacking) - the webm's own alpha channel (VP9 alpha_mode) is what
+     actually shows the rect through it where the footage is transparent.
+     Enters by scaling from 0 to 100% over 0.75s (not a fade - opacity
+     stays at 1 throughout), anchored on the same center as the rect via
+     translate(-50%,-50%), scale() appended rather than replacing it so
+     the centering survives the scale transition. */
+  #bg-video {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%) scale(0);
+    width: 1108.30055123673px;
+    height: 1108.30055123673px;
+    border-radius: 31px;
+    object-fit: cover;
+    pointer-events: none;
+    transition: transform 0.75s ease;
+  }
+  #bg-video.visible {
+    transform: translate(-50%, -50%) scale(1);
+  }
+</style>
 </head>
 <body>
+  <div class="viewport">
+    <div class="canvas">
+      <div id="rect-hover-zone"></div>
+      <div class="rect" id="rect"></div>
+      <video id="onda-video" src="assets/videos/ondamagenta.webm" muted loop playsinline></video>
+      <video id="bg-video" src="assets/videos/fdo_invloop.webm" muted loop playsinline></video>
 
-<div id="screen">
-  <div id="zona-a">
-    <div class="franja" style="background:#FF4D1C"></div>
-    <div class="franja" style="background:#FF9B3D"></div>
-    <div class="franja" style="background:#FFE14D"></div>
-    <div class="franja" style="background:#5BFF8F"></div>
-    <div class="franja" style="background:#3DDFFF"></div>
-    <div class="franja" style="background:#7B6FFF"></div>
-    <div class="franja" style="background:#FF4D8F"></div>
-  </div>
-  <div id="zona-b">
-    <div class="franja" style="background:#3DDFFF"></div>
-    <div class="franja" style="background:#7B6FFF"></div>
-    <div class="franja" style="background:#090909"></div>
-    <div class="franja" style="background:#FFFFFF"></div>
-    <div class="franja" style="background:#FF4D1C"></div>
-    <div class="franja" style="background:#090909"></div>
-    <div class="franja" style="background:#FF4D8F"></div>
-  </div>
-  <div id="zona-c">
-    <div id="c-izq">
-      <div class="franja" style="background:#FFFFFF"></div>
-      <div class="franja" style="background:#404040"></div>
-    </div>
-    <div id="c-centro">
-      <div class="franja" style="background:#000000"></div>
-      <div class="franja" style="background:#2A2A2A"></div>
-      <div class="franja" style="background:#555555"></div>
-      <div class="franja" style="background:#808080"></div>
-      <div class="franja" style="background:#AAAAAA"></div>
-      <div class="franja" style="background:#D5D5D5"></div>
-      <div class="franja" style="background:#FFFFFF"></div>
-    </div>
-    <div id="c-der">
-      <div class="franja" style="background:#040404"></div>
-      <div class="franja" style="background:#000000"></div>
-      <div class="franja" style="background:#101010"></div>
+      <div id="password-gate">
+        <div id="password-label-clip"><div id="password-label">ENTER PASSWORD</div></div>
+        <span id="password-value-wrap">
+          <span id="password-mask"></span><span id="password-cursor"></span>
+          <input id="password-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </span>
+      </div>
+
+      <img class="logo-sprite password-mode" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
+      <img class="logo-sprite password-mode" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png" alt="">
+      <div class="tagline-window" id="logo-text-window">
+        <div id="logo-text-invert">
+          <img class="logo-sprite" id="text-diego-half" src="assets/images/logo-desarme/text.png" alt="">
+          <img class="logo-sprite" id="text-tavella-half" src="assets/images/logo-desarme/text.png" alt="">
+        </div>
+      </div>
+      <img class="logo-sprite" id="logo-text" src="assets/images/logo-desarme/text.png" alt="">
+      <div class="logo-sprite" id="blink-square"></div>
+      <div id="blink-square-hover-zone"></div>
+
+      <div class="tagline" id="tagline-plus"><div class="plus-arm plus-arm-h"></div><div class="plus-arm plus-arm-v"></div></div>
+      <div class="tagline-window" id="tagline-left-window">
+        <div class="tagline" id="tagline-left">Video Editor</div>
+      </div>
+      <div class="tagline-window" id="tagline-right-window">
+        <div class="tagline" id="tagline-right">motion graphics</div>
+      </div>
     </div>
   </div>
 
-  <div class="label" id="lbl-tl">
-    SMPTE · COLOR REFERENCE · 1920×1080 · 29.97fps<br>
-    DT/WEB/IDENT · SIGNAL GENERATOR v1.0
-  </div>
-  <div class="label" id="lbl-tr">
-    IRE 100<br>
-    FORMAT: HD · BARS+TONE
-  </div>
-  <div class="label" id="lbl-br">TC 00:00:00:00&nbsp;&nbsp;CH-A</div>
-</div>
+  <script>
+    const canvas = document.querySelector('.canvas');
 
-<div id="gate">
-  <div id="gate-box">
-    <div id="gate-label">señal de ajuste · acceso</div>
-    <div id="gate-field">
-      <input id="gate-input" type="password" placeholder="·····" autocomplete="off">
-      <button id="gate-submit">
-        <svg viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </div>
-    <div id="gate-err">acceso incorrecto</div>
-  </div>
-</div>
-
-<script>
-  var PASS = 'promo';
-
-  var gate      = document.getElementById('gate');
-  var gateInput = document.getElementById('gate-input');
-  var gateErr   = document.getElementById('gate-err');
-  var lblBr     = document.getElementById('lbl-br');
-
-  // Timecode
-  var tcOrigin = performance.now();
-  function updateTC() {
-    var e  = performance.now() - tcOrigin;
-    var tf = Math.floor(e * 30 / 1000);
-    var ff = String(tf % 30).padStart(2, '0');
-    var s  = Math.floor(tf / 30);
-    var ss = String(s % 60).padStart(2, '0');
-    var m  = Math.floor(s / 60);
-    var mm = String(m % 60).padStart(2, '0');
-    var hh = String(Math.floor(m / 60)).padStart(2, '0');
-    lblBr.textContent = 'TC ' + hh + ':' + mm + ':' + ss + ':' + ff + '  CH-A';
-    requestAnimationFrame(updateTC);
-  }
-  updateTC();
-
-  function tryPass() {
-    if (gateInput.value === PASS) {
-      sessionStorage.setItem('bypass_gate', '1');
-      gate.style.transition = 'opacity 400ms ease';
-      gate.style.opacity = '0';
-      gate.style.pointerEvents = 'none';
-      setTimeout(function() { window.location.href = 'ajuste.html'; }, 420);
-    } else {
-      gateErr.classList.add('visible');
-      gateInput.value = '';
-      gateInput.focus();
+    function fitCanvas() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      canvas.style.transform = `scale(${scale})`;
     }
-  }
+    fitCanvas();
+    window.addEventListener('resize', fitCanvas);
 
-  document.getElementById('gate-submit').addEventListener('click', tryPass);
-  gateInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') tryPass(); });
-  gateInput.focus();
-</script>
+    // password gate: replaces the compact "logo desarme" mark until
+    // "promo" is typed (see #password-gate and the real brackets'
+    // .password-mode in the stylesheet) - onRectClick/setButtonHover
+    // below both bail out while locked, since the button sits underneath
+    // the password UI anyway.
+    const PASSWORD = 'promo78*';
+    let passwordUnlocked = false;
+    const passwordInput = document.getElementById('password-input');
+    const passwordGate = document.getElementById('password-gate');
+    const passwordMask = document.getElementById('password-mask');
+    passwordInput.focus();
 
+    // "ENTER PASSWORD" is width-matched to the rect's own current width
+    // by tuning letter-spacing - same technique playCenterTagline uses to
+    // balance "Video Editor"/"motion graphics" against each other:
+    // measure once at the label's own base spacing, then solve for the
+    // spacing that closes the gap to the target width.
+    (function matchPasswordLabelWidth() {
+      const label = document.getElementById('password-label');
+      const targetWidth = document.getElementById('rect').offsetWidth;
+      document.getElementById('password-label-clip').style.width = targetWidth + 'px';
+      const baseLetterSpacing = 2;
+      label.style.letterSpacing = baseLetterSpacing + 'px';
+      const baseWidth = label.offsetWidth;
+      const extraPerGap = (targetWidth - baseWidth) / label.textContent.length;
+      label.style.letterSpacing = (baseLetterSpacing + extraPerGap) + 'px';
+    })();
+
+    // shared "this attempt failed" feedback - shakes the field (see
+    // password-shake in the stylesheet), keeping the typed asterisks
+    // visible for the whole shake rather than clearing them the instant
+    // it starts (matching the real macOS wrong-password shake), only
+    // wiping the value once the shake itself finishes. Disables the
+    // input for that same stretch so a keystroke mid-shake can't race
+    // the clear below or restart a second shake before this one's done.
+    const SHAKE_MS = 400; // matches password-shake's own 0.4s animation
+    function shakeAndClearPassword() {
+      const valueWrap = document.getElementById('password-value-wrap');
+      passwordInput.disabled = true;
+      valueWrap.classList.remove('shake');
+      void valueWrap.offsetWidth; // restarts the shake if one's already mid-flight
+      valueWrap.classList.add('shake');
+      setTimeout(() => {
+        passwordInput.value = '';
+        passwordMask.textContent = '';
+        passwordInput.disabled = false;
+        passwordInput.focus();
+      }, SHAKE_MS);
+    }
+
+    passwordInput.addEventListener('input', () => {
+      const value = passwordInput.value;
+      passwordMask.textContent = '*'.repeat(value.length);
+      if (value === PASSWORD) {
+        unlockPassword();
+        return;
+      }
+      // waits until one past PASSWORD's own length before flagging it
+      // wrong, rather than shaking on whichever keystroke first breaks
+      // the prefix match - less twitchy, and doesn't telegraph exactly
+      // how many characters were actually right
+      if (value.length >= PASSWORD.length + 1) {
+        shakeAndClearPassword();
+      }
+    });
+
+    // Enter or a click on the field also submits directly - mainly
+    // useful for an incomplete-but-still-valid-prefix value (e.g. "prom"),
+    // which the live "input" check above never rejects on its own since
+    // it's not wrong yet, just unfinished
+    function trySubmitPassword() {
+      if (passwordUnlocked) return;
+      if (passwordInput.value === PASSWORD) {
+        unlockPassword();
+      } else {
+        shakeAndClearPassword();
+      }
+    }
+    passwordInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') trySubmitPassword();
+    });
+    document.getElementById('password-value-wrap').addEventListener('click', trySubmitPassword);
+
+    // brackets go from .password-mode's shrunk/close transform back to
+    // their normal scale(1.1) rest position - via WAAPI rather than
+    // toggling the class and leaning on a CSS transition, since the
+    // shared transition on these two elements (filter 0.2s, transform
+    // 0.09s - see the .logo-sprite-adjacent rule below) is tuned for the
+    // click-press's own snappy shrink and would make this look like a
+    // cut if reused here; an explicit animation sidesteps that entirely,
+    // same reasoning as the button's own borderGrow/borderDarken earlier
+    // in this file.
+    function normalizeBrackets() {
+      const bl = document.getElementById('bracket-left');
+      const br = document.getElementById('bracket-right');
+      const opts = { duration: BRACKET_GROW_MS, easing: 'ease-in', fill: 'forwards' };
+      const blAnim = bl.animate([{ transform: getComputedStyle(bl).transform }, { transform: 'scale(1.1)' }], opts);
+      const brAnim = br.animate([{ transform: getComputedStyle(br).transform }, { transform: 'scale(1.1)' }], opts);
+
+      // the Diego/Tavella window (#logo-text-window) tracks the brackets'
+      // own interior span every frame, live, rather than sitting fixed at
+      // the final (895-1026) rest position for the whole animation (which
+      // wouldn't match where the still-normalizing brackets actually are)
+      // - or, as tried first, running its own separate clip-path
+      // animation with the same duration/easing as the brackets' own
+      // transform one. That second approach only actually coincided with
+      // the brackets at the two endpoints: clip-path interpolates its
+      // inset values linearly, but a bracket's VISUAL edge under a
+      // combined translateX+scale transform does not move through pixel
+      // space the same way, so mid-animation the window's edge and the
+      // bracket's real edge drifted apart, letting "Tavella" plainly
+      // stick out past the right bracket. Reading the live rendered edge
+      // every frame (same rAF-polling approach as syncLogoToRect
+      // elsewhere in this file) sidesteps that mismatch entirely, since
+      // it's never trying to independently replicate the bracket's own
+      // curve - it just reads wherever it actually is.
+      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const win = document.getElementById('logo-text-window');
+      let trackRafId;
+      function trackWindow() {
+        const canvasLeft = canvas.getBoundingClientRect().left;
+        const leftCut = (bl.getBoundingClientRect().right - canvasLeft) / canvasScale;
+        const rightCut = 1920 - (br.getBoundingClientRect().left - canvasLeft) / canvasScale;
+        win.style.clipPath = `inset(504px ${rightCut}px 504px ${leftCut}px)`;
+        trackRafId = requestAnimationFrame(trackWindow);
+      }
+      trackWindow();
+
+      Promise.allSettled([blAnim.finished, brAnim.finished]).then(() => {
+        cancelAnimationFrame(trackRafId);
+        [blAnim, brAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        bl.classList.remove('password-mode');
+        br.classList.remove('password-mode');
+        win.style.clipPath = 'inset(504px 894px 504px 895px)'; // exact final value, in case the last rAF tick landed a hair off from float rounding
+      });
+    }
+
+    // success sequence: "ENTER PASSWORD" and the typed value exit first
+    // (LABEL_EXIT_MS, matching their own 0.25s CSS transition) - only
+    // once that's done do the brackets normalize while "Diego"/"Tavella"
+    // converge from above/below (BRACKET_GROW_MS, matching their own
+    // 0.75s ease-in transitions) - and only once THAT'S done does
+    // #logo-text get revealed, an invisible swap since the Diego/Tavella
+    // halves just animated into exactly its own look.
+    const LABEL_EXIT_MS = 250;
+    const BRACKET_GROW_MS = 750;
+    function unlockPassword() {
+      passwordUnlocked = true;
+      passwordInput.blur();
+      passwordInput.disabled = true;
+
+      const label = document.getElementById('password-label');
+      label.style.letterSpacing = ''; // clear matchPasswordLabelWidth's inline override so .exiting's own letter-spacing can actually take over (an inline style otherwise beats any class rule, transition or not)
+      label.classList.add('exiting');
+      const valueWrap = document.getElementById('password-value-wrap');
+      valueWrap.classList.add('exiting');
+
+      setTimeout(() => {
+        valueWrap.style.display = 'none';
+        normalizeBrackets();
+        document.getElementById('text-diego-half').classList.add('entered');
+        document.getElementById('text-tavella-half').classList.add('entered');
+
+        setTimeout(() => {
+          passwordGate.style.display = 'none';
+          document.getElementById('text-diego-half').style.display = 'none';
+          document.getElementById('text-tavella-half').style.display = 'none';
+          document.getElementById('logo-text').classList.add('revealed');
+        }, BRACKET_GROW_MS);
+      }, LABEL_EXIT_MS);
+    }
+
+    // matched keyframe-for-keyframe against the AE export of
+    // "RECTANGULO CENTRAL STROKE 2": the rect is born small, grows
+    // past its final size into a big overshoot, holds there, then
+    // eases back down to rest. Split into two stops instead of one
+    // continuous play: stop 1 (click on the small rect) plays growth
+    // + hold and then just sits at the overshoot size; stop 2 (click
+    // on the grown rect) plays the remaining ease back down to final.
+    // All values are the AE keyframe values themselves (already in the
+    // comp's own 1920x1080 units, hence no scaling math - the canvas
+    // transform above is what maps them onto the real screen).
+    // border-radius keyframes are AE roundness + half the 2px stroke
+    // (AE insets its stroke, CSS border-radius doesn't) so the shape's
+    // outer corner matches.
+    const DURATION = 2202; // ms - matches the AE comp's own timing (29.97fps)
+    const OFFSETS = [0, 0.1515, 0.5, 0.7727, 1];
+
+    // "button" press: rect starts 10% bigger than its BASE_WIDTHS[0]
+    // rest size, solid black, logo inverted white (see .rect and
+    // #bracket-left/#bracket-right/#logo-text in the stylesheet) - first
+    // click presses it down to the normal rest size, then swaps to the
+    // empty-fill/black-stroke/black-logo look the rest of this animation
+    // already uses, and only then hands off to the existing grow stage
+    const PRESS_SCALE = 1.1;
+    const PRESS_DURATION = 90; // ms - snappier press, less time visibly "stuck" at the smaller pressed size before the grow stage takes over
+
+    // idle (pre-press, unhovered) button fill - 80% black, not pure #000;
+    // matches .rect's own CSS default so JS never re-introduces true black
+    // when reverting to this same look (reset, or the mouse leaving before
+    // any click)
+    const IDLE_BLACK = '#333';
+
+    // the rect's own CSS anchor (see .rect) - reused here so the logo
+    // sync math below always agrees with wherever the box is actually
+    // centered, instead of assuming the comp's own (960,540)
+    const RECT_CENTER_X = 960;
+    const RECT_CENTER_Y = 539.5;
+
+    // base AE values - index 2/3 is the overshoot hold, "the second
+    // instance / when it's square". Index 0/1 (the resting size) is the
+    // one deliberate deviation from the raw AE export: width/height
+    // reshaped, and the box centered on RECT_CENTER_Y above (the bracket
+    // mark's own true center, not the comp's 540) so the rest-state box
+    // gives the compact bracket mark an equal 19.075px margin on all
+    // four sides. Index 2/3's width is the other deviation: the raw AE
+    // value (1409.3) was actually 1.27:1, not square despite the name -
+    // narrowed to match BASE_HEIGHTS[2] exactly so the overshoot really
+    // is a square, at any viewport (both axes still scale by the same
+    // factor in overshootValues(), so equal base values stay equal).
+    const BASE_WIDTHS = [206.15, 206.15, 1108.30055123673, 1108.30055123673, 498.480010986328];
+    const BASE_HEIGHTS = [143.15, 143.15, 1108.30055123673, 1108.30055123673, 279.519989013672];
+    const BASE_RADII = [3, 3, 31, 31, 4]; // index 0/1 (rest/pressed corners) bumped from the raw AE 1px to 3px, a touch more rounded
+
+    // the overshoot's on-screen height is pinned to leave this much
+    // vertical margin against the real viewport (not the 1920x1080
+    // canvas) - width and border-radius are scaled by the exact same
+    // factor as height, so the shape's proportions never change, only
+    // its overall size
+    const TOP_MARGIN_VH = 5;
+    const BOTTOM_MARGIN_VH = 5;
+
+    const wEase = ['linear', 'cubic-bezier(0.2604,0,0.1443,1)', 'cubic-bezier(0.3333,0.3333,0.6667,0.6667)', 'cubic-bezier(0.1667,0,0.6667,1)'];
+    const hEase = ['linear', 'cubic-bezier(0.2883,0,0.2990,1)', 'cubic-bezier(0.3333,0.3333,0.6667,0.6667)', 'cubic-bezier(0.1667,0,0.8333,1)'];
+    const rEase = ['linear', 'cubic-bezier(0.3333,0.3333,0.6667,0.6667)', 'cubic-bezier(0.3333,0.3333,0.6667,0.6667)', 'cubic-bezier(0.3333,0.3333,0.6667,1)'];
+
+    // slices [fromIdx, toIdx] of the 5-point keyframe series above into
+    // its own self-contained animation, reusing the same per-segment
+    // easings unchanged and rescaling duration/offsets proportionally
+    // to how much of the full AE timeline that slice spans
+    function buildStage(fromIdx, toIdx, widths, heights, radii) {
+      const t = OFFSETS.map((o) => o * DURATION);
+      const stageDuration = t[toIdx] - t[fromIdx];
+      const stageOffsets = OFFSETS.slice(fromIdx, toIdx + 1).map((o) => (o * DURATION - t[fromIdx]) / stageDuration);
+
+      function buildKeyframes(values, prop, fmt, easings) {
+        return values.slice(fromIdx, toIdx + 1).map((v, i) => {
+          const kf = { offset: stageOffsets[i] };
+          kf[prop] = fmt(v);
+          if (i < toIdx - fromIdx) kf.easing = easings[fromIdx + i];
+          return kf;
+        });
+      }
+
+      const px = (v) => v + 'px';
+      const opts = { duration: stageDuration, fill: 'forwards', easing: 'linear' };
+      return {
+        keyframes: [
+          buildKeyframes(widths, 'width', px, wEase),
+          buildKeyframes(heights, 'height', px, hEase),
+          buildKeyframes(radii, 'borderRadius', px, rEase)
+        ],
+        opts
+      };
+    }
+
+    // recomputes the overshoot (index 2/3) so it renders at exactly
+    // (100 - TOP_MARGIN_VH - BOTTOM_MARGIN_VH)vh tall on the real
+    // screen, undoing the canvas's own scale() first since sizes here
+    // are in canvas-local (1920x1080) units. Width and radius are
+    // scaled by the same factor as height so the overshoot's shape
+    // never distorts, only grows/shrinks as a whole.
+    function overshootValues() {
+      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const desiredRealHeightPx = window.innerHeight * (1 - (TOP_MARGIN_VH + BOTTOM_MARGIN_VH) / 100);
+      const desiredLocalHeightPx = desiredRealHeightPx / canvasScale;
+      const s = desiredLocalHeightPx / BASE_HEIGHTS[2];
+
+      const widths = BASE_WIDTHS.slice();
+      const heights = BASE_HEIGHTS.slice();
+      const radii = BASE_RADII.slice();
+      widths[2] = widths[3] = BASE_WIDTHS[2] * s;
+      heights[2] = heights[3] = desiredLocalHeightPx;
+      radii[2] = radii[3] = BASE_RADII[2] * s;
+      return { widths, heights, radii };
+    }
+
+    let step = 0; // 0 = at rest, 1 = grown/holding, 2 = settled at final
+    let rectAnimating = false;
+
+    function runStage(stage) {
+      const el = document.getElementById('rect');
+      rectAnimating = true;
+      const anims = stage.keyframes.map((kf) => el.animate(kf, stage.opts));
+      return Promise.allSettled(anims.map((a) => a.finished)).then(() => {
+        anims.forEach((a) => a.commitStyles());
+        anims.forEach((a) => a.cancel());
+        rectAnimating = false;
+      });
+    }
+
+    function onRectClick() {
+      if (!passwordUnlocked || rectAnimating) return;
+      const el = document.getElementById('rect');
+
+      if (step === 0) {
+        rectAnimating = true; // block a second click during the press itself too, not just once the grow stage starts
+        const logoInk = [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')];
+        // logo shrinks from its own 1.1 scale down to 1 in step with the
+        // button's own press (both PRESS_DURATION), so it visually rides along
+        // with the button instead of holding its bigger size while the
+        // button shrinks under it
+        logoInk.forEach((e) => { e.style.transform = 'scale(1)'; });
+        const press = el.animate(
+          [
+            { width: getComputedStyle(el).width, height: getComputedStyle(el).height },
+            { width: BASE_WIDTHS[0] + 'px', height: BASE_HEIGHTS[0] + 'px' }
+          ],
+          { duration: PRESS_DURATION, easing: 'ease-out', fill: 'forwards' }
+        );
+        press.finished.then(() => {
+          press.commitStyles();
+          press.cancel();
+          el.style.background = '#fff';
+          logoInk.forEach((e) => { e.style.filter = 'none'; });
+
+          const { widths, heights, radii } = overshootValues();
+          // reaches its own final size at this same point in the timeline
+          // (index 3, the overshoot) - see stage1Duration's other use
+          // below - so the border grow/darken is timed to land on 2px
+          // solid black exactly when the box is done growing, not sooner
+          const stage1Duration = DURATION * (OFFSETS[3] - OFFSETS[0]);
+          runStage(buildStage(0, 3, widths, heights, radii));
+          // border-width can't actually animate smoothly while width/
+          // height/border-radius are ALSO animating on this same
+          // border-box element - confirmed directly: Blink freezes it at
+          // its start value for the entire run and only snaps to the end
+          // value once everything commits, and a CSS `transition` on
+          // border-width has the exact same freeze, so this isn't a
+          // WAAPI-specific issue. An inset box-shadow doesn't participate
+          // in layout at all, so it isn't affected, and it already
+          // follows the box's own (also animating) border-radius live -
+          // stands in for the real border, hidden by making the real
+          // border transparent for now.
+          //
+          // Handing back off to the real border still isn't perfectly
+          // seamless - box-shadow and border don't quite render their
+          // rounded corner identically, enough to read as a tiny "pop".
+          // Doing that handoff at the very end (once the rect is sitting
+          // still) put that pop right when the eye has nothing else to
+          // look at. BORDER_GROW_SWAP_FRACTION moves it earlier instead,
+          // to partway through the still-growing box, where the same pop
+          // gets lost in everything else that's already moving - the
+          // box-shadow only carries the width/color growth up to that
+          // point, and a second, ordinary border-color animation (color
+          // alone animates fine mid-layout-animation, it's only width
+          // that freezes) carries the color the rest of the way to #000,
+          // still landing exactly on stage1Duration. Has to stay below
+          // ~0.647 (OFFSETS[2]/OFFSETS[3], i.e. (0.5-0)/(0.7727-0)) - past
+          // that the rect itself has already stopped growing and is just
+          // holding at the overshoot for the remainder of stage1Duration,
+          // which is exactly the "sitting still" moment this is trying to
+          // avoid landing the swap on.
+          const BORDER_GROW_SWAP_FRACTION = 0.4;
+          const swapWidth = 1.5 + BORDER_GROW_SWAP_FRACTION * (2 - 1.5);
+          const idleGray = 0x33; // IDLE_BLACK's own #333
+          const swapGray = Math.round(idleGray * (1 - BORDER_GROW_SWAP_FRACTION));
+          const swapColor = `rgb(${swapGray}, ${swapGray}, ${swapGray})`;
+          const phase1Duration = stage1Duration * BORDER_GROW_SWAP_FRACTION;
+          const phase2Duration = stage1Duration - phase1Duration;
+
+          el.style.borderColor = 'transparent';
+          const borderGrow = el.animate([
+            { boxShadow: `0 0 0 1.5px ${IDLE_BLACK} inset` },
+            { boxShadow: `0 0 0 ${swapWidth}px ${swapColor} inset` }
+          ], { duration: phase1Duration, easing: 'ease', fill: 'forwards' });
+          borderGrow.finished.then(() => {
+            borderGrow.commitStyles();
+            borderGrow.cancel();
+            el.style.boxShadow = '';
+            el.style.borderWidth = '2px';
+            el.style.borderColor = swapColor;
+            const borderDarken = el.animate([{ borderColor: swapColor }, { borderColor: '#000' }], { duration: phase2Duration, easing: 'ease', fill: 'forwards' });
+            borderDarken.finished.then(() => {
+              borderDarken.commitStyles();
+              borderDarken.cancel();
+            });
+          });
+          // bg-video sits in the overshoot box (the box the rect is
+          // actually in when the video appears, right after this click's
+          // tagline spin - see playCenterTagline's plusSpinTimeoutId), not
+          // the smaller final rest size, so it has to match this
+          // per-viewport overshoot geometry rather than a fixed CSS size
+          const video = document.getElementById('bg-video');
+          video.style.width = widths[2] + 'px';
+          video.style.height = heights[2] + 'px';
+          video.style.borderRadius = radii[2] + 'px';
+          // onda-video (see #blink-square-hover-zone's mouseenter listener)
+          // shares this exact same
+          // overshoot box - it sits behind bg-video and needs the same
+          // rounded-corner crop
+          const ondaVideo = document.getElementById('onda-video');
+          ondaVideo.style.width = widths[2] + 'px';
+          ondaVideo.style.height = heights[2] + 'px';
+          ondaVideo.style.borderRadius = radii[2] + 'px';
+          // scheduled directly off the stage's own duration instead of
+          // chaining off its promise (which only resolves after the full
+          // hold tail too) - fires TAGLINE_EARLY_MS sooner than that,
+          // i.e. close to when the box is actually done growing
+          taglineTimeoutId = setTimeout(playCenterTagline, Math.max(0, stage1Duration - TAGLINE_EARLY_MS + TAGLINE_DELAY));
+          syncLogoToRect(widths[2], heights[2]);
+        });
+        step = 1;
+      } else if (step === 1) {
+        // no-op: the big rect/its own hover-zone used to advance from
+        // here too, but the second click's hit target is now just the
+        // blink square + a few px (see advanceFromOvershoot, wired to
+        // #blink-square-hover-zone instead)
+        return;
+      } else {
+        // done - reset instantly to the un-pressed button (big, black
+        // fill, white logo) so the next click replays the press + the
+        // whole reveal from scratch
+        el.style.width = (BASE_WIDTHS[0] * PRESS_SCALE) + 'px';
+        el.style.height = (BASE_HEIGHTS[0] * PRESS_SCALE) + 'px';
+        el.style.borderRadius = BASE_RADII[0] + 'px';
+        el.style.background = IDLE_BLACK;
+        el.style.borderColor = ''; // clear back to the CSS default (transparent, hover-only reveal) - not '#fff', which would override the hover behavior outright
+        el.style.borderWidth = ''; // clear back to the CSS default 1.5px - the 2px set on press only applies once pressed
+        el.style.boxShadow = ''; // clear the box-shadow stand-in used only during the grow-to-overshoot border animation - see press.finished
+        [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')]
+          .forEach((e) => { e.style.filter = ''; e.style.transform = ''; });
+        resetLogoDesarme();
+        resetCenterTagline();
+        hideBgVideo();
+        step = 0;
+      }
+    }
+
+    // the actual second-click action (was inline in onRectClick's
+    // step===1 branch) - now triggered only by #blink-square-hover-zone,
+    // not the big rect/its own hover-zone, so the only clickable area
+    // once the rect is holding at its overshoot is the blink square
+    // itself plus BLINK_HIT_PADDING
+    function advanceFromOvershoot() {
+      if (rectAnimating || step !== 1) return;
+      const el = document.getElementById('rect');
+      // continue from wherever stop 1 actually left the element (not a
+      // recomputed value), so a resize between clicks can't cause a jump
+      // at the start of this stage
+      const widths = BASE_WIDTHS.slice();
+      const heights = BASE_HEIGHTS.slice();
+      const radii = BASE_RADII.slice();
+      widths[3] = parseFloat(el.style.width);
+      heights[3] = parseFloat(el.style.height);
+      radii[3] = parseFloat(el.style.borderRadius);
+      runStage(buildStage(3, 4, widths, heights, radii));
+      step = 2;
+    }
+    document.getElementById('blink-square-hover-zone').addEventListener('click', advanceFromOvershoot);
+    // hovering the second-click hit zone morphs the red square into a
+    // right-pointing triangle 50% bigger - see #blink-square.triangle.
+    // The hover-zone itself is only display:block (and thus only able to
+    // receive these events at all) while the blink square is actually
+    // shown, so there's no separate step/visibility check needed here.
+    document.getElementById('blink-square-hover-zone').addEventListener('mouseenter', () => {
+      document.getElementById('blink-square').classList.add('triangle');
+      const ondaVideo = document.getElementById('onda-video');
+      ondaVideo.currentTime = 0;
+      ondaVideo.play();
+      ondaVideo.classList.add('visible');
+    });
+    document.getElementById('blink-square-hover-zone').addEventListener('mouseleave', () => {
+      document.getElementById('blink-square').classList.remove('triangle');
+      const ondaVideo = document.getElementById('onda-video');
+      ondaVideo.classList.remove('visible');
+      ondaVideo.pause();
+    });
+
+    document.getElementById('rect').addEventListener('click', onRectClick);
+
+    // hover (button only, before the first click) previews the full
+    // pressed look - fill white, stroke black, logo black - reverting if
+    // the mouse leaves without a click. Driven from JS rather than CSS
+    // :hover since it has to touch the logo sprites too, not just #rect.
+    function setButtonHover(hovering) {
+      if (!passwordUnlocked || step !== 0) return;
+      const rectEl = document.getElementById('rect');
+      const logoInk = [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')];
+      if (hovering) {
+        rectEl.style.background = '#fff';
+        rectEl.style.borderColor = IDLE_BLACK; // 80% black here too - stays this way until an actual click starts the borderDarken animation (see press.finished)
+        logoInk.forEach((e) => { e.style.filter = 'none'; });
+      } else {
+        rectEl.style.background = IDLE_BLACK;
+        rectEl.style.borderColor = '';
+        logoInk.forEach((e) => { e.style.filter = ''; });
+      }
+    }
+    document.getElementById('rect').addEventListener('mouseenter', () => setButtonHover(true));
+    document.getElementById('rect').addEventListener('mouseleave', () => setButtonHover(false));
+
+    // forwards the extended hit-area's hover/click to the button itself,
+    // rather than duplicating the button's own logic on this element too
+    const rectHoverZone = document.getElementById('rect-hover-zone');
+    rectHoverZone.addEventListener('mouseenter', () => setButtonHover(true));
+    rectHoverZone.addEventListener('mouseleave', () => setButtonHover(false));
+    rectHoverZone.addEventListener('click', onRectClick);
+
+    // "logo desarme": brackets slide apart, wordmark slides from center to
+    // top-left, both unscaled (confirmed off the real 25-frame render,
+    // logodesarme_1_100.png..124.png). Rather than run on its own timeline,
+    // it's driven directly off the rect's own live width/height every
+    // animation frame - the rect and the logo pieces share one progress
+    // value (how far the rect has grown from its resting size toward this
+    // click's overshoot target), so the logo can never outrun or lag the
+    // box it's supposed to stay inside of, regardless of the rect's own
+    // (multi-segment, non-linear) easing.
+    const BRACKET_START_X0 = 876;
+    const BRACKET_WIDTH = 19;
+    // right bracket's own ink is 1px narrower than the left one in the
+    // source render (1044-1026=18 vs 895-876=19) - using the left
+    // bracket's width for both used to put the right bracket 1px off its
+    // real rest position, causing a visible jump at the very start of
+    // the click animation
+    const BRACKET_RIGHT_WIDTH = 18;
+
+    // right bracket mirrors the left exactly around the canvas's own
+    // center (876+1044=1920, confirmed off every frame)
+    const bracketRightLeft = (x0) => 1920 - x0 - BRACKET_RIGHT_WIDTH;
+
+    const TEXT_START = { left: 895, top: 508 };
+
+    // experiment: grow the wordmark 20% over the same translate, anchored
+    // on the D's own top-left corner - since txt.style.left/top already
+    // track that corner every frame, growing width/height while leaving
+    // them alone makes the sprite expand down-and-right from exactly that
+    // point, so the corner itself still lands at textEnd (unchanged)
+    const TEXT_BASE_WIDTH = 131;
+    const TEXT_BASE_HEIGHT = 72;
+    const TEXT_END_SCALE = 1.4; // 20% + another 20 points on top, not compounded
+
+    // end targets sit a fixed margin inside the rect's overshoot edge
+    // rather than at a fixed canvas position, so they land in the same
+    // relative spot regardless of viewport (overshoot size itself varies
+    // with viewport via overshootValues()). Diego Tavella's top-left
+    // corner and the blink square's bottom-right corner are the two
+    // opposite corners of "the block" - an invisible frame centered on
+    // the "+", with the brackets sitting on its vertical sides.
+    //
+    // X and Y now share the same value on purpose: Diego Tavella's own
+    // top margin (D's top-left vertex to the rect's top edge) used to be
+    // 67.3, wider than its 59.7 side margin (to the rect's left edge) -
+    // moved up to match, and the blink square's bottom margin (its own
+    // bottom-right vertex to the rect's bottom edge) moved down to match
+    // its 59.7 right margin too, for the same reason. Since both
+    // margins were already driven by one constant each (X for the
+    // brackets/left/right, Y for top/bottom), equalizing them was just
+    // setting one to the other's value - not a new formula.
+    const EDGE_MARGIN_X = 59.7;
+    const EDGE_MARGIN_Y = 59.7;
+
+    // sprite crops (assets/images/logo-desarme/*.png) are padded 4px on
+    // every free edge, but 0px on whichever edge touches its neighbor at
+    // frame 100 (brackets and text are flush there, no gap to pad into) -
+    // so only bracket-left's left edge and the text block's top/bottom
+    // need the -4px correction; bracket-right's and the text's left/right
+    // sit exactly on the measured ink position
+    let logoRafId = null;
+
+    // appears once the rect is nearly done growing (last 10% of its
+    // approach to the overshoot target)
+    const BLINK_SQUARE_THRESHOLD = 0.9;
+
+    // second-click hit zone (#blink-square-hover-zone): the blink square
+    // plus this much on every side, and nothing else on the rect - see
+    // advanceFromOvershoot
+    const BLINK_HIT_PADDING = 5;
+
+    function syncLogoToRect(overshootWidth, overshootHeight) {
+      const rectEl = document.getElementById('rect');
+      const bl = document.getElementById('bracket-left');
+      const br = document.getElementById('bracket-right');
+      const txt = document.getElementById('logo-text');
+      const sq = document.getElementById('blink-square');
+      const hz = document.getElementById('blink-square-hover-zone');
+      sq.style.width = BRACKET_WIDTH + 'px';
+      sq.style.height = BRACKET_WIDTH + 'px';
+      hz.style.width = (BRACKET_WIDTH + BLINK_HIT_PADDING * 2) + 'px';
+      hz.style.height = (BRACKET_WIDTH + BLINK_HIT_PADDING * 2) + 'px';
+
+      const startW = BASE_WIDTHS[0];
+      const startH = BASE_HEIGHTS[0];
+      const overshootLeft = RECT_CENTER_X - overshootWidth / 2;
+      const overshootTop = RECT_CENTER_Y - overshootHeight / 2;
+
+      const bracketEndX0 = overshootLeft + EDGE_MARGIN_X;
+      const textEnd = {
+        // left edge shares bracket-left's own column, instead of the
+        // text's own independent margin (which used to land noticeably
+        // right of it)
+        left: bracketEndX0,
+        top: overshootTop + EDGE_MARGIN_Y
+      };
+
+      if (logoRafId) cancelAnimationFrame(logoRafId);
+
+      function tick() {
+        const w = parseFloat(getComputedStyle(rectEl).width);
+        const h = parseFloat(getComputedStyle(rectEl).height);
+        // worst-case of the two axes, so the logo never gets ahead of
+        // whichever dimension the rect is growing slower on
+        const p = Math.min(1, Math.max(0,
+          Math.min((w - startW) / (overshootWidth - startW), (h - startH) / (overshootHeight - startH))
+        ));
+
+        const lerp = (a, b) => a + p * (b - a);
+
+        bl.style.left = (lerp(BRACKET_START_X0, bracketEndX0) - 4) + 'px';
+        const brLeft = lerp(bracketRightLeft(BRACKET_START_X0), bracketRightLeft(bracketEndX0));
+        br.style.left = brLeft + 'px';
+        txt.style.left = lerp(TEXT_START.left, textEnd.left) + 'px';
+        txt.style.top = (lerp(TEXT_START.top, textEnd.top) - 4) + 'px';
+        const textScale = lerp(1, TEXT_END_SCALE);
+        txt.style.width = (TEXT_BASE_WIDTH * textScale) + 'px';
+        txt.style.height = (TEXT_BASE_HEIGHT * textScale) + 'px';
+        // black ink on a transparent sprite, so opacity is what "lightens"
+        // it - fading to 0.8 reads as 80% black against the white canvas
+        txt.style.opacity = lerp(1, 0.6);
+
+        // right-aligned with the right bracket's own current right edge,
+        // sitting EDGE_MARGIN_Y above the rect's own current bottom edge -
+        // both read live off the rect/bracket so it stays correctly
+        // pinned whenever it's visible, not just at p=1
+        const rectBottom = RECT_CENTER_Y + h / 2;
+        // square is exactly BRACKET_WIDTH wide too, so its left edge
+        // equals the bracket's right edge minus its own width, which is
+        // just the bracket's own left edge (brLeft) - written out for clarity
+        sq.style.left = brLeft + 'px';
+        const sqTop = rectBottom - EDGE_MARGIN_Y - BRACKET_WIDTH;
+        sq.style.top = sqTop + 'px';
+        const squareVisible = p >= BLINK_SQUARE_THRESHOLD;
+        sq.classList.toggle('visible', squareVisible);
+
+        // second-click hit zone: the blink square's own box, padded
+        // BLINK_HIT_PADDING on every side - tracks it live since both are
+        // still moving together whenever the rect itself resizes further
+        hz.style.left = (brLeft - BLINK_HIT_PADDING) + 'px';
+        hz.style.top = (sqTop - BLINK_HIT_PADDING) + 'px';
+        hz.classList.toggle('visible', squareVisible);
+
+        // >= 0.999 rather than === 1: the rect's own computed style and
+        // this function's independently-computed overshoot target can
+        // differ by a hair of floating-point error, so waiting for exact
+        // equality could in principle never resolve and leave the loop
+        // running forever with the tagline never triggering
+        if (p < 0.999) {
+          logoRafId = requestAnimationFrame(tick);
+        } else {
+          logoRafId = null;
+        }
+      }
+      tick();
+    }
+
+    // center tagline: "+" fades in at screen center, "Video Editor" and
+    // "motion graphics" fade+slide out from it - scheduled off the rect's
+    // own animation-finished promise (see onRectClick's step 0 branch),
+    // not off the logo's rAF sync loop, since that loop's progress value
+    // is only reliable enough for smooth positioning, not for detecting
+    // "done" (it's polled once per frame off getComputedStyle and can
+    // plateau a hair under its target). Never overlaps the brackets since
+    // its slide distance (260px) is a fixed, modest fraction of the much
+    // larger gap the brackets end up sitting at.
+    const TAGLINE_DELAY = 300; // ms, "un poco despues" of the rect settling
+    const TAGLINE_EARLY_MS = 1000; // ms - fires this much sooner than that, so it isn't waiting on the rect's own hold tail
+    let taglineTimeoutId = null;
+    let plusSpinTimeoutId = null;
+    let leftSwapAnim = null;
+    let rightSwapAnim = null;
+
+    function playCenterTagline() {
+      const plus = document.getElementById('tagline-plus');
+      const left = document.getElementById('tagline-left');
+      const right = document.getElementById('tagline-right');
+
+      // "Video Editor" at 10% under the base 89.25px; "motion graphics"
+      // another 15% under that on top - bold + letter-spacing on "Video
+      // Editor" (see its CSS) plus this extra shrink on "motion graphics"
+      // is what's bringing the two blocks to a similar rendered width,
+      // since "motion graphics" is the longer string
+      // 37.3 = the old 24 bumped up so, combined with the smaller "+"
+      // below, both blocks land 10% further from center than they used to
+      // sit (the "+" shrinking to 0.65x means less of the old gap comes
+      // from "+"-width, so PLUS_GAP has to make up that difference on top
+      // of the 10%)
+      const PLUS_GAP = 37.3; // same for both blocks - primary anchor
+      const baseSize = 89.25 * 0.9;
+      left.style.fontSize = baseSize + 'px';
+      right.style.fontSize = (baseSize * 0.85) + 'px';
+
+      // "+" is two plain divs (see .plus-arm), sized here rather than
+      // via font-size. #tagline-plus needs an explicit width/height too:
+      // with only absolutely-positioned children it would report 0 for
+      // offsetWidth, which plusHalfWidth below depends on. Scaled to
+      // 0.65x the original 48px arm span/3px stroke, so it starts
+      // noticeably smaller than the wordmark blocks instead of matching
+      // their old size.
+      const PLUS_SCALE = 0.65;
+      const armSpan = 48 * PLUS_SCALE;
+      const armThickness = 3 * PLUS_SCALE;
+      plus.style.width = armSpan + 'px';
+      plus.style.height = armSpan + 'px';
+      const armH = plus.querySelector('.plus-arm-h');
+      const armV = plus.querySelector('.plus-arm-v');
+      armH.style.width = armSpan + 'px';
+      armH.style.height = armThickness + 'px';
+      armH.style.marginLeft = (-armSpan / 2) + 'px';
+      armH.style.marginTop = (-armThickness / 2) + 'px';
+      armV.style.width = armThickness + 'px';
+      armV.style.height = armSpan + 'px';
+      armV.style.marginLeft = (-armThickness / 2) + 'px';
+      armV.style.marginTop = (-armSpan / 2) + 'px';
+
+      // both blocks anchor off the "+" by the same gap, so the visible
+      // distance from the plus is identical on both sides. Bracket
+      // clearance is a soft cap, not a second anchor: a block only
+      // shrinks (font-size, not tracking) if it would otherwise sit
+      // closer than BRACKET_GAP to its bracket. Checked against a frozen
+      // reference position (168.7/148.3 margin, the values in place when
+      // this tagline was last tuned), not the brackets' live position -
+      // without the check the tagline overlapped them outright once the
+      // brackets moved 10vh further out; reading it live would instead
+      // silently resize the tagline on every future bracket-only tweak,
+      // which is exactly what wasn't wanted here.
+      const FROZEN_BRACKET_LEFT_INNER_X = 528.715;
+      const FROZEN_BRACKET_RIGHT_INNER_X = 1392.285;
+      const BRACKET_GAP = 90;
+
+      const plusHalfWidth = plus.offsetWidth / 2;
+
+      const leftAvailable = (960 - plusHalfWidth - PLUS_GAP) - (FROZEN_BRACKET_LEFT_INNER_X + BRACKET_GAP);
+      if (left.offsetWidth > leftAvailable) {
+        left.style.fontSize = (baseSize * (leftAvailable / left.offsetWidth)) + 'px';
+      }
+
+      // anchored on the "V" now, not the "+" side: measure the width at
+      // the CSS-default 3px tracking first (this fixes where the V ends
+      // up), then tighten the tracking a touch - the block shrinks
+      // toward the bracket it's already pinned to, so only its "+"-side
+      // edge recedes further from the plus, rather than the whole block
+      // sliding as one piece
+      const targetRightEdge = 960 - plusHalfWidth - PLUS_GAP;
+      const widthBeforeTightening = left.offsetWidth;
+      const vAnchorX = targetRightEdge - widthBeforeTightening;
+      left.style.letterSpacing = '1.5px';
+      const recedeDelta = widthBeforeTightening - left.offsetWidth; // offsetWidth is a pure width measurement, unaffected by position, so this doesn't need left.style.left set yet
+
+      const rightAvailable = (FROZEN_BRACKET_RIGHT_INNER_X - BRACKET_GAP) - (960 + plusHalfWidth + PLUS_GAP);
+      if (right.offsetWidth > rightAvailable) {
+        right.style.fontSize = (baseSize * 0.85 * (rightAvailable / right.offsetWidth)) + 'px';
+      }
+      // "motion graphics" moves away from the plus by the same distance
+      // "Video Editor" just receded, to keep both blocks' distance from
+      // the "+" matched
+      const rightTargetLeft = 960 + plusHalfWidth + PLUS_GAP + recedeDelta;
+
+      // final pass: grow both blocks 15%, each around its own center (not
+      // the "+" or the bracket) - applied last so it doesn't disturb the
+      // V/plus-gap anchoring above, just scales each block in place. Takes
+      // and returns a plain left value rather than reading/writing
+      // el.style.left directly - see the swap-slide comment below for why
+      // that write has to wait until everything is computed.
+      function growAroundOwnCenter(el, factor, currentLeft) {
+        const oldWidth = el.offsetWidth;
+        const centerX = currentLeft + oldWidth / 2;
+        const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
+        el.style.fontSize = newSize + 'px';
+        return centerX - el.offsetWidth / 2;
+      }
+      const leftFinalLeft = growAroundOwnCenter(left, 1.15, vAnchorX);
+      const rightFinalLeft = growAroundOwnCenter(right, 1.15, rightTargetLeft);
+
+      // "Video Editor"/"motion graphics" swap-slide: each word is clipped
+      // by a #tagline-*-window fixed at its OWN final spot (see the
+      // stylesheet), so starting it at the OTHER word's final position
+      // leaves it invisible - wrong window's reach - until it slides back
+      // across to its own true position and comes into that window's
+      // view. Driven as an explicit two-keyframe Web Animations API call
+      // (matching runStage's own use of el.animate elsewhere in this
+      // file) rather than toggling el.style.left and leaning on the CSS
+      // `transition` to infer a from/to - a from-state that's only implied
+      // by "whatever the style was a moment ago" is exactly what silently
+      // broke here: forcing a synchronous reflow between the swapped and
+      // final writes reliably got ONE of the two elements' swap to stick
+      // as the transition's start, but the other's kept getting coalesced
+      // away regardless (right into a straight 984->1008.8 with no visible
+      // detour through the swap at all) - a real browser inconsistency,
+      // not a timing fluke, and it's what "no funciona motion graphics"
+      // turned out to be. Explicit keyframes have no such ambiguity: frame
+      // 0 is the swap value no matter what either element's style already
+      // says, so this animates identically for both.
+      left.style.right = 'auto'; // '' would fall back to the stylesheet's own right:984px, not clear it - with both left and right set the browser forces the box width to span between them instead of sizing to content
+      const swapAnimOpts = { duration: 800, easing: 'ease', fill: 'forwards' };
+      leftSwapAnim = left.animate([{ left: rightFinalLeft + 'px' }, { left: leftFinalLeft + 'px' }], swapAnimOpts);
+      // "Video Editor" moves right-to-left into a mask open on its right
+      // side, so its own left edge (where "V" sits) is what's closest to
+      // that mask and crosses in first - already a left-to-right reveal,
+      // no extra help needed. "motion graphics" is the mirror case: moving
+      // left-to-right into a mask open on its LEFT side means its own
+      // RIGHT edge ("s" in graphics) is what's closest and crosses in
+      // first - reading end-to-start, backwards. A fixed window can't fix
+      // that (it's just clipping absolute screen position, blind to which
+      // characters are there), so this adds its own clip-path, animated
+      // left-to-right in lockstep with the slide, to force the correct
+      // reading order regardless of which edge the window itself reveals.
+      // -20px on the bottom inset (instead of 0) is deliberate: this
+      // clip-path is the first thing to ever clip this element at all, so
+      // a plain 0 clips flush against the box's own bottom edge - which
+      // cuts off "graphics"' g-descender, since line-height:1 already lets
+      // descenders spill well below the box with nothing previously there
+      // to clip them (a smaller -3px still left it visibly flat-cropped,
+      // confirmed by screenshot - Helvetica Neue Light's descender at this
+      // font-size reaches further than that). The negative inset pushes
+      // that edge down past where the descender actually ends.
+      rightSwapAnim = right.animate([
+        { left: leftFinalLeft + 'px', clipPath: 'inset(0 100% -20px 0)' },
+        { left: rightFinalLeft + 'px', clipPath: 'inset(0 0% -20px 0)' }
+      ], swapAnimOpts);
+      Promise.allSettled([leftSwapAnim.finished, rightSwapAnim.finished]).then(() => {
+        // resetCenterTagline may have already canceled+nulled these (a
+        // reset mid-slide) - commitStyles on an already-canceled
+        // animation throws, so skip anything that's not still running
+        [leftSwapAnim, rightSwapAnim].forEach((a) => { if (a && a.playState !== 'idle') { a.commitStyles(); a.cancel(); } });
+        leftSwapAnim = null;
+        rightSwapAnim = null;
+      });
+      left.classList.add('visible');
+      right.classList.add('visible');
+      plus.classList.add('visible');
+      // video appears right as the phrases start sliding back into their
+      // own windows, not later at the "+"-to-"/" spin
+      showBgVideo();
+
+      // once the fade-in settles (its own 0.8s opacity transition), spin
+      // the "+" into a "/" - see #tagline-plus.spin
+      plusSpinTimeoutId = setTimeout(() => {
+        plus.classList.add('spin');
+      }, 800);
+    }
+
+    // fdo_invloop.webm: fades in front of the rect (behind the brackets/
+    // text/tagline - see its position in the DOM), called directly from
+    // playCenterTagline right as "Video Editor"/"motion graphics" start
+    // sliding out to their sides. Sized/positioned to the overshoot box
+    // it's sitting in at that point (see step===0's press.finished
+    // handler), not the smaller final rest size the rect settles into on
+    // the second click. muted+loop on the element itself is what makes play()
+    // reliable here without a fresh user gesture of its own. The webm
+    // itself already carries a real alpha channel (VP9 alpha_mode, not a
+    // chroma-key hack) - nothing here paints a background under it, so
+    // that transparency composites naturally over the rect's white fill.
+    function showBgVideo() {
+      const video = document.getElementById('bg-video');
+      video.currentTime = 0;
+      video.play();
+      video.classList.add('visible');
+    }
+
+    function hideBgVideo() {
+      const video = document.getElementById('bg-video');
+      video.classList.remove('visible');
+      video.pause();
+      video.currentTime = 0;
+    }
+
+    function resetCenterTagline() {
+      if (taglineTimeoutId) {
+        clearTimeout(taglineTimeoutId);
+        taglineTimeoutId = null;
+      }
+      if (plusSpinTimeoutId) {
+        clearTimeout(plusSpinTimeoutId);
+        plusSpinTimeoutId = null;
+      }
+      [leftSwapAnim, rightSwapAnim].forEach((a) => { if (a) a.cancel(); });
+      leftSwapAnim = null;
+      rightSwapAnim = null;
+      ['tagline-plus', 'tagline-left', 'tagline-right'].forEach((id) => {
+        const el = document.getElementById(id);
+        el.classList.remove('visible');
+        el.classList.remove('spin');
+        el.style.fontSize = '';
+      });
+      const tl = document.getElementById('tagline-left');
+      tl.style.right = '';
+      tl.style.left = '';
+      tl.style.letterSpacing = '';
+      const tr = document.getElementById('tagline-right');
+      tr.style.left = '';
+      tr.style.clipPath = '';
+      const plusEl = document.getElementById('tagline-plus');
+      plusEl.style.width = '';
+      plusEl.style.height = '';
+      [plusEl.querySelector('.plus-arm-h'), plusEl.querySelector('.plus-arm-v')].forEach((arm) => {
+        arm.style.width = '';
+        arm.style.height = '';
+        arm.style.marginLeft = '';
+        arm.style.marginTop = '';
+      });
+    }
+
+    // cancels any in-flight logo sync and drops the elements back to their
+    // CSS-authored rest position (frame 100), so the next click on the
+    // rect replays the disassemble from the start instead of from
+    // wherever it happened to be interrupted
+    function resetLogoDesarme() {
+      if (logoRafId) {
+        cancelAnimationFrame(logoRafId);
+        logoRafId = null;
+      }
+      [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')]
+        .forEach((el) => {
+          el.style.left = '';
+          el.style.top = '';
+        });
+      const txt = document.getElementById('logo-text');
+      txt.style.width = '';
+      txt.style.height = '';
+      txt.style.opacity = '';
+      const sq = document.getElementById('blink-square');
+      sq.classList.remove('visible');
+      sq.classList.remove('triangle');
+      sq.style.left = '';
+      sq.style.top = '';
+      const hz = document.getElementById('blink-square-hover-zone');
+      hz.classList.remove('visible');
+      hz.style.left = '';
+      hz.style.top = '';
+    }
+  </script>
 </body>
 </html>
