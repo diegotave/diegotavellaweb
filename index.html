@@ -185,6 +185,13 @@
     align-items: center;
     transition: opacity 0.25s ease;
   }
+  /* wraps #password-input purely so a real form-submit event exists (see
+     the script) - generates no box of its own, so it's invisible to this
+     flex layout and #password-input's own position:absolute still
+     resolves against #password-value-wrap exactly as before */
+  #password-form {
+    display: contents;
+  }
   /* macOS-style wrong-password shake: several quick back-and-forth
      oscillations rather than a single wiggle, bigger amplitude too (9px
      vs the original 6px) - see SHAKE_MS in the script, which the
@@ -394,6 +401,18 @@
     opacity: 1;
     animation: none;
   }
+  /* step 2's persistent "back" button: the same triangle shape, turned to
+     point left instead of right via a flat, in-plane rotate() (the
+     z-axis, the only one that stays flat against the screen - not
+     rotateX/rotateY, which would fake a 3D card-flip look). -180deg
+     rather than 180deg so the turn itself sweeps counterclockwise; the
+     resting look is identical either way since a half turn lands on the
+     same pixels regardless of which way it went (the shape's already
+     symmetric top/bottom). Always on once applied (not hover-only like
+     .triangle alone), so it reads as "click to go back". */
+  #blink-square.triangle.back {
+    transform: scale(1.5) rotate(-180deg);
+  }
   /* the second click's actual hit target - see advanceFromOvershoot -
      once the blink square appears, THIS is what has to be clicked to
      move on from the overshoot hold, not the big rect/its own hover-zone
@@ -408,6 +427,58 @@
   #blink-square-hover-zone.visible {
     display: block;
     cursor: pointer;
+  }
+  /* header divider: appears only once rect starts widening to 16:9 (see
+     advanceFromOvershoot) - as wide as rect itself, tracking its width
+     live, positioned below "Diego Tavella" by the same EDGE_MARGIN_Y gap
+     the wordmark already keeps above rect's own top edge. Centered the
+     same way rect is (left:960px + translate(-50%,0)) so it never needs
+     its own left-tracking as it grows/shrinks in sync with rect's width. */
+  #header-line {
+    position: absolute;
+    left: 960px;
+    transform: translate(-50%, 0);
+    height: 2px;
+    background: #000;
+    display: none;
+  }
+  #header-line.visible {
+    display: block;
+  }
+  /* header fill: the gray backing behind "Diego Tavella" once it's
+     widening to 16:9 - same #666 the wordmark itself already reads as
+     (its own ink is #000 at 0.6 opacity over white, which renders the
+     same gray). Grows downward from rect's own top edge, in lockstep with
+     #header-line (which is literally this fill's own bottom edge) - see
+     advanceFromOvershoot. */
+  #header-fill {
+    position: absolute;
+    left: 960px;
+    top: 0;
+    transform: translate(-50%, 0);
+    height: 0;
+    background: #666;
+    display: none;
+  }
+  #header-fill.visible {
+    display: block;
+  }
+  /* white stand-in for "Diego Tavella", stacked exactly on #logo-text -
+     revealed top-down via clip-path as #header-line descends past it (see
+     advanceFromOvershoot), so the ink reads white against #header-fill
+     everywhere the fill has already swept over, and still its normal gray
+     everywhere it hasn't reached yet. brightness(0) flattens the sprite's
+     ink to solid black first (ignoring whatever gray/opacity #logo-text
+     itself is using), invert(1) flips that to white; alpha is untouched,
+     so the transparent parts of the sprite stay transparent. */
+  #logo-text-white {
+    position: absolute;
+    filter: brightness(0) invert(1);
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  #logo-text-white.visible {
+    opacity: 1;
   }
 
   /* center tagline: a "+" at screen center, "Video Editor" sliding out
@@ -609,12 +680,15 @@
       <div class="rect" id="rect"></div>
       <video id="onda-video" src="assets/videos/ondamagenta.webm" muted playsinline></video>
       <video id="bg-video" src="assets/videos/fdo_invloop.webm" muted loop playsinline></video>
+      <div id="header-fill"></div>
 
       <div id="password-gate">
         <div id="password-label-clip"><div id="password-label">ENTER PASSWORD</div></div>
         <span id="password-value-wrap">
           <span id="password-mask"></span><span id="password-cursor"></span>
-          <input id="password-input" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <form id="password-form">
+            <input id="password-input" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+          </form>
         </span>
       </div>
 
@@ -627,8 +701,10 @@
         </div>
       </div>
       <img class="logo-sprite" id="logo-text" src="assets/images/logo-desarme/text.png" alt="">
+      <img class="logo-sprite" id="logo-text-white" src="assets/images/logo-desarme/text.png" alt="">
       <div class="logo-sprite" id="blink-square"></div>
       <div id="blink-square-hover-zone"></div>
+      <div id="header-line"></div>
 
       <div class="tagline" id="tagline-plus"><div class="plus-arm plus-arm-h"></div><div class="plus-arm plus-arm-v"></div></div>
       <div class="tagline-window" id="tagline-left-window">
@@ -700,11 +776,32 @@
       }, SHAKE_MS);
     }
 
+    // routes every "try this password" path (live match while typing, the
+    // field's own Enter-triggered native form submit, a click on the
+    // field) through one real <form> submit event rather than calling
+    // unlockPassword()/shakeAndClearPassword() directly - a plain JS
+    // check never gives Chrome (or any password manager) anything to
+    // hook into, but an actual submit on a type="password" field inside
+    // a <form> is exactly the signal it looks for to offer saving it.
+    // preventDefault keeps this an SPA (no real navigation/reload); the
+    // password-gate disappearing shortly after (see unlockPassword) is
+    // what then reads as a successful login.
+    const passwordForm = document.getElementById('password-form');
+    passwordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (passwordUnlocked) return;
+      if (passwordInput.value === PASSWORD) {
+        unlockPassword();
+      } else {
+        shakeAndClearPassword();
+      }
+    });
+
     passwordInput.addEventListener('input', () => {
       const value = passwordInput.value;
       passwordMask.textContent = '*'.repeat(value.length);
       if (value === PASSWORD) {
-        unlockPassword();
+        passwordForm.requestSubmit();
         return;
       }
       // waits until one past PASSWORD's own length before flagging it
@@ -716,22 +813,12 @@
       }
     });
 
-    // Enter or a click on the field also submits directly - mainly
-    // useful for an incomplete-but-still-valid-prefix value (e.g. "prom"),
-    // which the live "input" check above never rejects on its own since
-    // it's not wrong yet, just unfinished
-    function trySubmitPassword() {
-      if (passwordUnlocked) return;
-      if (passwordInput.value === PASSWORD) {
-        unlockPassword();
-      } else {
-        shakeAndClearPassword();
-      }
-    }
-    passwordInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') trySubmitPassword();
-    });
-    document.getElementById('password-value-wrap').addEventListener('click', trySubmitPassword);
+    // a click on the field also submits directly - mainly useful for an
+    // incomplete-but-still-valid-prefix value (e.g. "prom"), which the
+    // live "input" check above never rejects on its own since it's not
+    // wrong yet, just unfinished. Enter needs no handler of its own here -
+    // a single-input <form> submits natively on Enter.
+    document.getElementById('password-value-wrap').addEventListener('click', () => passwordForm.requestSubmit());
 
     // brackets go from .password-mode's shrunk/close transform back to
     // their normal scale(1.1) rest position - via WAAPI rather than
@@ -837,6 +924,11 @@
     // outer corner matches.
     const DURATION = 2202; // ms - matches the AE comp's own timing (29.97fps)
     const OFFSETS = [0, 0.1515, 0.5, 0.7727, 1];
+
+    // rect's own stroke width once pressed (see press.finished) - reused
+    // by #header-fill/#header-line (advanceFromOvershoot) to inset
+    // themselves inside that stroke instead of overlapping/covering it
+    const RECT_BORDER_WIDTH = 2;
 
     // "button" press: rect starts 10% bigger than its BASE_WIDTHS[0]
     // rest size, solid black, logo inverted white (see .rect and
@@ -1073,20 +1165,31 @@
         // done - reset instantly to the un-pressed button (big, black
         // fill, white logo) so the next click replays the press + the
         // whole reveal from scratch
-        el.style.width = (BASE_WIDTHS[0] * PRESS_SCALE) + 'px';
-        el.style.height = (BASE_HEIGHTS[0] * PRESS_SCALE) + 'px';
-        el.style.borderRadius = BASE_RADII[0] + 'px';
-        el.style.background = IDLE_BLACK;
-        el.style.borderColor = ''; // clear back to the CSS default (transparent, hover-only reveal) - not '#fff', which would override the hover behavior outright
-        el.style.borderWidth = ''; // clear back to the CSS default 1.5px - the 2px set on press only applies once pressed
-        el.style.boxShadow = ''; // clear the box-shadow stand-in used only during the grow-to-overshoot border animation - see press.finished
-        [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')]
-          .forEach((e) => { e.style.filter = ''; e.style.transform = ''; });
-        resetLogoDesarme();
-        resetCenterTagline();
-        hideBgVideo();
-        step = 0;
+        goHome();
       }
+    }
+
+    // shared "home" reset - un-presses the button (big, black fill, white
+    // logo) and clears every stage built on top of it, without touching
+    // passwordUnlocked/the password gate: once unlocked, this is the
+    // furthest back any in-app control goes. Used both by clicking the
+    // rect once step 2 is reached, and by the back-triangle button (see
+    // #blink-square-hover-zone's click handler below).
+    function goHome() {
+      const el = document.getElementById('rect');
+      el.style.width = (BASE_WIDTHS[0] * PRESS_SCALE) + 'px';
+      el.style.height = (BASE_HEIGHTS[0] * PRESS_SCALE) + 'px';
+      el.style.borderRadius = BASE_RADII[0] + 'px';
+      el.style.background = IDLE_BLACK;
+      el.style.borderColor = ''; // clear back to the CSS default (transparent, hover-only reveal) - not '#fff', which would override the hover behavior outright
+      el.style.borderWidth = ''; // clear back to the CSS default 1.5px - the 2px set on press only applies once pressed
+      el.style.boxShadow = ''; // clear the box-shadow stand-in used only during the grow-to-overshoot border animation - see press.finished
+      [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')]
+        .forEach((e) => { e.style.filter = ''; e.style.transform = ''; });
+      resetLogoDesarme();
+      resetCenterTagline();
+      hideBgVideo();
+      step = 0;
     }
 
     // the actual second-click action (was inline in onRectClick's
@@ -1106,16 +1209,289 @@
       widths[3] = parseFloat(el.style.width);
       heights[3] = parseFloat(el.style.height);
       radii[3] = parseFloat(el.style.borderRadius);
+      // widen to 16:9 instead of the AE export's own (shrinking) index-4
+      // values: height holds at whatever the overshoot already settled
+      // on, width grows to match a 16:9 ratio. Center stays the anchor
+      // (el's own left/top + translate(-50%,-50%) never change), so the
+      // extra width spreads out evenly left/right. Radius untouched for
+      // now - other elements to follow.
+      heights[4] = heights[3];
+      widths[4] = heights[3] * 16 / 9;
+      radii[4] = radii[3];
+
+      // blink-square + its hover-zone stay pinned to the rect's
+      // bottom-right corner (same offset they already had at the
+      // overshoot) while the rect widens, and the square turns flat
+      // (in-plane rotate(), counterclockwise - see #blink-square.triangle.
+      // back) from pointing right to pointing left in lockstep with that
+      // same displacement - both run as their own WAAPI animations (not a
+      // rAF loop reading live styles, and not the element's own CSS
+      // `transition: transform`, which would otherwise fight per-frame
+      // updates) sharing this exact duration/easing with the rect's own
+      // width stage below, so all three start together and land together,
+      // the instant the rect finishes widening.
+      const sq = document.getElementById('blink-square');
+      const hz = document.getElementById('blink-square-hover-zone');
+      sq.classList.add('triangle'); // guaranteed even if this fires without a prior hover (e.g. touch)
+      const sqStartLeft = parseFloat(sq.style.left);
+      const hzStartLeft = parseFloat(hz.style.left);
+      const dxFinal = (widths[4] - widths[3]) / 2; // center-anchored growth: right edge moves out by half the width increase
+      const stageDuration = DURATION * (OFFSETS[4] - OFFSETS[3]);
+      const followOpts = { duration: stageDuration, easing: wEase[3], fill: 'forwards' };
+
+      const sqAnim = sq.animate([
+        { left: sqStartLeft + 'px', transform: 'scale(1.5) rotate(0deg)' },
+        { left: (sqStartLeft + dxFinal) + 'px', transform: 'scale(1.5) rotate(-180deg)' }
+      ], followOpts);
+      const hzAnim = hz.animate([
+        { left: hzStartLeft + 'px' },
+        { left: (hzStartLeft + dxFinal) + 'px' }
+      ], followOpts);
+      Promise.allSettled([sqAnim.finished, hzAnim.finished]).then(() => {
+        [sqAnim, hzAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        sq.style.transform = ''; // hand off to #blink-square.triangle.back - same final value
+        sq.classList.add('back');
+      });
+
+      // "Diego Tavella" (the wordmark only - not bracket-left, which stays
+      // put) tracks rect's top-left corner the same way - that corner
+      // moves the opposite direction from the bottom-right one
+      // blink-square tracks (center-anchored growth pushes the left edge
+      // further left by the same magnitude dxFinal pushes the right edge
+      // further right), so this element's own dx is simply dxFinal's
+      // negative
+      const txt = document.getElementById('logo-text');
+      const txtStartLeft = parseFloat(txt.style.left);
+      const dxLeft = -dxFinal;
+      const txtAnim = txt.animate([
+        { left: txtStartLeft + 'px' },
+        { left: (txtStartLeft + dxLeft) + 'px' }
+      ], followOpts);
+      txtAnim.finished.then(() => {
+        txtAnim.commitStyles();
+        txtAnim.cancel();
+      });
+
+      // header divider + fill both sit INSET by rect's own stroke width on
+      // every side they share with it (left/right/top), so that stroke
+      // stays fully visible framing the header, same as it already frames
+      // the rest of rect - neither one ever paints over it. widthInset is
+      // the resulting width (rect's own width minus the two side insets);
+      // centered the same way rect is, so it's automatically inset evenly
+      // on both sides with no separate left-tracking needed.
+      const line = document.getElementById('header-line');
+      const fill = document.getElementById('header-fill');
+      const rectTop = RECT_CENTER_Y - heights[3] / 2;
+      const textTop = rectTop + EDGE_MARGIN_Y;
+      const textHeight = parseFloat(txt.style.height);
+      const textBottom = textTop + textHeight;
+      const lineStartTop = rectTop + RECT_BORDER_WIDTH;
+      const lineEndTop = textBottom + EDGE_MARGIN_Y;
+      const widthInsetStart = widths[3] - RECT_BORDER_WIDTH * 2;
+      const widthInsetEnd = widths[4] - RECT_BORDER_WIDTH * 2;
+      // an inset rect nested BORDER_WIDTH inside a radius-R corner reads
+      // correctly as concentric with a radius of (R - BORDER_WIDTH)
+      const fillRadius = Math.max(0, radii[3] - RECT_BORDER_WIDTH);
+
+      line.style.top = lineStartTop + 'px';
+      line.style.width = widthInsetStart + 'px';
+      line.classList.add('visible');
+      const lineAnim = line.animate([
+        { top: lineStartTop + 'px', width: widthInsetStart + 'px' },
+        { top: lineEndTop + 'px', width: widthInsetEnd + 'px' }
+      ], followOpts);
+      lineAnim.finished.then(() => {
+        lineAnim.commitStyles();
+        lineAnim.cancel();
+      });
+
+      // header fill: gray backing growing downward from just inside rect's
+      // top stroke, its own bottom edge always exactly where #header-line
+      // currently is (0 height at the start, full header height once the
+      // line settles) - rounded on its top two corners to nest inside
+      // rect's own rounded corners instead of squaring them off
+      fill.style.top = (rectTop + RECT_BORDER_WIDTH) + 'px';
+      fill.style.height = '0px';
+      fill.style.width = widthInsetStart + 'px';
+      fill.style.borderRadius = fillRadius + 'px ' + fillRadius + 'px 0 0';
+      fill.classList.add('visible');
+      const fillAnim = fill.animate([
+        { height: '0px', width: widthInsetStart + 'px' },
+        { height: (lineEndTop - rectTop - RECT_BORDER_WIDTH) + 'px', width: widthInsetEnd + 'px' }
+      ], followOpts);
+      fillAnim.finished.then(() => {
+        fillAnim.commitStyles();
+        fillAnim.cancel();
+      });
+
+      // white "Diego Tavella" stand-in: same left-tracking as the real
+      // wordmark (see txtAnim above), revealed top-down via clip-path as
+      // #header-line's own live position sweeps down past the text's
+      // vertical span - a rAF read of the line's actual computed top
+      // (not a derived/precomputed timing) because the line's own motion
+      // is independently eased (wEase[3], a cubic-bezier), so the wall-
+      // clock instant it crosses textTop/textBottom isn't a fixed
+      // fraction of this stage's duration
+      const txtWhite = document.getElementById('logo-text-white');
+      txtWhite.style.top = txt.style.top;
+      txtWhite.style.width = txt.style.width;
+      txtWhite.style.height = txt.style.height;
+      txtWhite.style.clipPath = 'inset(0 0 100% 0)';
+      txtWhite.classList.add('visible');
+      const txtWhiteAnim = txtWhite.animate([
+        { left: txtStartLeft + 'px' },
+        { left: (txtStartLeft + dxLeft) + 'px' }
+      ], followOpts);
+      let revealRafId;
+      function revealFollow() {
+        const lineY = parseFloat(getComputedStyle(line).top);
+        const revealedHeight = Math.min(textHeight, Math.max(0, lineY - textTop));
+        const bottomInset = textHeight - revealedHeight;
+        txtWhite.style.clipPath = `inset(0 0 ${bottomInset}px 0)`;
+        revealRafId = requestAnimationFrame(revealFollow);
+      }
+      revealFollow();
+      txtWhiteAnim.finished.then(() => {
+        cancelAnimationFrame(revealRafId);
+        txtWhiteAnim.commitStyles();
+        txtWhiteAnim.cancel();
+        txtWhite.style.clipPath = 'inset(0 0 0 0)'; // fully revealed - the line's ended up past textBottom by then
+      });
+
       runStage(buildStage(3, 4, widths, heights, radii));
       step = 2;
     }
-    document.getElementById('blink-square-hover-zone').addEventListener('click', advanceFromOvershoot);
+
+    // the back-triangle's own action: undoes just the widen (step 2 ->
+    // step 1), landing back on the square overshoot with bg-video/
+    // onda-video and the center tagline exactly as they already were -
+    // none of those are touched here, only rect's own size and the blink
+    // square/hover-zone's tracked position, mirroring advanceFromOvershoot
+    // itself but run in reverse. Deliberately NOT goHome(): that un-presses
+    // the button back to step 0 and tears down the video/tagline too,
+    // which is a lot further back than this button is for.
+    function reverseFromWidened() {
+      if (rectAnimating || step !== 2) return;
+      const el = document.getElementById('rect');
+      const sq = document.getElementById('blink-square');
+      const hz = document.getElementById('blink-square-hover-zone');
+
+      const startWidth = parseFloat(el.style.width);
+      const startHeight = parseFloat(el.style.height);
+      const startRadius = parseFloat(el.style.borderRadius);
+      // the square it widened from had this same side length - height was
+      // never touched by the widen stage (see advanceFromOvershoot), so
+      // it's still exactly the overshoot's own height
+      const targetSide = startHeight;
+
+      const duration = DURATION * (OFFSETS[4] - OFFSETS[3]); // same span the widen itself used
+      const opts = { duration, easing: wEase[3], fill: 'forwards' };
+      rectAnimating = true;
+      const anim = el.animate([
+        { width: startWidth + 'px', height: startHeight + 'px', borderRadius: startRadius + 'px' },
+        { width: targetSide + 'px', height: targetSide + 'px', borderRadius: startRadius + 'px' }
+      ], opts);
+
+      // mirrors advanceFromOvershoot's own approach: position and the
+      // turn back to pointing right both run as WAAPI animations sharing
+      // this same duration/easing with the rect's own shrink above, so
+      // the square is never left mid-turn or out of position relative to
+      // whatever the rect is actually doing that frame. Retraces the same
+      // -180deg -> 0deg path the forward turn used, i.e. clockwise -
+      // undoing the counterclockwise turn, not repeating it.
+      const sqStartLeft = parseFloat(sq.style.left);
+      const hzStartLeft = parseFloat(hz.style.left);
+      const dxFinal = (targetSide - startWidth) / 2; // shrinking now, so dxFinal is negative - tracks the right edge back inward
+      sq.classList.remove('back');
+      const sqAnim = sq.animate([
+        { left: sqStartLeft + 'px', transform: 'scale(1.5) rotate(-180deg)' },
+        { left: (sqStartLeft + dxFinal) + 'px', transform: 'scale(1.5) rotate(0deg)' }
+      ], opts);
+      const hzAnim = hz.animate([
+        { left: hzStartLeft + 'px' },
+        { left: (hzStartLeft + dxFinal) + 'px' }
+      ], opts);
+
+      // "Diego Tavella" (the wordmark only - bracket-left stays put)
+      // tracks back inward with the left edge, same as
+      // advanceFromOvershoot but mirrored
+      const txt = document.getElementById('logo-text');
+      const txtStartLeft = parseFloat(txt.style.left);
+      const dxLeft = -dxFinal;
+      const txtAnim = txt.animate([
+        { left: txtStartLeft + 'px' },
+        { left: (txtStartLeft + dxLeft) + 'px' }
+      ], opts);
+
+      // header divider retreats back up to just inside rect's own top
+      // stroke (mirrors advanceFromOvershoot's same inset) and hides once
+      // it gets there
+      const line = document.getElementById('header-line');
+      const fill = document.getElementById('header-fill');
+      const rectTop = RECT_CENTER_Y - targetSide / 2; // square height throughout this stage too
+      const textTop = rectTop + EDGE_MARGIN_Y;
+      const textHeight = parseFloat(txt.style.height);
+      const textBottom = textTop + textHeight;
+      const lineCurrentTop = textBottom + EDGE_MARGIN_Y;
+      const lineTargetTop = rectTop + RECT_BORDER_WIDTH;
+      const widthInsetStart = startWidth - RECT_BORDER_WIDTH * 2;
+      const widthInsetEnd = targetSide - RECT_BORDER_WIDTH * 2;
+      const lineAnim = line.animate([
+        { top: lineCurrentTop + 'px', width: widthInsetStart + 'px' },
+        { top: lineTargetTop + 'px', width: widthInsetEnd + 'px' }
+      ], opts);
+
+      // header fill shrinks back to nothing, its bottom edge following
+      // #header-line back up the same way it followed it down
+      const fillAnim = fill.animate([
+        { height: (lineCurrentTop - rectTop - RECT_BORDER_WIDTH) + 'px', width: widthInsetStart + 'px' },
+        { height: '0px', width: widthInsetEnd + 'px' }
+      ], opts);
+
+      // white "Diego Tavella" un-reveals bottom-up as the line retreats
+      // back past it - same live rAF read of the line's actual position
+      // advanceFromOvershoot uses, for the same reason (independently
+      // eased motion)
+      const txtWhite = document.getElementById('logo-text-white');
+      const txtWhiteAnim = txtWhite.animate([
+        { left: txtStartLeft + 'px' },
+        { left: (txtStartLeft + dxLeft) + 'px' }
+      ], opts);
+      let revealRafId;
+      function revealFollow() {
+        const lineY = parseFloat(getComputedStyle(line).top);
+        const revealedHeight = Math.min(textHeight, Math.max(0, lineY - textTop));
+        const bottomInset = textHeight - revealedHeight;
+        txtWhite.style.clipPath = `inset(0 0 ${bottomInset}px 0)`;
+        revealRafId = requestAnimationFrame(revealFollow);
+      }
+      revealFollow();
+
+      Promise.allSettled([anim.finished, sqAnim.finished, hzAnim.finished, txtAnim.finished, lineAnim.finished, fillAnim.finished, txtWhiteAnim.finished]).then(() => {
+        cancelAnimationFrame(revealRafId);
+        [anim, sqAnim, hzAnim, txtAnim, lineAnim, fillAnim, txtWhiteAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        sq.style.transform = ''; // hand off to plain .triangle (pointing right) - same final value
+        line.classList.remove('visible');
+        fill.classList.remove('visible');
+        txtWhite.classList.remove('visible');
+        txtWhite.style.clipPath = 'inset(0 0 100% 0)'; // fully hidden again - the line's ended up back at rectTop by then
+        rectAnimating = false;
+        step = 1;
+      });
+    }
+    document.getElementById('blink-square-hover-zone').addEventListener('click', () => {
+      if (step === 1) advanceFromOvershoot();
+      else if (step === 2) reverseFromWidened();
+    });
     // hovering the second-click hit zone morphs the red square into a
     // right-pointing triangle 50% bigger - see #blink-square.triangle.
-    // The hover-zone itself is only display:block (and thus only able to
-    // receive these events at all) while the blink square is actually
-    // shown, so there's no separate step/visibility check needed here.
+    // Step-gated: once step 2's back button (.back) is showing, hovering
+    // must not touch its classes or it'd un-rotate back to the plain
+    // right-pointing preview. The hover-zone itself is only display:block
+    // (and thus only able to receive these events at all) while the blink
+    // square is actually shown, so no separate visibility check is needed.
     document.getElementById('blink-square-hover-zone').addEventListener('mouseenter', () => {
+      if (step !== 1) return;
       document.getElementById('blink-square').classList.add('triangle');
       const ondaVideo = document.getElementById('onda-video');
       ondaVideo.currentTime = 0;
@@ -1123,6 +1499,7 @@
       ondaVideo.classList.add('visible');
     });
     document.getElementById('blink-square-hover-zone').addEventListener('mouseleave', () => {
+      if (step !== 1) return;
       document.getElementById('blink-square').classList.remove('triangle');
       const ondaVideo = document.getElementById('onda-video');
       ondaVideo.classList.remove('visible');
@@ -1649,12 +2026,30 @@
       const sq = document.getElementById('blink-square');
       sq.classList.remove('visible');
       sq.classList.remove('triangle');
+      sq.classList.remove('back');
       sq.style.left = '';
       sq.style.top = '';
       const hz = document.getElementById('blink-square-hover-zone');
       hz.classList.remove('visible');
       hz.style.left = '';
       hz.style.top = '';
+      const line = document.getElementById('header-line');
+      line.classList.remove('visible');
+      line.style.top = '';
+      line.style.width = '';
+      const fill = document.getElementById('header-fill');
+      fill.classList.remove('visible');
+      fill.style.top = '';
+      fill.style.height = '';
+      fill.style.width = '';
+      fill.style.borderRadius = '';
+      const txtWhite = document.getElementById('logo-text-white');
+      txtWhite.classList.remove('visible');
+      txtWhite.style.left = '';
+      txtWhite.style.top = '';
+      txtWhite.style.width = '';
+      txtWhite.style.height = '';
+      txtWhite.style.clipPath = '';
     }
   </script>
 </body>
