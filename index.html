@@ -946,7 +946,12 @@
 
       Promise.allSettled([blAnim.finished, brAnim.finished]).then(() => {
         cancelAnimationFrame(trackRafId);
-        [blAnim, brAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        // these two share a `transform 0.09s ease-out` transition with
+        // #logo-text (see .logo-sprite-adjacent) for a different, later
+        // interaction - commitAndCancel keeps that transition from
+        // spuriously replaying over this animation's own final value
+        commitAndCancel(bl, blAnim);
+        commitAndCancel(br, brAnim);
         bl.classList.remove('password-mode');
         br.classList.remove('password-mode');
         win.style.clipPath = 'inset(504px 894px 504px 895px)'; // exact final value, in case the last rAF tick landed a hair off from float rounding
@@ -1179,6 +1184,28 @@
         anims.forEach((a) => a.cancel());
         rectAnimating = false;
       });
+    }
+
+    // hands a finished WAAPI animation's value off to a plain inline
+    // style (commitStyles + cancel) the same way most of this file's
+    // `.finished.then()` callbacks already do - except it also brackets
+    // that handoff with a momentary transition:none on the element.
+    // Needed only where the SAME property is also driven by a real CSS
+    // `transition` rule elsewhere on that selector (bracket-left/right's
+    // own transform, tagline-left/right's own left/right, bg-video's own
+    // transform) - confirmed in Firefox specifically, canceling a WAAPI
+    // animation can spuriously re-trigger that other transition for one
+    // frame even though commitStyles already left the value unchanged,
+    // reading as the move stuttering/repeating itself right at the end.
+    // The offsetHeight read forces layout so the transition:none is
+    // actually in effect for the commit+cancel before being lifted again.
+    function commitAndCancel(el, anim) {
+      const prevTransition = el.style.transition;
+      el.style.transition = 'none';
+      anim.commitStyles();
+      anim.cancel();
+      void el.offsetHeight;
+      el.style.transition = prevTransition;
     }
 
     function onRectClick() {
@@ -1601,8 +1628,7 @@
         { transform: 'scale(1) translateY(50%)' }
       ], videoRevealOpts);
       videoAnim.finished.then(() => {
-        videoAnim.commitStyles();
-        videoAnim.cancel();
+        commitAndCancel(video, videoAnim);
       });
 
       runStage(buildStage(3, 4, widths, heights, radii));
@@ -1751,7 +1777,12 @@
 
       Promise.allSettled([anim.finished, sqAnim.finished, hzAnim.finished, txtAnim.finished, lineAnim.finished, fillAnim.finished, txtWhiteAnim.finished, videoAnim.finished, rect2Anim.finished]).then(() => {
         cancelAnimationFrame(revealRafId);
-        [anim, sqAnim, hzAnim, txtAnim, lineAnim, fillAnim, txtWhiteAnim, videoAnim, rect2Anim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        [anim, sqAnim, hzAnim, txtAnim, lineAnim, fillAnim, txtWhiteAnim, rect2Anim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        // #bg-video shares a `transform 0.75s ease` transition with its own
+        // .visible class toggle (see #bg-video) for an unrelated, earlier
+        // reveal - commitAndCancel keeps that transition from spuriously
+        // replaying over this animation's own final value
+        commitAndCancel(video, videoAnim);
         sq.style.transform = ''; // hand off to plain .triangle (pointing right) - same final value
         line.classList.remove('visible');
         fill.classList.remove('visible');
@@ -2242,8 +2273,13 @@
       Promise.allSettled([leftSwapAnim.finished, rightSwapAnim.finished]).then(() => {
         // resetCenterTagline may have already canceled+nulled these (a
         // reset mid-slide) - commitStyles on an already-canceled
-        // animation throws, so skip anything that's not still running
-        [leftSwapAnim, rightSwapAnim].forEach((a) => { if (a && a.playState !== 'idle') { a.commitStyles(); a.cancel(); } });
+        // animation throws, so skip anything that's not still running.
+        // commitAndCancel (not a plain commitStyles+cancel) since both
+        // elements share a `left`/`right` transition (see .tagline-left/
+        // -right) with a later, separately-triggered swap - see its own
+        // comment for why that combination needs the extra step here.
+        if (leftSwapAnim && leftSwapAnim.playState !== 'idle') commitAndCancel(left, leftSwapAnim);
+        if (rightSwapAnim && rightSwapAnim.playState !== 'idle') commitAndCancel(right, rightSwapAnim);
         leftSwapAnim = null;
         rightSwapAnim = null;
       });
@@ -2332,7 +2368,8 @@
         { left: taglineLeftFinalX + 'px', top: taglineTopEnd + 'px', clipPath: 'inset(0 100% -20px 0)' }
       ], rightHideOpts);
       Promise.allSettled([leftHideAnim.finished, rightHideAnim.finished]).then(() => {
-        [leftHideAnim, rightHideAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        commitAndCancel(left, leftHideAnim);
+        commitAndCancel(right, rightHideAnim);
         left.classList.remove('visible');
         right.classList.remove('visible');
       });
@@ -2689,7 +2726,8 @@
       left.classList.add('visible');
       right.classList.add('visible');
       Promise.allSettled([leftAnim.finished, rightAnim.finished]).then(() => {
-        [leftAnim, rightAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        commitAndCancel(left, leftAnim);
+        commitAndCancel(right, rightAnim);
       });
     }
 
