@@ -91,6 +91,12 @@
     border-radius: 3px;
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease;
+    /* bg-video/onda-video are children (see below) - this clips them to
+       rect's own live bounds/rounded corners automatically (and to the
+       padding edge specifically, i.e. inside the 2px stroke, so neither
+       video ever paints over it), tracking every width/height/
+       border-radius animation with no extra per-video math needed */
+    overflow: hidden;
   }
   /* invisible hit-area, 10% bigger than the button in both dimensions
      and centered the same way, so hovering just outside the visible
@@ -333,6 +339,14 @@
      re-touches transform, only left/top. */
   #bracket-left { left: 872px; top: 483px; width: 23px; height: 113px; transform: scale(1.1); transform-origin: 88px 56.5px; }
   #bracket-right { left: 1026px; top: 483px; width: 22px; height: 113px; transform: scale(1.1); transform-origin: -66px 56.5px; }
+  /* thin-stroke stand-ins for the two brackets above (2px stroke, matching
+     rect's own border-width - see bracket-*-thin.png), same box/scale so
+     they sit exactly on top of their bold counterparts - see
+     multiplyPlusIntoBars, which crossfades bold->thin (opacity) in the
+     same move that spreads/grays "botonera videos", rather than swapping
+     the src outright (an instant cut would read as a glitch) */
+  #bracket-left-thin { left: 872px; top: 483px; width: 23px; height: 113px; transform: scale(1.1); transform-origin: 88px 56.5px; opacity: 0; }
+  #bracket-right-thin { left: 1026px; top: 483px; width: 22px; height: 113px; transform: scale(1.1); transform-origin: -66px 56.5px; opacity: 0; }
   #logo-text { left: 895px; top: 504px; width: 131px; height: 72px; transform: scale(1.1); transform-origin: 65px 35.5px; }
   /* password gate's own look for the real brackets - half their already-
      shrunk 0.5 scale (now 0.25 of normal) and, this time, pushed OUTWARD
@@ -541,6 +555,31 @@
   #tagline-plus.spin .plus-arm-v {
     transform: scaleY(1.5);
   }
+  /* the 6 bars the settled "|" (#tagline-plus.spin's own .plus-arm-v
+     shape) multiplies into - see collapseCenterTagline/multiplyPlusIntoBars.
+     Plain copies of that same bar, positioned/animated purely in JS since
+     each one's target X depends on the brackets' own live position. */
+  .plus-multiply-bar {
+    position: absolute;
+    top: 539.5px;
+    background: #000;
+    pointer-events: none;
+  }
+  /* the 8 index numbers ("01".."08") sitting at the midpoint of each of
+     the 8 gaps in "botonera videos" (bracket-bar1, bar1-bar2, ...,
+     bar7-bracket) - see multiplyPlusIntoBars. Centered on the same line
+     as the bars themselves (translate(-50%,-50%) at their own top), sized
+     and colored/animated identically. */
+  .botonera-index {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 100;
+    color: #000;
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+  }
   /* "Video Editor"/"motion graphics" don't fade in - opacity has no
      transition here (it's absent from this rule's own `transition`, which
      fully replaces .tagline's), so adding .visible flips it to 1 instantly.
@@ -579,17 +618,12 @@
      itself (not scoped tighter to the text) so a child's existing
      left/top/right math (already written in canvas-space coordinates)
      keeps working completely unchanged; only the clip-path differs
-     between the two, cut along a line parallel to the "/" glyph's own
-     23.33deg tilt (see #tagline-plus.spin's rotate(743.33deg), which is
-     23.33deg past two full turns) so the seam between the two words reads
-     as a continuation of the slash once it forms. Each window's inner
-     edge sits 5px off from the slash's own centerline (960,539.5) at that
-     line's reference height, motion-graphics' to the right of it,
-     video-editor's to the left, then follows the same 23.33deg slope up
-     to y=0 and down to y=1080 (offset - tan(23.33deg) * (y - 539.5)) -
-     hardcoded rather than a CSS trig expression since the tilt is a fixed
-     design constant that never changes at runtime. Windows exist (and
-     clip) before the "+" ever spins into the "/" they align with. */
+     between the two, a plain vertical cut 5px off the "+"/bar's own
+     centerline (960,539.5) on each side - motion-graphics' to the right
+     of it, video-editor's to the left - matching the bar's own straight
+     vertical shape once it settles (#tagline-plus.spin's .plus-arm-v is
+     never actually rotated to a diagonal "/" - the spin flourish's own
+     rotation always lands back on a multiple of 360deg). */
   .tagline-window {
     position: absolute;
     left: 0;
@@ -599,37 +633,29 @@
     pointer-events: none;
   }
   #tagline-left-window {
-    clip-path: polygon(0 0, 1187.68px 0, 721.89px 1080px, 0 1080px);
+    clip-path: polygon(0 0, 955px 0, 955px 1080px, 0 1080px);
   }
   #tagline-right-window {
-    clip-path: polygon(1197.68px 0, 1920px 0, 1920px 1080px, 731.89px 1080px);
+    clip-path: polygon(965px 0, 1920px 0, 1920px 1080px, 965px 1080px);
   }
 
-  /* ondamagenta.webm: hover-only preview on the blink-square/triangle
-     hit zone (see its mouseenter/mouseleave listeners in the script) -
-     the second-click
-     target that only exists after the first click, once the rect is
-     sitting at its overshoot size. Sits BEHIND #bg-video in the DOM
-     (painted first, so #bg-video layers on top of it once that one's own
-     visible), but still after #rect so it's in front of the rect's own
-     fill, same no-z-index-needed convention as the rest of this file.
-     width/height/border-radius here are just a placeholder - like
-     #bg-video, the real per-viewport overshoot size is set inline by JS
-     (onRectClick's step===0 handler) right alongside #bg-video's own, so
-     the two always match exactly. border-radius clips a video element's
-     own rendered frame the same way it does a background image, so the
-     rect's rounded corners crop it directly with no separate mask
-     needed. 60% opacity, not a fade - the webm's own alpha channel
-     handles transparency, this opacity is just an intentional overall
-     dimming on top of that. */
+  /* ondamagenta.webm: hover-only preview on the blink-square/triangle hit
+     zone (see its mouseenter/mouseleave listeners in the script) - the
+     second-click target that only exists after the first click, once the
+     rect is sitting at its overshoot size. Sits BEHIND #bg-video in the
+     DOM (painted first, so #bg-video layers on top of it once that one's
+     own visible) - both are children of #rect now, so width/height:100%
+     plus rect's own overflow:hidden (see .rect) is what tracks rect's
+     live size/rounded corners automatically, no JS sizing needed.
+     object-fit:cover keeps the footage itself from ever stretching even
+     as rect's own aspect ratio changes (square -> 16:9). 60% opacity, not
+     a fade - the webm's own alpha channel handles transparency, this
+     opacity is just an intentional overall dimming on top of that. */
   #onda-video {
     position: absolute;
-    left: 960px;
-    top: 539.5px;
-    transform: translate(-50%, -50%);
-    width: 1108.30055123673px;
-    height: 1108.30055123673px;
-    border-radius: 31px;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     opacity: 0;
     pointer-events: none;
@@ -642,34 +668,24 @@
   /* fdo_invloop.webm: revealed the moment "Video Editor"/"motion graphics"
      start sliding out to their sides (see the showBgVideo() call in
      playCenterTagline, right next to that reveal's own classList.add
-     calls). width/height/border-radius here are just a placeholder - the
-     real, per-viewport overshoot size is set inline by
-     JS (onRectClick's step===0 handler, right where overshootValues() is
-     computed for the rect itself) before the video is ever made visible,
-     since the box it needs to match scales with the viewport. Placed
-     right after #rect in the DOM so it paints above the rect's own white
-     fill but below the brackets/text/tagline (no z-index needed anywhere
-     else on this page, so DOM order alone already gives the right
-     stacking) - the webm's own alpha channel (VP9 alpha_mode) is what
+     calls) - the webm's own alpha channel (VP9 alpha_mode) is what
      actually shows the rect through it where the footage is transparent.
      Enters by scaling from 0 to 100% over 0.75s (not a fade - opacity
-     stays at 1 throughout), anchored on the same center as the rect via
-     translate(-50%,-50%), scale() appended rather than replacing it so
-     the centering survives the scale transition. */
+     stays at 1 throughout); advanceFromOvershoot/reverseFromWidened later
+     add a translateY on top of this same scale (never replacing it) to
+     slide the globe down/up for its own reveal effect - see there. */
   #bg-video {
     position: absolute;
-    left: 960px;
-    top: 539.5px;
-    transform: translate(-50%, -50%) scale(0);
-    width: 1108.30055123673px;
-    height: 1108.30055123673px;
-    border-radius: 31px;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
+    transform: scale(0);
     pointer-events: none;
     transition: transform 0.75s ease;
   }
   #bg-video.visible {
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
   }
 </style>
 </head>
@@ -677,9 +693,10 @@
   <div class="viewport">
     <div class="canvas">
       <div id="rect-hover-zone"></div>
-      <div class="rect" id="rect"></div>
-      <video id="onda-video" src="assets/videos/ondamagenta.webm" muted playsinline></video>
-      <video id="bg-video" src="assets/videos/fdo_invloop.webm" muted loop playsinline></video>
+      <div class="rect" id="rect">
+        <video id="onda-video" src="assets/videos/ondamagenta.webm" muted playsinline></video>
+        <video id="bg-video" src="assets/videos/fdo_invloop.webm" muted loop playsinline></video>
+      </div>
       <div id="header-fill"></div>
 
       <div id="password-gate">
@@ -694,6 +711,8 @@
 
       <img class="logo-sprite password-mode" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
       <img class="logo-sprite password-mode" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png" alt="">
+      <img class="logo-sprite" id="bracket-left-thin" src="assets/images/logo-desarme/bracket-left-thin.png" alt="">
+      <img class="logo-sprite" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png" alt="">
       <div class="tagline-window" id="logo-text-window">
         <div id="logo-text-invert">
           <img class="logo-sprite" id="text-diego-half" src="assets/images/logo-desarme/text.png" alt="">
@@ -930,6 +949,17 @@
     // themselves inside that stroke instead of overlapping/covering it
     const RECT_BORDER_WIDTH = 2;
 
+    // "gray" convention shared across this file: solid black fading to
+    // this opacity - #logo-text's own 0.6 opacity is what it already
+    // reads as; multiplyPlusIntoBars/restoreCenterTagline reuse the exact
+    // same value for "botonera videos" (brackets + the 7 bars)
+    const GRAY_OPACITY = 0.6;
+
+    // "botonera videos" bar thickness once settled - same as
+    // RECT_BORDER_WIDTH/the bracket-*-thin.png stroke, so the whole block
+    // reads as one consistent 2px weight
+    const THIN_BAR_WIDTH = RECT_BORDER_WIDTH;
+
     // "button" press: rect starts 10% bigger than its BASE_WIDTHS[0]
     // rest size, solid black, logo inverted white (see .rect and
     // #bracket-left/#bracket-right/#logo-text in the stylesheet) - first
@@ -1130,23 +1160,10 @@
               borderDarken.cancel();
             });
           });
-          // bg-video sits in the overshoot box (the box the rect is
-          // actually in when the video appears, right after this click's
-          // tagline spin - see playCenterTagline's plusSpinTimeoutId), not
-          // the smaller final rest size, so it has to match this
-          // per-viewport overshoot geometry rather than a fixed CSS size
-          const video = document.getElementById('bg-video');
-          video.style.width = widths[2] + 'px';
-          video.style.height = heights[2] + 'px';
-          video.style.borderRadius = radii[2] + 'px';
-          // onda-video (see #blink-square-hover-zone's mouseenter listener)
-          // shares this exact same
-          // overshoot box - it sits behind bg-video and needs the same
-          // rounded-corner crop
-          const ondaVideo = document.getElementById('onda-video');
-          ondaVideo.style.width = widths[2] + 'px';
-          ondaVideo.style.height = heights[2] + 'px';
-          ondaVideo.style.borderRadius = radii[2] + 'px';
+          // bg-video/onda-video are both children of #rect now (width:100%/
+          // height:100%/object-fit:cover in their own CSS), so they track
+          // rect's own live size and rounded corners (via its
+          // overflow:hidden) automatically - nothing to size here anymore.
           // scheduled directly off the stage's own duration instead of
           // chaining off its promise (which only resolves after the full
           // hold tail too) - fires TAGLINE_EARLY_MS sooner than that,
@@ -1162,10 +1179,15 @@
         // #blink-square-hover-zone instead)
         return;
       } else {
-        // done - reset instantly to the un-pressed button (big, black
-        // fill, white logo) so the next click replays the press + the
-        // whole reveal from scratch
-        goHome();
+        // no-op for now, same reasoning as step===1 above: step 2 is now
+        // a rich, clickable area of its own (globe video, "botonera
+        // videos") that spans most of the rect, so a stray click on it
+        // must not bounce all the way back to the logo/step 0 - only the
+        // back-triangle (#blink-square-hover-zone, wired to
+        // reverseFromWidened) navigates away from here. goHome() is still
+        // there for whenever going back to the logo from this point is
+        // actually designed - just not reachable yet.
+        return;
       }
     }
 
@@ -1293,6 +1315,10 @@
       // correctly as concentric with a radius of (R - BORDER_WIDTH)
       const fillRadius = Math.max(0, radii[3] - RECT_BORDER_WIDTH);
 
+      // runs on its own timeline (center tagline, unrelated to rect's own
+      // widen geometry) - see collapseCenterTagline
+      collapseCenterTagline();
+
       line.style.top = lineStartTop + 'px';
       line.style.width = widthInsetStart + 'px';
       line.classList.add('visible');
@@ -1358,20 +1384,44 @@
         txtWhite.style.clipPath = 'inset(0 0 0 0)'; // fully revealed - the line's ended up past textBottom by then
       });
 
+      // globe video: now a child of #rect (width/height:100%, object-fit:
+      // cover - see its own CSS), so it already tracks rect's widening
+      // width automatically, with zero extra code, clipped to rect's own
+      // rounded corners via its overflow:hidden. All that's left to
+      // animate by hand is the deliberate reveal: sliding down by 50% of
+      // its own height (=rect's height, unchanged throughout this stage)
+      // so its natural center ends up level with rect's own bottom edge
+      // instead of its middle - what's left visible (rect's own clip does
+      // the rest) is just the globe's upper hemisphere and half its
+      // satellite's orbit.
+      const video = document.getElementById('bg-video');
+      const videoAnim = video.animate([
+        { transform: 'scale(1) translateY(0%)' },
+        { transform: 'scale(1) translateY(50%)' }
+      ], followOpts);
+      videoAnim.finished.then(() => {
+        videoAnim.commitStyles();
+        videoAnim.cancel();
+      });
+
       runStage(buildStage(3, 4, widths, heights, radii));
       step = 2;
     }
 
     // the back-triangle's own action: undoes just the widen (step 2 ->
-    // step 1), landing back on the square overshoot with bg-video/
-    // onda-video and the center tagline exactly as they already were -
-    // none of those are touched here, only rect's own size and the blink
-    // square/hover-zone's tracked position, mirroring advanceFromOvershoot
-    // itself but run in reverse. Deliberately NOT goHome(): that un-presses
+    // step 1), landing back on the square overshoot with the center
+    // tagline exactly as it already was (untouched by advanceFromOvershoot,
+    // so nothing to reverse) - only rect's own size, the blink square/
+    // hover-zone's tracked position, and bg-video's/onda-video's own
+    // widen-time shift+crop get undone here, mirroring advanceFromOvershoot
+    // itself but in reverse. Deliberately NOT goHome(): that un-presses
     // the button back to step 0 and tears down the video/tagline too,
     // which is a lot further back than this button is for.
     function reverseFromWidened() {
       if (rectAnimating || step !== 2) return;
+      // runs on its own timeline (center tagline, unrelated to rect's own
+      // shrink geometry) - see restoreCenterTagline
+      restoreCenterTagline();
       const el = document.getElementById('rect');
       const sq = document.getElementById('blink-square');
       const hz = document.getElementById('blink-square-hover-zone');
@@ -1467,9 +1517,18 @@
       }
       revealFollow();
 
-      Promise.allSettled([anim.finished, sqAnim.finished, hzAnim.finished, txtAnim.finished, lineAnim.finished, fillAnim.finished, txtWhiteAnim.finished]).then(() => {
+      // globe video slides back up to centered, mirroring
+      // advanceFromOvershoot - width/rounding still track rect
+      // automatically (see its own CSS), only the reveal shift reverses
+      const video = document.getElementById('bg-video');
+      const videoAnim = video.animate([
+        { transform: 'scale(1) translateY(50%)' },
+        { transform: 'scale(1) translateY(0%)' }
+      ], opts);
+
+      Promise.allSettled([anim.finished, sqAnim.finished, hzAnim.finished, txtAnim.finished, lineAnim.finished, fillAnim.finished, txtWhiteAnim.finished, videoAnim.finished]).then(() => {
         cancelAnimationFrame(revealRafId);
-        [anim, sqAnim, hzAnim, txtAnim, lineAnim, fillAnim, txtWhiteAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        [anim, sqAnim, hzAnim, txtAnim, lineAnim, fillAnim, txtWhiteAnim, videoAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
         sq.style.transform = ''; // hand off to plain .triangle (pointing right) - same final value
         line.classList.remove('visible');
         fill.classList.remove('visible');
@@ -1709,6 +1768,30 @@
     let plusSpinTurns = 0;
     let leftSwapAnim = null;
     let rightSwapAnim = null;
+    // where "Video Editor"/"motion graphics" swap in FROM (see
+    // leftSwapAnim/rightSwapAnim below) - collapseCenterTagline sends them
+    // back there to hide, so it needs these after playCenterTagline's own
+    // locals have gone out of scope
+    let taglineLeftFinalX = null;
+    let taglineRightFinalX = null;
+    let armSettledHandler = null;
+    // brackets' own left before multiplyPlusIntoBars spread them apart -
+    // restoreCenterTagline reads these back to undo exactly that spread,
+    // rather than assuming the viewport hasn't changed since and
+    // recomputing the same 5vh shift fresh
+    let bracketLeftPreSpread = null;
+    let bracketRightPreSpread = null;
+    // brackets'/the center bar's own top before multiplyPlusIntoBars
+    // dropped the whole block down 10vh (both brackets share the same
+    // value, see #bracket-left/#bracket-right's own CSS) -
+    // restoreCenterTagline reverses this the same way it does the spread
+    // above
+    let bracketTopPreDescend = null;
+    let plusTopPreDescend = null;
+    // armV's own width before multiplyPlusIntoBars thinned it down to
+    // THIN_BAR_WIDTH - restoreCenterTagline reverses this the same way it
+    // does the spread above
+    let armVWidthPreThin = null;
 
     function playCenterTagline() {
       const plus = document.getElementById('tagline-plus');
@@ -1858,6 +1941,8 @@
       const targetGap = ((leftGap + rightGap) / 2) * BRACKET_GAP_KEEP_FRACTION;
       leftFinalLeft = bracketLeftInnerX + targetGap;
       rightFinalLeft = bracketRightInnerX - targetGap - right.offsetWidth;
+      taglineLeftFinalX = leftFinalLeft;
+      taglineRightFinalX = rightFinalLeft;
 
       // "Video Editor"/"motion graphics" swap-slide: each word is clipped
       // by a #tagline-*-window fixed at its OWN final spot (see the
@@ -1920,22 +2005,407 @@
       // own windows, not later at the "+"-to-"/" spin
       showBgVideo();
 
-      // once the fade-in settles (its own 0.8s opacity transition), spin
-      // the "+" into a bar - see #tagline-plus.spin for the shape change -
-      // then keep flipping back and forth every 6s, indefinitely. Each
-      // step adds two more full clockwise turns to the inline rotation
-      // (never toggles it back to a smaller angle), so the spin always
-      // reads as forward motion in both directions instead of unwinding.
-      const SPIN_TURN_DEG = 720;
-      function advanceSpin() {
-        plusSpinTurns += 1;
-        plus.style.transform = `translate(-50%, -50%) rotate(${plusSpinTurns * SPIN_TURN_DEG}deg)`;
-        plus.classList.toggle('spin');
-      }
+      // once the fade-in settles (its own 0.8s opacity transition), start
+      // the endless "+"<->bar flourish loop - see startSpinLoop
+      startSpinLoop();
+    }
+
+    // spins the "+" into a bar - see #tagline-plus.spin for the shape
+    // change - then keeps flipping back and forth every 6s, indefinitely.
+    // Each step adds two more full clockwise turns to the inline rotation
+    // (never toggles it back to a smaller angle), so the spin always
+    // reads as forward motion in both directions instead of unwinding.
+    // Top-level (not nested in playCenterTagline) so restoreCenterTagline
+    // can also resume this same loop once the back button un-multiplies
+    // the bars back into a single "+".
+    const SPIN_TURN_DEG = 720;
+    function advanceSpin() {
+      const plus = document.getElementById('tagline-plus');
+      plusSpinTurns += 1;
+      plus.style.transform = `translate(-50%, -50%) rotate(${plusSpinTurns * SPIN_TURN_DEG}deg)`;
+      plus.classList.toggle('spin');
+    }
+    function startSpinLoop() {
       plusSpinTimeoutId = setTimeout(() => {
         advanceSpin();
         plusLoopIntervalId = setInterval(advanceSpin, 6000);
       }, 800);
+    }
+
+    // second half of this stage's own sequence (see advanceFromOvershoot,
+    // which calls this once the rect starts widening to 16:9): one single
+    // movement, not staged batches - "Video Editor"/"motion graphics"
+    // slide back to the swapped spot they originally slid in FROM
+    // (mirrors playCenterTagline's own leftSwapAnim/rightSwapAnim exactly,
+    // just with start/end swapped), the "+" settles into a single "|"
+    // (the same shape #tagline-plus.spin already defines, just held once
+    // rather than looped), and that bar "multiplies" into 7 (see
+    // multiplyPlusIntoBars) - all three starting together, right now.
+    function collapseCenterTagline() {
+      // stop the endless "+"<->bar flourish first - it'd otherwise keep
+      // firing underneath (and fighting) this one-way sequence
+      if (plusSpinTimeoutId) { clearTimeout(plusSpinTimeoutId); plusSpinTimeoutId = null; }
+      if (plusLoopIntervalId) { clearInterval(plusLoopIntervalId); plusLoopIntervalId = null; }
+
+      const left = document.getElementById('tagline-left');
+      const right = document.getElementById('tagline-right');
+      const plus = document.getElementById('tagline-plus');
+      if (taglineLeftFinalX === null || taglineRightFinalX === null) return; // tagline never actually played
+
+      // same 3vh drop multiplyPlusIntoBars gives the rest of "botonera
+      // videos" in this same move - without it, the text stays at its old
+      // height while everything below it drops, so it reads as stuck/
+      // cropped up top instead of leaving together with the block
+      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const descendPx = (window.innerHeight * 0.03) / canvasScaleNow;
+      const taglineTopStart = parseFloat(getComputedStyle(left).top);
+      const taglineTopEnd = taglineTopStart + descendPx;
+
+      const HIDE_MS = 800; // matches playCenterTagline's own swapAnimOpts
+      const hideOpts = { duration: HIDE_MS, easing: 'ease', fill: 'forwards' };
+      const leftHideAnim = left.animate([
+        { left: taglineLeftFinalX + 'px', top: taglineTopStart + 'px' },
+        { left: taglineRightFinalX + 'px', top: taglineTopEnd + 'px' }
+      ], hideOpts);
+      // "motion graphics" needs longer to actually read as sliding away -
+      // moving left INTO its own window's far edge (rather than out into
+      // open canvas, like "Video Editor" does) means it hits that window's
+      // own hard boundary partway through; at HIDE_MS's pace that boundary
+      // cut arrives almost immediately, reading as a hard cut instead of a
+      // slide. Slower gives the eye time to actually see it travel before
+      // that cut, even though the cut itself is still there.
+      const RIGHT_HIDE_MS = 1300;
+      const rightHideOpts = { duration: RIGHT_HIDE_MS, easing: 'ease', fill: 'forwards' };
+      // same forced clip-path reveal-order fix as rightSwapAnim, run
+      // backwards - see playCenterTagline's own comment on why this can't
+      // just be a plain CSS transition
+      const rightHideAnim = right.animate([
+        { left: taglineRightFinalX + 'px', top: taglineTopStart + 'px', clipPath: 'inset(0 0% -20px 0)' },
+        { left: taglineLeftFinalX + 'px', top: taglineTopEnd + 'px', clipPath: 'inset(0 100% -20px 0)' }
+      ], rightHideOpts);
+      Promise.allSettled([leftHideAnim.finished, rightHideAnim.finished]).then(() => {
+        [leftHideAnim, rightHideAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        left.classList.remove('visible');
+        right.classList.remove('visible');
+      });
+
+      // "+" settles into a plain "|" right away, same beat as the text
+      // hiding above - no extra rotation, the spin flourish stopped above
+      // is a separate, unrelated effect. The endless flourish loop just
+      // stopped above uses classList.toggle, so .spin can already be on
+      // by the time this runs - .add is then a no-op, which is fine here
+      // since nothing downstream is waiting on this transition to finish
+      // anymore (multiplyPlusIntoBars fires immediately below regardless).
+      plus.classList.add('spin');
+
+      // the bars/bracket-spread fire in this same instant too, so text
+      // exit, "+"->"|", and the bars entering all read as one motion
+      // rather than one waiting on the last
+      multiplyPlusIntoBars();
+    }
+
+    // the settled "|" multiplies into a row of 7: 3 new bars to its left,
+    // 3 to its right, the whole row landing equally spaced across the
+    // full span between the brackets' own inner (vertical stroke) edges -
+    // same live-read technique playCenterTagline uses for that span, so
+    // it still lands correctly regardless of viewport size. 7 bars make 8
+    // equal gaps (2 to the brackets themselves, 6 between neighboring
+    // bars) - the center "|" already sits at gap*4 by construction, since
+    // the brackets are symmetric around x=960. The brackets themselves
+    // spread 5vh further out on each side in this same motion, and the
+    // bars target their POST-spread positions (not today's), so
+    // everything fans out and settles together in one move instead of the
+    // bars landing first and the brackets catching up around them after.
+    function multiplyPlusIntoBars() {
+      const plus = document.getElementById('tagline-plus');
+      const armV = plus.querySelector('.plus-arm-v');
+      // getComputedStyle's own height is armV's un-transformed box size -
+      // the visible "|" is 1.5x taller than that (see #tagline-plus.spin
+      // .plus-arm-v's scaleY(1.5)), so the clones need that same factor to
+      // actually match it
+      const barHeight = parseFloat(getComputedStyle(armV).height) * 1.5;
+      // the 6 new bars are just born at this width (see THIN_BAR_WIDTH,
+      // matching rect's/the brackets' own 2px) - only the center "|"
+      // itself (armV, below) actually animates its own width down to
+      // match, since it starts at its own bold thickness
+      const barWidth = THIN_BAR_WIDTH;
+
+      const bracketLeft = document.getElementById('bracket-left');
+      const bracketRight = document.getElementById('bracket-right');
+      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasLeftPx = canvas.getBoundingClientRect().left;
+      const bracketLeftInnerX = (bracketLeft.getBoundingClientRect().right - canvasLeftPx) / canvasScaleNow;
+      const bracketRightInnerX = (bracketRight.getBoundingClientRect().left - canvasLeftPx) / canvasScaleNow;
+
+      // 8vh each side (60% less than the original 20vh) - real
+      // viewport-relative units, converted through the canvas's own
+      // current scale like everything else in this file that's measured
+      // off the actual screen rather than the 1920x1080 comp space
+      const spreadPx = (window.innerHeight * 0.08) / canvasScaleNow;
+      const bracketLeftStart = parseFloat(bracketLeft.style.left);
+      const bracketRightStart = parseFloat(bracketRight.style.left);
+      bracketLeftPreSpread = bracketLeftStart;
+      bracketRightPreSpread = bracketRightStart;
+      const bracketLeftEnd = bracketLeftStart - spreadPx;
+      const bracketRightEnd = bracketRightStart + spreadPx;
+      const gap = ((bracketRightInnerX + spreadPx) - (bracketLeftInnerX - spreadPx)) / 8;
+
+      // whole block (brackets, center bar, the 6 new bars) drops 3vh in
+      // this same move - a plain uniform shift applied to every element's
+      // own current top, so whatever relative alignment they already have
+      // (brackets anchored by their top edge, bars/plus centered via
+      // translate(-50%,-50%)) is preserved exactly, just moved down
+      const descendPx = (window.innerHeight * 0.03) / canvasScaleNow;
+      const bracketTopStart = parseFloat(getComputedStyle(bracketLeft).top);
+      const bracketTopEnd = bracketTopStart + descendPx;
+      bracketTopPreDescend = bracketTopStart;
+      const plusTopStart = parseFloat(getComputedStyle(plus).top);
+      const plusTopEnd = plusTopStart + descendPx;
+      plusTopPreDescend = plusTopStart;
+      // .plus-multiply-bar's own CSS default (539.5px, same as
+      // RECT_CENTER_Y) - read as a constant rather than off an instance,
+      // since none exist yet at this point (created further below)
+      const barTopStart = RECT_CENTER_Y;
+      const barTopEnd = barTopStart + descendPx;
+
+      const MULTIPLY_MS = 600;
+      const opts = { duration: MULTIPLY_MS, easing: 'ease', fill: 'forwards' };
+      // "botonera videos" (brackets + center bar + the 6 multiplied ones)
+      // grays out over this same move - see GRAY_OPACITY
+
+      // brackets crossfade to their thin-stroke stand-ins (see
+      // #bracket-left-thin/#bracket-right-thin) in this same move - bold
+      // fades out to nothing while thin fades in already at the target
+      // gray, rather than an instant src swap (which would read as a
+      // glitch/cut). The thin one starts from wherever the bold one
+      // currently is (it's never been positioned before this) and tracks
+      // the identical left keyframes, so the two stay perfectly stacked
+      // throughout.
+      const bracketLeftThin = document.getElementById('bracket-left-thin');
+      const bracketRightThin = document.getElementById('bracket-right-thin');
+      bracketLeftThin.style.left = bracketLeftStart + 'px';
+      bracketRightThin.style.left = bracketRightStart + 'px';
+      bracketLeftThin.style.top = bracketTopStart + 'px';
+      bracketRightThin.style.top = bracketTopStart + 'px';
+
+      const bracketLeftAnim = bracketLeft.animate([
+        { left: bracketLeftStart + 'px', top: bracketTopStart + 'px', opacity: 1 },
+        { left: bracketLeftEnd + 'px', top: bracketTopEnd + 'px', opacity: 0 }
+      ], opts);
+      const bracketRightAnim = bracketRight.animate([
+        { left: bracketRightStart + 'px', top: bracketTopStart + 'px', opacity: 1 },
+        { left: bracketRightEnd + 'px', top: bracketTopEnd + 'px', opacity: 0 }
+      ], opts);
+      const bracketLeftThinAnim = bracketLeftThin.animate([
+        { left: bracketLeftStart + 'px', top: bracketTopStart + 'px', opacity: 0 },
+        { left: bracketLeftEnd + 'px', top: bracketTopEnd + 'px', opacity: GRAY_OPACITY }
+      ], opts);
+      const bracketRightThinAnim = bracketRightThin.animate([
+        { left: bracketRightStart + 'px', top: bracketTopStart + 'px', opacity: 0 },
+        { left: bracketRightEnd + 'px', top: bracketTopEnd + 'px', opacity: GRAY_OPACITY }
+      ], opts);
+      const plusMoveAnim = plus.animate([
+        { top: plusTopStart + 'px', opacity: 1 },
+        { top: plusTopEnd + 'px', opacity: GRAY_OPACITY }
+      ], opts);
+      // the center "|" itself thins down to match the new bars (which are
+      // simply born at THIN_BAR_WIDTH, no animation needed) - margin-left
+      // has to shrink in lockstep with width (it's what keeps armV
+      // centered on #tagline-plus's own 50% left, a plain px margin
+      // rather than a recalculated percentage) or it'd drift off-center
+      const armVStartWidth = parseFloat(getComputedStyle(armV).width);
+      armVWidthPreThin = armVStartWidth;
+      const armVAnim = armV.animate([
+        { width: armVStartWidth + 'px', marginLeft: (-armVStartWidth / 2) + 'px' },
+        { width: THIN_BAR_WIDTH + 'px', marginLeft: (-THIN_BAR_WIDTH / 2) + 'px' }
+      ], opts);
+      [bracketLeftAnim, bracketRightAnim, bracketLeftThinAnim, bracketRightThinAnim, plusMoveAnim, armVAnim].forEach((a) => {
+        a.finished.then(() => { a.commitStyles(); a.cancel(); });
+      });
+
+      // bars enter from their own side's bracket (not from the center),
+      // sliding inward to their final spot - following the same inward
+      // direction "Video Editor"/"motion graphics" moved in when they
+      // hid toward the center a moment earlier (see collapseCenterTagline)
+      const barAnims = [];
+      for (let i = 1; i <= 3; i++) {
+        [-1, 1].forEach((side) => {
+          const bar = document.createElement('div');
+          bar.className = 'plus-multiply-bar';
+          bar.style.width = barWidth + 'px';
+          bar.style.height = barHeight + 'px';
+          canvas.appendChild(bar);
+          const startX = side < 0 ? bracketLeftInnerX : bracketRightInnerX;
+          const targetX = 960 + side * gap * i;
+          const anim = bar.animate([
+            { left: startX + 'px', top: barTopStart + 'px', transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+            { left: targetX + 'px', top: barTopEnd + 'px', transform: 'translate(-50%, -50%) scale(1)', opacity: GRAY_OPACITY }
+          ], opts);
+          barAnims.push(anim);
+          anim.finished.then(() => {
+            anim.commitStyles();
+            anim.cancel();
+          });
+        });
+      }
+
+      // 8 index numbers ("01".."08"), one at the midpoint of each of the
+      // 8 gaps this row now has - bracket-to-bar1, bar-to-bar (x6), and
+      // bar7-to-bracket. The 9 points along the row sit at 960+k*gap for
+      // k=-4..4 (bracketLeft, the 7 bars, bracketRight - center bar is
+      // k=0 by construction), so gap N's own midpoint is at
+      // 960+(k+0.5)*gap for k=N-5 - i.e. label i's x is 960+(i-4.5)*gap.
+      // Only appear once the bars block is actually done forming (not in
+      // the same move), sized/centered on the bars' own settled line.
+      const indexFontSize = barHeight * 0.9;
+      const INDEX_FADE_MS = 300;
+      Promise.allSettled(barAnims.map((a) => a.finished)).then(() => {
+        for (let i = 1; i <= 8; i++) {
+          const label = document.createElement('div');
+          label.className = 'botonera-index';
+          label.textContent = String(i).padStart(2, '0');
+          label.style.fontSize = indexFontSize + 'px';
+          label.style.left = (960 + (i - 4.5) * gap) + 'px';
+          label.style.top = barTopEnd + 'px';
+          canvas.appendChild(label);
+          const anim = label.animate([{ opacity: 0 }, { opacity: GRAY_OPACITY }], { duration: INDEX_FADE_MS, easing: 'ease', fill: 'forwards' });
+          anim.finished.then(() => {
+            anim.commitStyles();
+            anim.cancel();
+          });
+        }
+      });
+    }
+
+    // the back-triangle's own undo of the whole collapse/multiply
+    // sequence (see reverseFromWidened): unlike the forward sequence
+    // (each stage deliberately gated on the last one finishing), this
+    // fires everything at once - the extra bars get shoved out toward
+    // their own bracket (read as the reforming text "pushing" them out of
+    // the way) and vanish right at it, the brackets un-spread, the "|"
+    // reforms into "+", and "Video Editor"/"motion graphics" slide back
+    // in immediately, all in parallel.
+    function restoreCenterTagline() {
+      const plus = document.getElementById('tagline-plus');
+      const armV = plus.querySelector('.plus-arm-v');
+      if (armSettledHandler) { armV.removeEventListener('transitionend', armSettledHandler); armSettledHandler = null; }
+
+      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasLeftPx = canvas.getBoundingClientRect().left;
+      const bracketLeft = document.getElementById('bracket-left');
+      const bracketRight = document.getElementById('bracket-right');
+      const bracketLeftInnerX = (bracketLeft.getBoundingClientRect().right - canvasLeftPx) / canvasScaleNow;
+      const bracketRightInnerX = (bracketRight.getBoundingClientRect().left - canvasLeftPx) / canvasScaleNow;
+
+      const PUSH_MS = 400;
+      // each extra bar gets pushed out toward its own side's bracket -
+      // that inner edge is the limit where it vanishes - fading out as it
+      // gets there, rather than retreating back into the center
+      document.querySelectorAll('.plus-multiply-bar').forEach((bar) => {
+        const currentX = parseFloat(bar.style.left);
+        const targetX = currentX < 960 ? bracketLeftInnerX : bracketRightInnerX;
+        const anim = bar.animate([
+          { left: currentX + 'px', opacity: GRAY_OPACITY },
+          { left: targetX + 'px', opacity: 0 }
+        ], { duration: PUSH_MS, easing: 'ease', fill: 'forwards' });
+        anim.finished.then(() => bar.remove());
+      });
+
+      // index numbers just fade out in place (nothing to push toward -
+      // they don't belong to either side) and get removed
+      document.querySelectorAll('.botonera-index').forEach((label) => {
+        const anim = label.animate([{ opacity: GRAY_OPACITY }, { opacity: 0 }], { duration: PUSH_MS, easing: 'ease', fill: 'forwards' });
+        anim.finished.then(() => label.remove());
+      });
+
+      // brackets un-spread and rise back up to before multiplyPlusIntoBars
+      // moved them, crossfading back from the thin stand-ins (currently
+      // at GRAY_OPACITY) to the bold originals (currently invisible) -
+      // same beat as the bars vanishing
+      if (bracketLeftPreSpread !== null && bracketRightPreSpread !== null && bracketTopPreDescend !== null) {
+        const bracketOpts = { duration: PUSH_MS, easing: 'ease', fill: 'forwards' };
+        const bracketLeftThin = document.getElementById('bracket-left-thin');
+        const bracketRightThin = document.getElementById('bracket-right-thin');
+        const blAnim = bracketLeft.animate([
+          { left: bracketLeft.style.left, top: bracketLeft.style.top, opacity: 0 },
+          { left: bracketLeftPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 1 }
+        ], bracketOpts);
+        const brAnim = bracketRight.animate([
+          { left: bracketRight.style.left, top: bracketRight.style.top, opacity: 0 },
+          { left: bracketRightPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 1 }
+        ], bracketOpts);
+        const blThinAnim = bracketLeftThin.animate([
+          { left: bracketLeftThin.style.left, top: bracketLeftThin.style.top, opacity: GRAY_OPACITY },
+          { left: bracketLeftPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 0 }
+        ], bracketOpts);
+        const brThinAnim = bracketRightThin.animate([
+          { left: bracketRightThin.style.left, top: bracketRightThin.style.top, opacity: GRAY_OPACITY },
+          { left: bracketRightPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 0 }
+        ], bracketOpts);
+        [blAnim, brAnim, blThinAnim, brThinAnim].forEach((a) => a.finished.then(() => { a.commitStyles(); a.cancel(); }));
+        bracketLeftPreSpread = null;
+        bracketRightPreSpread = null;
+        bracketTopPreDescend = null;
+      }
+
+      // center bar/"+" back to solid black and its own resting height,
+      // and back up from the 10vh drop - same beat
+      const plusRestoreOpts = { duration: PUSH_MS, easing: 'ease', fill: 'forwards' };
+      const plusColorAnim = plus.animate([
+        { top: plus.style.top, opacity: GRAY_OPACITY },
+        { top: (plusTopPreDescend !== null ? plusTopPreDescend : parseFloat(plus.style.top)) + 'px', opacity: 1 }
+      ], plusRestoreOpts);
+      plusColorAnim.finished.then(() => { plusColorAnim.commitStyles(); plusColorAnim.cancel(); });
+      plusTopPreDescend = null;
+      // and back to its own resting thickness from THIN_BAR_WIDTH
+      if (armVWidthPreThin !== null) {
+        const armVRestoreAnim = armV.animate([
+          { width: armV.style.width, marginLeft: armV.style.marginLeft },
+          { width: armVWidthPreThin + 'px', marginLeft: (-armVWidthPreThin / 2) + 'px' }
+        ], plusRestoreOpts);
+        armVRestoreAnim.finished.then(() => { armVRestoreAnim.commitStyles(); armVRestoreAnim.cancel(); });
+        armVWidthPreThin = null;
+      }
+
+      // "|" reforms into "+" right away too - removing .spin is
+      // guaranteed to actually change something here (unlike
+      // collapseCenterTagline's add, which could no-op against the
+      // endless loop's own toggling - that loop is already stopped by
+      // now, so this class can only be in the one state
+      // multiplyPlusIntoBars left it in)
+      const onReformed = (e) => {
+        if (e.propertyName !== 'transform') return;
+        armV.removeEventListener('transitionend', onReformed);
+        armSettledHandler = null;
+        startSpinLoop();
+      };
+      armSettledHandler = onReformed;
+      armV.addEventListener('transitionend', onReformed);
+      plus.classList.remove('spin');
+
+      // "Video Editor"/"motion graphics" slide back in immediately too -
+      // same swap-slide playCenterTagline's own reveal uses, just faster -
+      // and rise back up from the 3vh drop collapseCenterTagline gave them
+      const left = document.getElementById('tagline-left');
+      const right = document.getElementById('tagline-right');
+      const swapOpts = { duration: 500, easing: 'ease', fill: 'forwards' };
+      left.style.right = 'auto';
+      const taglineDescendPx = (window.innerHeight * 0.03) / canvasScaleNow;
+      const taglineTopDescended = parseFloat(getComputedStyle(left).top);
+      const taglineTopRest = taglineTopDescended - taglineDescendPx;
+      const leftAnim = left.animate([
+        { left: taglineRightFinalX + 'px', top: taglineTopDescended + 'px' },
+        { left: taglineLeftFinalX + 'px', top: taglineTopRest + 'px' }
+      ], swapOpts);
+      const rightAnim = right.animate([
+        { left: taglineLeftFinalX + 'px', top: taglineTopDescended + 'px', clipPath: 'inset(0 100% -20px 0)' },
+        { left: taglineRightFinalX + 'px', top: taglineTopRest + 'px', clipPath: 'inset(0 0% -20px 0)' }
+      ], swapOpts);
+      left.classList.add('visible');
+      right.classList.add('visible');
+      Promise.allSettled([leftAnim.finished, rightAnim.finished]).then(() => {
+        [leftAnim, rightAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+      });
     }
 
     // fdo_invloop.webm: fades in front of the rect (behind the brackets/
@@ -1961,6 +2431,12 @@
       video.classList.remove('visible');
       video.pause();
       video.currentTime = 0;
+      // clears the reveal shift advanceFromOvershoot may have left in
+      // place (reached via clicking the rect itself in step 2, bypassing
+      // reverseFromWidened's own undo of that same transform) - falls
+      // back to .visible's own scale(1) (or the base scale(0) once
+      // .visible itself is removed above)
+      video.style.transform = '';
     }
 
     function resetCenterTagline() {
@@ -1976,10 +2452,42 @@
         clearInterval(plusLoopIntervalId);
         plusLoopIntervalId = null;
       }
+      if (armSettledHandler) {
+        document.getElementById('tagline-plus').querySelector('.plus-arm-v').removeEventListener('transitionend', armSettledHandler);
+        armSettledHandler = null;
+      }
       plusSpinTurns = 0;
+      taglineLeftFinalX = null;
+      taglineRightFinalX = null;
+      bracketLeftPreSpread = null;
+      bracketRightPreSpread = null;
+      bracketTopPreDescend = null;
+      plusTopPreDescend = null;
+      armVWidthPreThin = null;
       [leftSwapAnim, rightSwapAnim].forEach((a) => { if (a) a.cancel(); });
       leftSwapAnim = null;
       rightSwapAnim = null;
+      // removes whatever multiplyPlusIntoBars generated, if the sequence
+      // got that far before this reset, and clears the inline left/top it
+      // may have left on the brackets (resetLogoDesarme, called right
+      // before this in goHome, already clears left - redundant when both
+      // run, but this is the one that matters if resetCenterTagline is
+      // ever called on its own)
+      document.querySelectorAll('.plus-multiply-bar').forEach((bar) => bar.remove());
+      document.querySelectorAll('.botonera-index').forEach((label) => label.remove());
+      [
+        document.getElementById('bracket-left'), document.getElementById('bracket-right'),
+        document.getElementById('bracket-left-thin'), document.getElementById('bracket-right-thin')
+      ].forEach((el) => {
+        el.style.left = '';
+        el.style.top = '';
+        // clears the 60% gray/crossfade multiplyPlusIntoBars may have
+        // left mid-way on the brackets (the bars themselves don't need
+        // this - they're removed above regardless of what state they
+        // were in) - the thin stand-ins fall back to their own CSS
+        // opacity:0 default, keeping them hidden until the next cycle
+        el.style.opacity = '';
+      });
       ['tagline-plus', 'tagline-left', 'tagline-right'].forEach((id) => {
         const el = document.getElementById(id);
         el.classList.remove('visible');
@@ -1997,6 +2505,8 @@
       plusEl.style.width = '';
       plusEl.style.height = '';
       plusEl.style.transform = '';
+      plusEl.style.opacity = '';
+      plusEl.style.top = '';
       [plusEl.querySelector('.plus-arm-h'), plusEl.querySelector('.plus-arm-v')].forEach((arm) => {
         arm.style.width = '';
         arm.style.height = '';
