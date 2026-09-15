@@ -35,6 +35,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    /* recedes the whole scene behind the video overlay for videos
+       whose own frame doesn't fill the screen (cropped/square aspect -
+       see RECEDE on the relevant BOTONERA_VIDEOS entries), so there's
+       nothing to peek through the backdrop around a small frame.
+       transform+opacity only - both compositor-only, no layout cost
+       regardless of device (same reasoning as MOTION_SCALE/
+       lightAnimate above). Set on .viewport rather than .canvas since
+       .canvas's own transform is already owned by fitCanvas()'s inline
+       style and would fight a CSS one here. */
+    transition: transform 0.4s ease, opacity 0.4s ease;
+  }
+  .viewport.receded {
+    transform: scale(0.82);
+    opacity: 0;
   }
 
   .canvas {
@@ -3154,11 +3168,11 @@
     const BOTONERA_VIDEOS = [
       { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video1/video1reel.mp4' },
       { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video2/Multideportes.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4', frameH: 0.7 },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4', frameH: 0.7, recede: true },
       { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video4/video4.mp4' },
       { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video5/efda.mp4' },
       { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6/hltfoxviejo.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video9/video9.mp4', aspect: 'square' },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video9/video9.mp4', aspect: 'square', recede: true }, // "Visita"
       { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4' }
     ];
 
@@ -3276,12 +3290,18 @@
       vcSeek.value = 0;
       vcVolume.value = botoneraVideo.volume;
       videoOverlay.classList.add('visible');
+      // for videos whose own frame doesn't fill the screen (cropped/
+      // square - see .viewport.receded's CSS comment), recede the rect/
+      // botonera scene behind the overlay instead of leaving it visible
+      // through the backdrop around the small frame
+      document.querySelector('.viewport').classList.toggle('receded', !!entry.recede);
       botoneraVideo.play().catch(() => {});
       wakeVideoControls();
     }
 
     function closeVideo() {
       videoOverlay.classList.remove('visible');
+      document.querySelector('.viewport').classList.remove('receded');
       botoneraVideo.pause();
       clearTimeout(vcIdleTimer);
       videoControls.classList.remove('idle');
