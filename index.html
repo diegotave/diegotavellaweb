@@ -1080,7 +1080,22 @@
     // .password-mode in the stylesheet) - onRectClick/setButtonHover
     // below both bail out while locked, since the button sits underneath
     // the password UI anyway.
-    const PASSWORD = 'promo78*';
+    // SHA-256 of the real password, hex-encoded - keeps it out of plain
+    // view (a Ctrl+F in "view source" finds nothing readable) rather
+    // than storing it as a literal string. Doesn't make this gate
+    // actually secure (nothing sensitive sits behind it - it's the
+    // intro's own UX beat, see the block comment below), just not a
+    // one-glance reveal. See isCorrectPassword/sha256Hex just below.
+    const PASSWORD_HASH = '03666723c04d5f458f9691e358adc726277b674022817cc79b40234a5a76b889';
+    const PASSWORD_LENGTH = 8; // 'promo78*'.length - safe to reveal on its own, doesn't help crack the hash
+    async function sha256Hex(text) {
+      const bytes = new TextEncoder().encode(text);
+      const digestBuf = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digestBuf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function isCorrectPassword(value) {
+      return (await sha256Hex(value)) === PASSWORD_HASH;
+    }
     let passwordUnlocked = false;
     // stays false for a beat after passwordUnlocked itself flips true -
     // the password box and the forming logo are two separate objects
@@ -1132,20 +1147,30 @@
       }, SHAKE_MS);
     }
 
+    // hashing is async (Web Crypto), so a fast typist can have more than
+    // one check in flight at once - passwordCheckToken tags each one
+    // with the keystroke that triggered it, so a check that resolves
+    // late (after a newer keystroke already fired its own) never acts
+    // on stale input
+    let passwordCheckToken = 0;
     passwordInput.addEventListener('input', () => {
       const value = passwordInput.value;
       passwordMask.textContent = '*'.repeat(value.length);
-      if (value === PASSWORD) {
-        unlockPassword();
-        return;
-      }
-      // waits until one past PASSWORD's own length before flagging it
-      // wrong, rather than shaking on whichever keystroke first breaks
-      // the prefix match - less twitchy, and doesn't telegraph exactly
-      // how many characters were actually right
-      if (value.length >= PASSWORD.length + 1) {
-        shakeAndClearPassword();
-      }
+      const token = ++passwordCheckToken;
+      isCorrectPassword(value).then((correct) => {
+        if (token !== passwordCheckToken) return;
+        if (correct) {
+          unlockPassword();
+          return;
+        }
+        // waits until one past PASSWORD_LENGTH before flagging it wrong,
+        // rather than shaking on whichever keystroke first breaks the
+        // prefix match - less twitchy, and doesn't telegraph exactly how
+        // many characters were actually right
+        if (value.length >= PASSWORD_LENGTH + 1) {
+          shakeAndClearPassword();
+        }
+      });
     });
 
     // Enter or a click on the field also submits directly - mainly
@@ -1154,11 +1179,12 @@
     // it's not wrong yet, just unfinished
     function trySubmitPassword() {
       if (passwordUnlocked) return;
-      if (passwordInput.value === PASSWORD) {
-        unlockPassword();
-      } else {
-        shakeAndClearPassword();
-      }
+      const token = ++passwordCheckToken;
+      isCorrectPassword(passwordInput.value).then((correct) => {
+        if (token !== passwordCheckToken) return;
+        if (correct) unlockPassword();
+        else shakeAndClearPassword();
+      });
     }
     passwordInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') trySubmitPassword();
