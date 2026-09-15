@@ -76,6 +76,7 @@
     transform: translate(-50%, -50%);
     background: #80dfff; /* lighter, more blue/less green than plain cyan */
     overflow: hidden;
+    contain: layout paint;
     display: none;
   }
   #rect2.visible {
@@ -125,6 +126,16 @@
        video ever paints over it), tracking every width/height/
        border-radius animation with no extra per-video math needed */
     overflow: hidden;
+    /* this box's own width/height/border-radius are keyframed every
+       frame for most of the intro (see buildStage in the script) while
+       clipping two playing videos - layout containment stops that from
+       forcing the browser to re-check layout of anything outside this
+       box (it's absolutely positioned with a fixed left/top, so nothing
+       outside legitimately depends on its size anyway), and paint
+       containment scopes repaint to this box's own bounds instead of
+       the full 1920x1080 .canvas layer it sits inside. Both are free -
+       overflow:hidden already clips the same way contain:paint would. */
+    contain: layout paint;
   }
   /* invisible hit-area, 10% bigger than the button in both dimensions
      and centered the same way, so hovering just outside the visible
