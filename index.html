@@ -795,6 +795,25 @@
   </div>
 
   <script>
+    // touch/coarse-pointer devices (phones, tablets) get the animation
+    // durations below compressed by this factor - same code path, same
+    // easing/geometry as desktop, just compressed into far fewer
+    // expensive frames. This matters because most of this file's motion
+    // (see DURATION below in particular) drives #rect's width/height/
+    // border-radius directly rather than transform:scale (deliberately -
+    // see .rect's own CSS comment on why), which forces a real layout
+    // recalculation on every single frame for as long as it runs; a
+    // Retina laptop shrugs that off, but a mid-range Android tablet's
+    // CPU visibly drops frames over the ~2s this used to run at full
+    // length. Shrinking the duration doesn't touch the per-frame cost,
+    // but it cuts how many of those expensive frames a visitor ever
+    // sits through, which is what actually reads as "choppy". Left at 1
+    // on fine-pointer (mouse/trackpad) devices, where it's unnecessary -
+    // only applied to constants that are pure WAAPI el.animate()
+    // durations (not ones mirrored by a fixed CSS transition-duration
+    // elsewhere, which scaling here would just desync).
+    const MOTION_SCALE = window.matchMedia('(pointer: coarse)').matches ? 0.15 : 1;
+
     const canvas = document.querySelector('.canvas');
 
     // last known real cursor position - :hover isn't reliable for the
@@ -1049,7 +1068,7 @@
     // border-radius keyframes are AE roundness + half the 2px stroke
     // (AE insets its stroke, CSS border-radius doesn't) so the shape's
     // outer corner matches.
-    const DURATION = 2202; // ms - matches the AE comp's own timing (29.97fps)
+    const DURATION = 2202 * MOTION_SCALE; // ms - matches the AE comp's own timing (29.97fps), scaled by MOTION_SCALE on touch devices
     const OFFSETS = [0, 0.1515, 0.5, 0.7727, 1];
 
     // rect's own stroke width once pressed (see press.finished) - reused
@@ -1072,7 +1091,7 @@
     // playCenterTagline's own reveal and collapseCenterTagline's hide (the
     // same slide, played in reverse) can never drift out of matching
     // speeds from an edit to just one of them
-    const TAGLINE_SWAP_MS = 800;
+    const TAGLINE_SWAP_MS = 800 * MOTION_SCALE;
 
     // "botonera videos" forming/un-forming durations - shared so the
     // center "+"'s own arm shortening/growing (collapseCenterTagline/
@@ -1081,8 +1100,8 @@
     // (restoreCenterTagline's own push-out), instead of the arms settling
     // on their own separate timeline (previously the CSS transition's own
     // fixed 1.4s) and visibly finishing later than everything else.
-    const BOTONERA_FORM_MS = 600;
-    const BOTONERA_UNFORM_MS = 400;
+    const BOTONERA_FORM_MS = 600 * MOTION_SCALE;
+    const BOTONERA_UNFORM_MS = 400 * MOTION_SCALE;
 
     // "button" press: rect starts 10% bigger than its BASE_WIDTHS[0]
     // rest size, solid black, logo inverted white (see .rect and
@@ -2052,8 +2071,8 @@
     // plateau a hair under its target). Never overlaps the brackets since
     // its slide distance (260px) is a fixed, modest fraction of the much
     // larger gap the brackets end up sitting at.
-    const TAGLINE_DELAY = 300; // ms, "un poco despues" of the rect settling
-    const TAGLINE_EARLY_MS = 1000; // ms - fires this much sooner than that, so it isn't waiting on the rect's own hold tail
+    const TAGLINE_DELAY = 300 * MOTION_SCALE; // ms, "un poco despues" of the rect settling
+    const TAGLINE_EARLY_MS = 1000 * MOTION_SCALE; // ms - fires this much sooner than that, so it isn't waiting on the rect's own hold tail
     let taglineTimeoutId = null;
     let plusSpinTimeoutId = null;
     let plusLoopIntervalId = null;
@@ -2369,7 +2388,7 @@
       // cut arrives almost immediately, reading as a hard cut instead of a
       // slide. Slower gives the eye time to actually see it travel before
       // that cut, even though the cut itself is still there.
-      const RIGHT_HIDE_MS = 1300;
+      const RIGHT_HIDE_MS = 1300 * MOTION_SCALE;
       const rightHideOpts = { duration: RIGHT_HIDE_MS, easing: 'ease', fill: 'forwards' };
       // same forced clip-path reveal-order fix as rightSwapAnim, run
       // backwards - see playCenterTagline's own comment on why this can't
@@ -2580,7 +2599,7 @@
       // the label's own center, since .botonera-index is already
       // positioned with translate(-50%,-50%), unaffected by font-size.
       const indexFontSize = barHeight * 0.9 * 0.75;
-      const INDEX_FADE_MS = 300;
+      const INDEX_FADE_MS = 300 * MOTION_SCALE;
       Promise.allSettled(barAnims.map((a) => a.finished)).then(() => {
         for (let i = 1; i <= 8; i++) {
           const label = document.createElement('div');
@@ -2721,7 +2740,7 @@
       // and rise back up from the 3vh drop collapseCenterTagline gave them
       const left = document.getElementById('tagline-left');
       const right = document.getElementById('tagline-right');
-      const swapOpts = { duration: 500, easing: 'ease', fill: 'forwards' };
+      const swapOpts = { duration: 500 * MOTION_SCALE, easing: 'ease', fill: 'forwards' };
       left.style.right = 'auto';
       const taglineDescendPx = (window.innerHeight * 0.03) / canvasScaleNow;
       const taglineTopDescended = parseFloat(getComputedStyle(left).top);
