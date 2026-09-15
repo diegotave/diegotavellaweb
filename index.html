@@ -812,7 +812,36 @@
     // only applied to constants that are pure WAAPI el.animate()
     // durations (not ones mirrored by a fixed CSS transition-duration
     // elsewhere, which scaling here would just desync).
-    const MOTION_SCALE = window.matchMedia('(pointer: coarse)').matches ? 0.15 : 1;
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const MOTION_SCALE = isCoarsePointer ? 0.15 : 1;
+
+    // the tagline<->botonera transformation (collapseCenterTagline /
+    // multiplyPlusIntoBars / restoreCenterTagline below) animates close
+    // to 20 elements' own left/top/width/clipPath at once - each one is
+    // cheap alone, but that many simultaneous layout-triggering
+    // animations is the heaviest single moment on the page, worse on a
+    // weak tablet CPU than even the rect's own overshoot. On touch
+    // devices this swaps those calls for an instant jump straight to
+    // the end-state geometry (set once, no per-frame layout cost) plus
+    // a short real opacity animation where the original had one -
+    // opacity is compositor-only, so it stays cheap regardless of how
+    // many elements fade at once. Desktop (fine pointer) is untouched -
+    // always takes the real el.animate() path below. Mimics just enough
+    // of the Animation interface (finished/commitStyles/cancel) for
+    // every call site here, which all either chain .finished.then(...)
+    // or await it via Promise.allSettled.
+    function lightAnimate(el, keyframes, opts) {
+      if (!isCoarsePointer) return el.animate(keyframes, opts);
+      const end = keyframes[keyframes.length - 1];
+      Object.keys(end).forEach((prop) => {
+        if (prop !== 'opacity') el.style[prop] = end[prop];
+      });
+      if (end.opacity === undefined) {
+        return { finished: Promise.resolve(), commitStyles() {}, cancel() {} };
+      }
+      const start = keyframes[0].opacity;
+      return el.animate([{ opacity: start !== undefined ? start : end.opacity }, { opacity: end.opacity }], opts);
+    }
 
     const canvas = document.querySelector('.canvas');
 
@@ -2377,7 +2406,7 @@
       const taglineTopEnd = taglineTopStart + descendPx;
 
       const hideOpts = { duration: TAGLINE_SWAP_MS, easing: 'ease', fill: 'forwards' };
-      const leftHideAnim = left.animate([
+      const leftHideAnim = lightAnimate(left, [
         { left: taglineLeftFinalX + 'px', top: taglineTopStart + 'px' },
         { left: taglineRightFinalX + 'px', top: taglineTopEnd + 'px' }
       ], hideOpts);
@@ -2393,7 +2422,7 @@
       // same forced clip-path reveal-order fix as rightSwapAnim, run
       // backwards - see playCenterTagline's own comment on why this can't
       // just be a plain CSS transition
-      const rightHideAnim = right.animate([
+      const rightHideAnim = lightAnimate(right, [
         { left: taglineRightFinalX + 'px', top: taglineTopStart + 'px', clipPath: 'inset(0 0% -20px 0)' },
         { left: taglineLeftFinalX + 'px', top: taglineTopEnd + 'px', clipPath: 'inset(0 100% -20px 0)' }
       ], rightHideOpts);
@@ -2525,23 +2554,23 @@
       bracketLeftThin.style.top = bracketTopStart + 'px';
       bracketRightThin.style.top = bracketTopStart + 'px';
 
-      const bracketLeftAnim = bracketLeft.animate([
+      const bracketLeftAnim = lightAnimate(bracketLeft, [
         { left: bracketLeftStart + 'px', top: bracketTopStart + 'px', opacity: 1 },
         { left: bracketLeftEnd + 'px', top: bracketTopEnd + 'px', opacity: 0 }
       ], opts);
-      const bracketRightAnim = bracketRight.animate([
+      const bracketRightAnim = lightAnimate(bracketRight, [
         { left: bracketRightStart + 'px', top: bracketTopStart + 'px', opacity: 1 },
         { left: bracketRightEnd + 'px', top: bracketTopEnd + 'px', opacity: 0 }
       ], opts);
-      const bracketLeftThinAnim = bracketLeftThin.animate([
+      const bracketLeftThinAnim = lightAnimate(bracketLeftThin, [
         { left: bracketLeftStart + 'px', top: bracketTopStart + 'px', opacity: 0 },
         { left: bracketLeftEnd + 'px', top: bracketTopEnd + 'px', opacity: GRAY_OPACITY }
       ], opts);
-      const bracketRightThinAnim = bracketRightThin.animate([
+      const bracketRightThinAnim = lightAnimate(bracketRightThin, [
         { left: bracketRightStart + 'px', top: bracketTopStart + 'px', opacity: 0 },
         { left: bracketRightEnd + 'px', top: bracketTopEnd + 'px', opacity: GRAY_OPACITY }
       ], opts);
-      const plusMoveAnim = plus.animate([
+      const plusMoveAnim = lightAnimate(plus, [
         { top: plusTopStart + 'px', opacity: 1 },
         { top: plusTopEnd + 'px', opacity: GRAY_OPACITY }
       ], opts);
@@ -2552,7 +2581,7 @@
       // rather than a recalculated percentage) or it'd drift off-center
       const armVStartWidth = parseFloat(getComputedStyle(armV).width);
       armVWidthPreThin = armVStartWidth;
-      const armVAnim = armV.animate([
+      const armVAnim = lightAnimate(armV, [
         { width: armVStartWidth + 'px', marginLeft: (-armVStartWidth / 2) + 'px' },
         { width: THIN_BAR_WIDTH + 'px', marginLeft: (-THIN_BAR_WIDTH / 2) + 'px' }
       ], opts);
@@ -2574,7 +2603,7 @@
           canvas.appendChild(bar);
           const startX = side < 0 ? bracketLeftInnerX : bracketRightInnerX;
           const targetX = 960 + side * gap * i;
-          const anim = bar.animate([
+          const anim = lightAnimate(bar, [
             { left: startX + 'px', top: barTopStart + 'px', transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
             { left: targetX + 'px', top: barTopEnd + 'px', transform: 'translate(-50%, -50%) scale(1)', opacity: GRAY_OPACITY }
           ], opts);
@@ -2652,7 +2681,7 @@
       document.querySelectorAll('.plus-multiply-bar').forEach((bar) => {
         const currentX = parseFloat(bar.style.left);
         const targetX = currentX < 960 ? bracketLeftInnerX : bracketRightInnerX;
-        const anim = bar.animate([
+        const anim = lightAnimate(bar, [
           { left: currentX + 'px', opacity: GRAY_OPACITY },
           { left: targetX + 'px', opacity: 0 }
         ], { duration: PUSH_MS, easing: 'ease', fill: 'forwards' });
@@ -2674,19 +2703,19 @@
         const bracketOpts = { duration: PUSH_MS, easing: 'ease', fill: 'forwards' };
         const bracketLeftThin = document.getElementById('bracket-left-thin');
         const bracketRightThin = document.getElementById('bracket-right-thin');
-        const blAnim = bracketLeft.animate([
+        const blAnim = lightAnimate(bracketLeft, [
           { left: bracketLeft.style.left, top: bracketLeft.style.top, opacity: 0 },
           { left: bracketLeftPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 1 }
         ], bracketOpts);
-        const brAnim = bracketRight.animate([
+        const brAnim = lightAnimate(bracketRight, [
           { left: bracketRight.style.left, top: bracketRight.style.top, opacity: 0 },
           { left: bracketRightPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 1 }
         ], bracketOpts);
-        const blThinAnim = bracketLeftThin.animate([
+        const blThinAnim = lightAnimate(bracketLeftThin, [
           { left: bracketLeftThin.style.left, top: bracketLeftThin.style.top, opacity: GRAY_OPACITY },
           { left: bracketLeftPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 0 }
         ], bracketOpts);
-        const brThinAnim = bracketRightThin.animate([
+        const brThinAnim = lightAnimate(bracketRightThin, [
           { left: bracketRightThin.style.left, top: bracketRightThin.style.top, opacity: GRAY_OPACITY },
           { left: bracketRightPreSpread + 'px', top: bracketTopPreDescend + 'px', opacity: 0 }
         ], bracketOpts);
@@ -2699,7 +2728,7 @@
       // center bar/"+" back to solid black and its own resting height,
       // and back up from the 10vh drop - same beat
       const plusRestoreOpts = { duration: PUSH_MS, easing: 'ease', fill: 'forwards' };
-      const plusColorAnim = plus.animate([
+      const plusColorAnim = lightAnimate(plus, [
         { top: plus.style.top, opacity: GRAY_OPACITY },
         { top: (plusTopPreDescend !== null ? plusTopPreDescend : parseFloat(plus.style.top)) + 'px', opacity: 1 }
       ], plusRestoreOpts);
@@ -2707,7 +2736,7 @@
       plusTopPreDescend = null;
       // and back to its own resting thickness from THIN_BAR_WIDTH
       if (armVWidthPreThin !== null) {
-        const armVRestoreAnim = armV.animate([
+        const armVRestoreAnim = lightAnimate(armV, [
           { width: armV.style.width, marginLeft: armV.style.marginLeft },
           { width: armVWidthPreThin + 'px', marginLeft: (-armVWidthPreThin / 2) + 'px' }
         ], plusRestoreOpts);
@@ -2745,11 +2774,11 @@
       const taglineDescendPx = (window.innerHeight * 0.03) / canvasScaleNow;
       const taglineTopDescended = parseFloat(getComputedStyle(left).top);
       const taglineTopRest = taglineTopDescended - taglineDescendPx;
-      const leftAnim = left.animate([
+      const leftAnim = lightAnimate(left, [
         { left: taglineRightFinalX + 'px', top: taglineTopDescended + 'px' },
         { left: taglineLeftFinalX + 'px', top: taglineTopRest + 'px' }
       ], swapOpts);
-      const rightAnim = right.animate([
+      const rightAnim = lightAnimate(right, [
         { left: taglineLeftFinalX + 'px', top: taglineTopDescended + 'px', clipPath: 'inset(0 100% -20px 0)' },
         { left: taglineRightFinalX + 'px', top: taglineTopRest + 'px', clipPath: 'inset(0 0% -20px 0)' }
       ], swapOpts);
