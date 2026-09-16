@@ -96,6 +96,38 @@
   #rect2.visible {
     display: block;
   }
+  /* botonera hover preview: a random mid-video 5s clip (see
+     playBotoneraPreview), keyed through assets/images/crt-texture.svg as
+     an alpha matte (mask-image defaults to an image source's own alpha
+     channel, not luminance, so the texture's black-on-transparent tile
+     works directly as a matte - no separate luminance step needed) so it
+     reads as footage glimpsed through a scanned CRT screen rather than a
+     plain video rectangle. Hidden (opacity 0) whenever nothing's hovered,
+     so the celeste rect stays clean the rest of the time - see
+     playBotoneraPreview/stopBotoneraPreview. 40% opacity even while
+     showing, so it's a hint rather than a full video takeover. Same
+     width/height:100% + rect2's own overflow:hidden tracking as
+     onda-video/bg-video off their own parents. */
+  #botonera-preview-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    pointer-events: none;
+    filter: grayscale(1);
+    -webkit-mask-image: url('assets/images/crt-texture.svg');
+    mask-image: url('assets/images/crt-texture.svg');
+    -webkit-mask-repeat: repeat;
+    mask-repeat: repeat;
+    -webkit-mask-size: 64px 64px;
+    mask-size: 64px 64px;
+    transition: opacity 0.2s ease;
+  }
+  #botonera-preview-video.visible {
+    opacity: 0.2;
+  }
 
   /* Rectangulo Central: AE shape layer "RECTANGULO CENTRAL STROKE 2" -
      2px stroke, fill disabled (empty interior), layer Position fixed,
@@ -411,8 +443,8 @@
   /* filter: black ink on transparent, so invert() reads as solid white
      against the button's black fill - matches the button state above,
      swaps off at the same moment the fill does (see the press handling
-     in the script). blink-square is excluded (it's a plain magenta div,
-     not one of these sprites) since inverting it would turn it green.
+     in the script). blink-square is excluded (it's a plain div, not one
+     of these sprites) - inverting it would fight its own black fill.
      transition covers both properties in one rule - a second `transition`
      declaration for the same selector would replace this one outright
      instead of adding to it. */
@@ -427,7 +459,7 @@
      the same EDGE_MARGIN_Y above the rect's bottom edge that the wordmark
      sits below its top edge */
   #blink-square {
-    background: #f0f;
+    background: #000;
     display: none;
     clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
     /* clip-path isn't in this transition - animating a polygon morph
@@ -542,6 +574,92 @@
     opacity: 1;
   }
 
+  /* reference frame for the whole right-hand header readout - top/bottom
+     pinned to "Diego Tavella"'s own box (D's top to Tavella's bottom),
+     left/right computed in positionHeaderVideoInfo so the gap from the
+     box's own left edge out to the D's outer vertical line mirrors the
+     gap from the number's right edge out to the rect's own right edge -
+     i.e. both sides of the header carry the same outer margin, just
+     measured from opposite ends. Solid gray for now to actually see it;
+     this becomes invisible (background: transparent) once the numbers
+     check out. */
+  #header-box {
+    position: absolute;
+    /* invisible now that the layout it drives has been checked against
+       it - kept (element + positioning both still run, see
+       positionHeaderVideoInfo) rather than removed, since the same
+       header/body/footer split is going to anchor the vertical/mobile
+       layout later. */
+    background: transparent;
+    pointer-events: none;
+  }
+  /* same left/right as #header-box (see positionHeaderVideoInfo) - top is
+     rect2's (the celeste rect) own live top edge, bottom is the globe's
+     north pole (see GLOBE_NORTH_POLE_FRACTION there for where that
+     actually comes from). Green just to tell the two boxes apart at a
+     glance while both are visible for review. */
+  #body-box {
+    position: absolute;
+    background: transparent; /* see #header-box's own comment */
+    pointer-events: none;
+  }
+  /* same left/right as #header-box/#body-box; top/height match the
+     back-triangle's (#blink-square) own live box exactly - see
+     positionHeaderVideoInfo. Magenta just to tell the three boxes apart
+     at a glance while all are visible for review. */
+  #footer-box {
+    position: absolute;
+    background: transparent; /* see #header-box's own comment */
+    pointer-events: none;
+  }
+
+  /* per-video header readout ("EDITION / title / tag" + big index number) -
+     revealed on hover of a "botonera videos" index button (see
+     multiplyPlusIntoBars' hover-zone listeners), mirroring "Diego
+     Tavella" on the header's other side. top/right/font-sizes are all set
+     in JS off the header's own live geometry (logo-text's height for
+     vertical centering + the number's size, the triangle's live right
+     edge for the number's own right edge) rather than fixed here, since
+     both depend on the rect's current widened size. */
+  .header-video-info {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  .header-video-info.visible {
+    opacity: 1;
+  }
+  .header-video-info-lines {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: right;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #fff;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .header-video-info-edition {
+    font-weight: 100;
+    letter-spacing: 0.08em;
+  }
+  .header-video-info-title {
+    font-weight: 700;
+  }
+  .header-video-info-tag {
+    font-weight: 400;
+  }
+  .header-video-info-number {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+  }
+
   /* center tagline: a "+" at screen center, "Video Editor" sliding out
      to its left and "motion graphics" to its right, in Helvetica Thin.
      Text height is 85% of the bracket's own ink height (105px), and
@@ -616,11 +734,15 @@
      the 8 gaps in "botonera videos" (bracket-bar1, bar1-bar2, ...,
      bar7-bracket) - see multiplyPlusIntoBars. Centered on the same line
      as the bars themselves (translate(-50%,-50%) at their own top), sized
-     and colored/animated identically. Each one is its own button: width/
-     height are set in JS (10% past the number's own measured size on
-     each side, height pinned to the bars' own height instead), so this
-     rule only carries the constant look - magenta fill + bold number on
-     hover, rounded 2px to match the bars/brackets' own weight. */
+     and colored/animated identically. Each one is purely the VISIBLE chip
+     (10% past the number's own measured size on each side, height pinned
+     to the bars' own height instead) - pointer-events:none, since the
+     actual hit-target is the wider .botonera-index-hover-zone sibling
+     covering the whole gap (see multiplyPlusIntoBars); that zone toggles
+     .forced-hover here in JS rather than relying on real :hover, since
+     the chip itself never receives the pointer. This rule carries the
+     constant look - black fill + bold number when active, rounded 2px to
+     match the bars/brackets' own weight. */
   .botonera-index {
     position: absolute;
     transform: translate(-50%, -50%);
@@ -634,17 +756,17 @@
     color: #000;
     white-space: nowrap;
     user-select: none;
-    cursor: pointer;
+    pointer-events: none;
     transition: background-color 0.15s ease, border-radius 0.15s ease, transform 0.15s ease, color 0.15s ease;
   }
-  .botonera-index:hover {
+  .botonera-index:hover, .botonera-index.forced-hover {
     /* the fade-in animation commits an inline opacity: 0.6 (GRAY_OPACITY)
        that sticks around forever (fill: 'forwards') - inline style always
        outranks a class rule regardless of :hover, so without !important
-       here that 0.6 would wash out the white text and magenta background
+       here that 0.6 would wash out the white text and black background
        back down to a grayish, half-see-through look */
     opacity: 1 !important;
-    background: rgba(255, 0, 255, 1);
+    background: #000;
     font-weight: 700;
     color: #fff;
     border-radius: 4px;
@@ -652,6 +774,16 @@
        elsewhere in this file), added onto the same translate(-50%,-50%)
        so the button's own center point never shifts */
     transform: translate(-50%, -50%) scaleX(1.2);
+  }
+  /* the actual hit-target for a botonera index button - spans the full
+     gap between its two neighboring bars (or bar/bracket), not just the
+     number chip's own small box, per the "hover area = width between the
+     bars" spec. Same center point/anchor as its .botonera-index chip
+     (translate(-50%,-50%) at the same left/top), just wider/invisible. */
+  .botonera-index-hover-zone {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
   }
   /* "Video Editor"/"motion graphics" don't fade in - opacity has no
      transition here (it's absent from this rule's own `transition`, which
@@ -712,7 +844,7 @@
     clip-path: polygon(965px 0, 1920px 0, 1920px 1080px, 965px 1080px);
   }
 
-  /* ondamagenta.webm: hover-only preview on the blink-square/triangle hit
+  /* ondablanca.webm: hover-only preview on the blink-square/triangle hit
      zone (see its mouseenter/mouseleave listeners in the script) - the
      second-click target that only exists after the first click, once the
      rect is sitting at its overshoot size. A child of #rect2 (the celeste
@@ -721,9 +853,9 @@
      automatically, no JS sizing needed, same technique #bg-video already
      uses off #rect itself. object-fit:cover keeps the footage itself from
      ever stretching even as rect2's own aspect ratio changes (square ->
-     16:9). 60% opacity, not a fade - the webm's own alpha channel handles
-     transparency, this opacity is just an intentional overall dimming on
-     top of that. */
+     16:9). Full opacity - the webm's own alpha channel already handles
+     transparency, so .visible just needs to reveal it, no extra dimming
+     on top. */
   #onda-video {
     position: absolute;
     inset: 0;
@@ -735,7 +867,7 @@
     transition: opacity 0.2s ease;
   }
   #onda-video.visible {
-    opacity: 0.45;
+    opacity: 1;
   }
 
   /* fdo_invloop.webm: revealed the moment "Video Editor"/"motion graphics"
@@ -781,7 +913,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.82);
+    background: #fff;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -793,6 +925,7 @@
   .video-overlay .player {
     position: relative;
     overflow: hidden;
+    border: 3px solid #000;
     border-radius: 10px;
     box-shadow: 10px 10px 60px rgba(0, 0, 0, 0.8);
     background: #000;
@@ -937,13 +1070,15 @@
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.35);
   }
+
 </style>
 </head>
 <body>
   <div class="viewport">
     <div class="canvas">
       <div id="rect2">
-        <video id="onda-video" src="assets/videos/ondamagenta.webm" muted playsinline></video>
+        <video id="onda-video" src="assets/videos/ondablanca.webm" muted playsinline></video>
+        <video id="botonera-preview-video" muted loop playsinline></video>
       </div>
       <div id="rect-hover-zone"></div>
       <div class="rect" id="rect">
@@ -974,6 +1109,17 @@
       <div class="logo-sprite" id="blink-square"></div>
       <div id="blink-square-hover-zone"></div>
       <div id="header-line"></div>
+      <div id="header-box"></div>
+      <div id="body-box"></div>
+      <div id="footer-box"></div>
+      <div class="header-video-info" id="header-video-info">
+        <div class="header-video-info-lines" id="header-video-info-lines">
+          <div class="header-video-info-edition" id="header-video-info-edition">EDITION</div>
+          <div class="header-video-info-title" id="header-video-info-title"></div>
+          <div class="header-video-info-tag" id="header-video-info-tag"></div>
+        </div>
+        <div class="header-video-info-number" id="header-video-info-number"></div>
+      </div>
 
       <div class="tagline" id="tagline-plus"><div class="plus-arm plus-arm-h"></div><div class="plus-arm plus-arm-v"></div></div>
       <div class="tagline-window" id="tagline-left-window">
@@ -1000,6 +1146,15 @@
       </div>
     </div>
   </div>
+
+  <!-- TEMP/provisional - Photoshop-style draggable ruler guides, not part
+       of the design. Drag off the top/left strips to drop a horizontal/
+       vertical guide; drag an existing guide to move it, double-click to
+       delete one, Escape clears all. See setupRulerGuides in the script. -->
+  <div id="ruler-top"></div>
+  <div id="ruler-left"></div>
+  <div id="ruler-guides"></div>
+
 
   <script>
     // touch/coarse-pointer devices (phones, tablets) get the animation
@@ -1385,6 +1540,17 @@
     // centered, instead of assuming the comp's own (960,540)
     const RECT_CENTER_X = 960;
     const RECT_CENTER_Y = 539.5;
+
+    // globe (#bg-video, fdo_invloop.webm) reveal geometry - see
+    // advanceFromOvershoot's own bodyBoxCenterY calc and
+    // positionHeaderVideoInfo's #body-box for the two places this is
+    // used. Measured directly off the source video: the sphere spans y
+    // 317-751 of its native 1920x1080 (center ~540, i.e. frame-center,
+    // matching "centered" by design) - the north pole (317) sits 317/1080
+    // down from the video's own top BEFORE playCenterTagline's own
+    // +50%-of-rect-height reveal shift, so (317+540)/1080 down from
+    // rect's own top AFTER it (see either usage for the full reasoning).
+    const GLOBE_NORTH_POLE_FRACTION = (317 + 540) / 1080;
 
     // base AE values - index 2/3 is the overshoot hold, "the second
     // instance / when it's square". Index 0/1 (the resting size) is the
@@ -1772,6 +1938,16 @@
         txtAnim.commitStyles();
         txtAnim.cancel();
       });
+      // header readout's own geometry depends on both the triangle's and
+      // "Diego Tavella"'s FINAL rects (see positionHeaderVideoInfo) - reading
+      // them here, gated on all three of this stage's own animations, not
+      // from multiplyPlusIntoBars (which runs on collapseCenterTagline's
+      // separate, shorter timeline and was finishing well before this
+      // stage's own widen/slide was actually done, reading the triangle
+      // mid-flight and landing the number way short of its true edge)
+      Promise.allSettled([sqAnim.finished, hzAnim.finished, txtAnim.finished]).then(() => {
+        positionHeaderVideoInfo();
+      });
 
       // header divider + fill both sit INSET by rect's own stroke width on
       // every side they share with it (left/right/top), so that stroke
@@ -1793,10 +1969,6 @@
       // an inset rect nested BORDER_WIDTH inside a radius-R corner reads
       // correctly as concentric with a radius of (R - BORDER_WIDTH)
       const fillRadius = Math.max(0, radii[3] - RECT_BORDER_WIDTH);
-
-      // runs on its own timeline (center tagline, unrelated to rect's own
-      // widen geometry) - see collapseCenterTagline
-      collapseCenterTagline();
 
       line.style.top = lineStartTop + 'px';
       line.style.width = widthInsetStart + 'px';
@@ -1856,6 +2028,25 @@
       const rect2TargetTopEdgeY = lineEndTop + rect2Gap; // same gap, now measured from the header's own finished bottom edge
       const rect2TargetHeight = rect2BottomY - rect2TargetTopEdgeY;
       const rect2TargetTop = rect2BottomY - rect2TargetHeight / 2;
+
+      // "caja body"'s own vertical center (rect2's target top edge down to
+      // the globe's north pole, halved) is what the botonera row (bars +
+      // brackets, formed below via collapseCenterTagline ->
+      // multiplyPlusIntoBars) centers itself on - computed here,
+      // analytically, off this stage's own TARGET values rather than a
+      // live measurement, since collapseCenterTagline fires synchronously
+      // on its own (shorter) timeline and would otherwise read rect2/
+      // rect mid-animation (the same mistake positionHeaderVideoInfo's own
+      // comment describes for the triangle). heights[3] is rect's own
+      // height for this whole stage (heights[4]===heights[3] - only width
+      // grows), so rectTop+heights[3] is already its true final bottom.
+      const globeNorthPoleY = rectTop + GLOBE_NORTH_POLE_FRACTION * heights[3];
+      const bodyBoxCenterY = (rect2TargetTopEdgeY + globeNorthPoleY) / 2;
+
+      // runs on its own timeline (center tagline, unrelated to rect's own
+      // widen geometry) - see collapseCenterTagline
+      collapseCenterTagline(bodyBoxCenterY);
+
       const rect2Anim = rect2.animate([
         { top: rect2StartTop + 'px', width: rect2StartWidth + 'px', height: rect2StartHeight + 'px', borderRadius: `${rect2StartRadius}px ${rect2StartRadius}px ${rect2StartRadius}px ${rect2StartRadius}px` },
         { top: rect2TargetTop + 'px', width: rect2TargetWidth + 'px', height: rect2TargetHeight + 'px', borderRadius: `0px 0px ${rect2StartRadius}px ${rect2StartRadius}px` }
@@ -2618,7 +2809,7 @@
     // (the same shape #tagline-plus.spin already defines, just held once
     // rather than looped), and that bar "multiplies" into 7 (see
     // multiplyPlusIntoBars) - all three starting together, right now.
-    function collapseCenterTagline() {
+    function collapseCenterTagline(bodyBoxCenterY) {
       // stop the endless "+"<->bar flourish first - it'd otherwise keep
       // firing underneath (and fighting) this one-way sequence
       if (plusSpinTimeoutId) { clearTimeout(plusSpinTimeoutId); plusSpinTimeoutId = null; }
@@ -2701,7 +2892,7 @@
       // the bars/bracket-spread fire in this same instant too, so text
       // exit, "+"->"|", and the bars entering all read as one motion
       // rather than one waiting on the last
-      multiplyPlusIntoBars();
+      multiplyPlusIntoBars(bodyBoxCenterY);
     }
 
     // the settled "|" multiplies into a row of 7: 3 new bars to its left,
@@ -2716,7 +2907,7 @@
     // bars target their POST-spread positions (not today's), so
     // everything fans out and settles together in one move instead of the
     // bars landing first and the brackets catching up around them after.
-    function multiplyPlusIntoBars() {
+    function multiplyPlusIntoBars(bodyBoxCenterY) {
       const plus = document.getElementById('tagline-plus');
       const armV = plus.querySelector('.plus-arm-v');
       // getComputedStyle's own height is armV's un-transformed box size -
@@ -2750,12 +2941,15 @@
       const bracketRightEnd = bracketRightStart + spreadPx;
       const gap = ((bracketRightInnerX + spreadPx) - (bracketLeftInnerX - spreadPx)) / 8;
 
-      // whole block (brackets, center bar, the 6 new bars) drops 3vh in
-      // this same move - a plain uniform shift applied to every element's
-      // own current top, so whatever relative alignment they already have
-      // (brackets anchored by their top edge, bars/plus centered via
-      // translate(-50%,-50%)) is preserved exactly, just moved down
-      const descendPx = (window.innerHeight * 0.03) / canvasScaleNow;
+      // whole block (brackets, center bar, the 6 new bars) drops to
+      // "caja body"'s own vertical center (bodyBoxCenterY, computed
+      // analytically in advanceFromOvershoot - see its own comment) - a
+      // plain uniform shift applied to every element's own current top,
+      // so whatever relative alignment they already have (brackets
+      // anchored by their top edge, bars/plus centered via
+      // translate(-50%,-50%)) is preserved exactly, just moved down by
+      // whatever delta actually lands the bars' own center line there
+      const descendPx = bodyBoxCenterY - RECT_CENTER_Y;
       const bracketTopStart = parseFloat(getComputedStyle(bracketLeft).top);
       const bracketTopEnd = bracketTopStart + descendPx;
       bracketTopPreDescend = bracketTopStart;
@@ -2864,24 +3058,49 @@
       const INDEX_FADE_MS = 300 * MOTION_SCALE;
       Promise.allSettled(barAnims.map((a) => a.finished)).then(() => {
         for (let i = 1; i <= 8; i++) {
+          const cx = 960 + (i - 4.5) * gap;
           const label = document.createElement('div');
           label.className = 'botonera-index';
           label.textContent = String(i).padStart(2, '0');
           label.style.fontSize = indexFontSize + 'px';
-          label.style.left = (960 + (i - 4.5) * gap) + 'px';
+          label.style.left = cx + 'px';
           label.style.top = barTopEnd + 'px';
           canvas.appendChild(label);
-          // each button's own hit/hover area: 10% past the number's own
-          // measured width on each side (offsetWidth here is still its
-          // natural, shrink-to-fit size - width isn't set yet), height
-          // pinned to the bars' own height rather than a similar 10% pad
+          // the chip's own visible box: 10% past the number's own measured
+          // width on each side (offsetWidth here is still its natural,
+          // shrink-to-fit size - width isn't set yet), height pinned to the
+          // bars' own height rather than a similar 10% pad
           const numberWidth = label.offsetWidth;
           label.style.width = (numberWidth * 1.2) + 'px';
           label.style.height = barHeight + 'px';
+
+          // the actual hit-target: spans this whole gap (bar-to-bar, or
+          // bar-to-bracket at the two ends), not just the chip - see
+          // .botonera-index-hover-zone. Drives the chip's .forced-hover
+          // (real :hover never fires on the chip - it's pointer-events:none)
+          // plus the header readout and the click-to-open.
+          const zone = document.createElement('div');
+          zone.className = 'botonera-index-hover-zone';
+          zone.style.left = cx + 'px';
+          zone.style.top = barTopEnd + 'px';
+          zone.style.width = gap + 'px';
+          zone.style.height = barHeight + 'px';
+          canvas.appendChild(zone);
           // opens the matching video (see openVideo/BOTONERA_VIDEOS
           // further below) - stopPropagation isn't needed here, nothing
-          // else in .canvas listens for clicks on these labels
-          label.addEventListener('click', () => openVideo(i - 1));
+          // else in .canvas listens for clicks in this area
+          zone.addEventListener('click', () => openVideo(i - 1, label));
+          zone.addEventListener('mouseenter', () => {
+            label.classList.add('forced-hover');
+            showHeaderVideoInfo(i - 1);
+            playBotoneraPreview(i - 1);
+          });
+          zone.addEventListener('mouseleave', () => {
+            label.classList.remove('forced-hover');
+            hideHeaderVideoInfo();
+            stopBotoneraPreview();
+          });
+
           const anim = label.animate([{ opacity: 0 }, { opacity: GRAY_OPACITY }], { duration: INDEX_FADE_MS, easing: 'ease', fill: 'forwards' });
           anim.finished.then(() => {
             anim.commitStyles();
@@ -2889,6 +3108,142 @@
           });
         }
       });
+    }
+
+    // header readout's own geometry: vertical center matches "Diego
+    // Tavella"'s (#logo-text's live top/height, committed by
+    // advanceFromOvershoot), number sized to that same height, right edge
+    // lined up with the back-triangle's own live right edge (#blink-square,
+    // also committed by advanceFromOvershoot by the time this runs - see
+    // its call site) so both sides of the header read as a matched pair.
+    function positionHeaderVideoInfo() {
+      const headerInfoEl = document.getElementById('header-video-info');
+      const headerInfoNumberEl = document.getElementById('header-video-info-number');
+      const txtEl = document.getElementById('logo-text');
+      const txtTop = parseFloat(txtEl.style.top);
+      const txtLeft = parseFloat(txtEl.style.left);
+      const txtHeight = parseFloat(txtEl.style.height);
+      // txt.style.top/height are the SPRITE CROP's own box, not the ink's -
+      // the crop is padded 4px on every free edge (see syncLogoToRect's
+      // own crop-padding comment: it's why txt.style.top itself already
+      // gets a -4 there), so the true ink spans 4px in from the crop's top
+      // and 4px up from its bottom - the D's own cap-top and Tavella's own
+      // baseline. Scaled by the wordmark's current size/TEXT_BASE_HEIGHT
+      // since that 4px is a fixed feature of the source PNG, which
+      // stretches right along with everything else once TEXT_END_SCALE
+      // kicks in. Everything below uses this ink height/top, not the raw
+      // sprite ones, so the number/lines/box all key off the same "Diego
+      // Tavella" height as what's actually visible.
+      const cropPadding = 4 * (txtHeight / TEXT_BASE_HEIGHT);
+      const inkTop = txtTop + cropPadding;
+      const inkHeight = txtHeight - cropPadding * 2;
+
+      const triangleEl = document.getElementById('blink-square');
+      const canvasScaleForHeader = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasLeftForHeader = canvas.getBoundingClientRect().left;
+      const triangleRightX = (triangleEl.getBoundingClientRect().right - canvasLeftForHeader) / canvasScaleForHeader;
+      headerInfoEl.style.top = (inkTop + inkHeight / 2) + 'px';
+      headerInfoEl.style.transform = 'translateY(-50%)';
+      headerInfoEl.style.right = (1920 - triangleRightX) + 'px';
+      // font-size = inkHeight only makes the number's own EM BOX that
+      // tall, not its visible ink - a digit's cap-height is always some
+      // fraction of the em, never the full em, so that alone reads
+      // shorter than header-box no matter what. NUMBER_CAP_HEIGHT_RATIO
+      // is Helvetica Neue Bold's own cap-height-to-em-size ratio
+      // (~0.72 - a documented font metric, not something derivable from
+      // layout), so dividing by it inflates the font-size until the
+      // CAP-HEIGHT itself - the part that actually reads as the digit's
+      // height - equals inkHeight. No explicit `height` on this element
+      // on purpose: let it size to its own (now-correct) content instead
+      // of fighting a fixed box the bigger glyph would just overflow.
+      const NUMBER_CAP_HEIGHT_RATIO = 0.72;
+      headerInfoNumberEl.style.fontSize = (inkHeight / NUMBER_CAP_HEIGHT_RATIO) + 'px';
+      // vertical nudge (+ the "01"-only horizontal one) lives in
+      // showHeaderVideoInfo instead, since it depends on which number is
+      // actually showing
+      // the 3 lines block matches the number's own height (see the block
+      // comment above) - font-sizes scaled up proportionally to fill it,
+      // the middle (title) line bigger than EDITION/the tag, .lines' own
+      // justify-content:space-between spreading the 3 across that height
+      const linesEl = document.getElementById('header-video-info-lines');
+      linesEl.style.height = inkHeight + 'px';
+      const editionEl = document.getElementById('header-video-info-edition');
+      const tagEl = document.getElementById('header-video-info-tag');
+      editionEl.style.fontSize = (inkHeight * 0.17) + 'px';
+      document.getElementById('header-video-info-title').style.fontSize = (inkHeight * 0.4) + 'px';
+      tagEl.style.fontSize = (inkHeight * 0.17) + 'px';
+      // doubled in place via transform (not a bigger font-size, which
+      // would reflow the space-between layout above) - each anchored on
+      // its own right vertex (where it already sits flush, text-align
+      // being right) so it grows toward the title in the middle instead
+      // of drifting off to either side: EDITION grows down-left from its
+      // own top-right corner, the tag line grows up-left from its own
+      // bottom-right corner.
+      // EDITION 20% smaller than the original double (2 * 0.8 = 1.6), the
+      // tag line 10% smaller (2 * 0.9 = 1.8) - same anchors as before
+      editionEl.style.transform = 'scale(1.6)';
+      editionEl.style.transformOrigin = 'top right';
+      tagEl.style.transform = 'scale(1.8)';
+      tagEl.style.transformOrigin = 'bottom right';
+      // one named weight step up: Helvetica Neue's own UltraLight(100)
+      // ->Thin(200) - 115 (a straight +15% of 100) turned out to render
+      // identically to 100, since Helvetica Neue isn't a variable font
+      // and only actually ships distinct files at these named steps.
+      // Still well under the tag line's own 400 (regular), title's own
+      // 700 (bold) - the weight order (thin < regular < bold, top to
+      // bottom) stays intact.
+      editionEl.style.fontWeight = '200';
+
+      // reference box (see #header-box) - flush with the D's own
+      // outer left edge (txtLeft) on the left, and with the number's own
+      // right edge (triangleRightX) on the right - the box itself carries
+      // no extra margin of its own; the thing actually being compared for
+      // symmetry is the box's OUTER gaps (rect-left-to-D vs
+      // rect-right-to-box, i.e. txtLeft-rectLeftEdge vs
+      // rectRightEdge-triangleRightX), not a margin baked into the box.
+      const box = document.getElementById('header-box');
+      box.style.top = inkTop + 'px';
+      box.style.height = inkHeight + 'px';
+      box.style.left = txtLeft + 'px';
+      box.style.width = (triangleRightX - txtLeft) + 'px';
+
+      // caja body - same left/right as caja header (per spec, "obvious":
+      // matches header-box exactly). Top is rect2's (celeste rect) own
+      // live top edge; bottom is the globe's north pole (see
+      // GLOBE_NORTH_POLE_FRACTION's own definition for the reveal-geometry
+      // reasoning - this is the same fraction advanceFromOvershoot uses to
+      // center the botonera row on this same box, just read live here
+      // instead of computed analytically).
+      const canvasTopForHeader = canvas.getBoundingClientRect().top;
+      const rectEl = document.getElementById('rect');
+      const rectBox = rectEl.getBoundingClientRect();
+      const rectTopY = (rectBox.top - canvasTopForHeader) / canvasScaleForHeader;
+      const rectHeightPx = rectBox.height / canvasScaleForHeader;
+      const globeNorthPoleY = rectTopY + GLOBE_NORTH_POLE_FRACTION * rectHeightPx;
+
+      const rect2El = document.getElementById('rect2');
+      // +1: getBoundingClientRect() on rect2 reads a hair above its own
+      // visible fill (sub-pixel rounding through the canvas scale
+      // conversion) - nudged down to actually sit flush with it
+      const rect2TopY = (rect2El.getBoundingClientRect().top - canvasTopForHeader) / canvasScaleForHeader + 1;
+
+      const bodyBox = document.getElementById('body-box');
+      bodyBox.style.left = txtLeft + 'px';
+      bodyBox.style.width = (triangleRightX - txtLeft) + 'px';
+      bodyBox.style.top = rect2TopY + 'px';
+      bodyBox.style.height = (globeNorthPoleY - rect2TopY) + 'px';
+
+      // caja footer - same left/right as the other two, height/top taken
+      // directly off the back-triangle's (#blink-square) own live box, so
+      // it's exactly as tall as the triangle and sits exactly where it is
+      const triangleBox = triangleEl.getBoundingClientRect();
+      const triangleTopY = (triangleBox.top - canvasTopForHeader) / canvasScaleForHeader;
+      const triangleHeightPx = triangleBox.height / canvasScaleForHeader;
+      const footerBox = document.getElementById('footer-box');
+      footerBox.style.left = txtLeft + 'px';
+      footerBox.style.width = (triangleRightX - txtLeft) + 'px';
+      footerBox.style.top = triangleTopY + 'px';
+      footerBox.style.height = triangleHeightPx + 'px';
     }
 
     // the back-triangle's own undo of the whole collapse/multiply
@@ -2926,11 +3281,15 @@
       });
 
       // index numbers just fade out in place (nothing to push toward -
-      // they don't belong to either side) and get removed
+      // they don't belong to either side) and get removed, along with
+      // their (invisible) hover-zones and the header readout they drove
       document.querySelectorAll('.botonera-index').forEach((label) => {
         const anim = label.animate([{ opacity: GRAY_OPACITY }, { opacity: 0 }], { duration: PUSH_MS, easing: 'ease', fill: 'forwards' });
         anim.finished.then(() => label.remove());
       });
+      document.querySelectorAll('.botonera-index-hover-zone').forEach((zone) => zone.remove());
+      hideHeaderVideoInfo();
+      stopBotoneraPreview();
 
       // brackets un-spread and rise back up to before multiplyPlusIntoBars
       // moved them, crossfading back from the thin stand-ins (currently
@@ -3090,6 +3449,9 @@
       // ever called on its own)
       document.querySelectorAll('.plus-multiply-bar').forEach((bar) => bar.remove());
       document.querySelectorAll('.botonera-index').forEach((label) => label.remove());
+      document.querySelectorAll('.botonera-index-hover-zone').forEach((zone) => zone.remove());
+      hideHeaderVideoInfo();
+      stopBotoneraPreview();
       [
         document.getElementById('bracket-left'), document.getElementById('bracket-right'),
         document.getElementById('bracket-left-thin'), document.getElementById('bracket-right-thin')
@@ -3192,15 +3554,104 @@
     // once - see the CSS comment on .video-overlay for why this sits
     // outside .canvas entirely.
     const BOTONERA_VIDEOS = [
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video1/video1reel.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video2/Multideportes.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4', frameH: 0.7, recede: true },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video4/video4.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video5/efda.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6/hltfoxviejo.mp4' },
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video9/video9.mp4', aspect: 'square', recede: true }, // "Visita"
-      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4' }
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video1/video1reel.mp4', startAt: 2, info: { edition: 'EDITION', title: 'Demo Reel', tag: '2026' } },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video2/Multideportes.mp4', info: { edition: 'EDITION', title: 'Multideportes ESPN', tag: 'TV PROMO' } },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4', frameH: 0.7, recede: true, info: { edition: 'EDITION', title: 'Titulo Video 3', tag: 'TIPO DE VIDEO' } },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video4/video4.mp4', cropTop: 10, cropBottom: 10, info: { edition: 'EDITION', title: 'Titulo Video 4', tag: 'TIPO DE VIDEO' } },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video5/efda.mp4', info: { edition: 'EDITION', title: 'Titulo Video 5', tag: 'TIPO DE VIDEO' } },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6/hltfoxviejo.mp4', info: { edition: 'EDITION', title: 'Titulo Video 6', tag: 'TIPO DE VIDEO' } },
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video9/video9.mp4', aspect: 'square', recede: true, info: { edition: 'EDITION', title: 'Titulo Video 7', tag: 'TIPO DE VIDEO' } }, // "Visita"
+      { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4', info: { edition: 'EDITION', title: 'Titulo Video 8', tag: 'TIPO DE VIDEO' } }
     ];
+
+    // header readout (see multiplyPlusIntoBars for its positioning) -
+    // entries without their own `info` yet just don't show anything
+    const headerVideoInfo = document.getElementById('header-video-info');
+    const headerVideoInfoEdition = document.getElementById('header-video-info-edition');
+    const headerVideoInfoTitle = document.getElementById('header-video-info-title');
+    const headerVideoInfoTag = document.getElementById('header-video-info-tag');
+    const headerVideoInfoNumber = document.getElementById('header-video-info-number');
+    function showHeaderVideoInfo(index) {
+      const info = BOTONERA_VIDEOS[index] && BOTONERA_VIDEOS[index].info;
+      if (!info) return;
+      headerVideoInfoEdition.textContent = info.edition || 'EDITION';
+      headerVideoInfoTitle.textContent = info.title || '';
+      headerVideoInfoTag.textContent = info.tag || '';
+      headerVideoInfoNumber.textContent = String(index + 1).padStart(2, '0');
+      // "01" specifically reads as short of the right edge - a trailing
+      // "1" has much less visual weight on its own right side than any
+      // other digit, so the STRING's real bounding box (which the
+      // right-alignment is built on) lands correctly while the glyph
+      // itself still looks off. Only "01" ends in "1" among 01-08, so
+      // this nudge is scoped to exactly that case rather than a general
+      // formula fix - there's no honest measurement that closes a gap
+      // that's really about perceived glyph weight, not layout.
+      headerVideoInfoNumber.style.transform = index === 0
+        ? 'translateY(-2px) translateX(8px)'
+        : 'translateY(-2px)';
+      headerVideoInfo.classList.add('visible');
+    }
+    function hideHeaderVideoInfo() {
+      headerVideoInfo.classList.remove('visible');
+    }
+
+    // botonera hover preview - see #botonera-preview-video for the visual
+    // side (the CRT-texture alpha matte). PREVIEW_CLIP_SECONDS-long window
+    // starting somewhere around the middle of the video, never right at
+    // the start: midpoint +/- up to 30% of the duration, clamped so the
+    // window itself can never run past the end or before a sane floor.
+    // previewLoopHandler is the one 'timeupdate' listener alive at a time
+    // (re-added per hover rather than kept forever) - it just jumps back
+    // to that window's own start once playback reaches the end of it,
+    // faking a sub-clip loop the native `loop` attribute can't do on its
+    // own (that only loops the whole file).
+    const botoneraPreviewVideo = document.getElementById('botonera-preview-video');
+    const PREVIEW_CLIP_SECONDS = 5;
+    let previewLoopHandler = null;
+    function clearPreviewLoopHandler() {
+      if (previewLoopHandler) {
+        botoneraPreviewVideo.removeEventListener('timeupdate', previewLoopHandler);
+        previewLoopHandler = null;
+      }
+    }
+    function startPreviewClip() {
+      const duration = botoneraPreviewVideo.duration;
+      let start = 0;
+      if (isFinite(duration) && duration > 0) {
+        const mid = duration / 2;
+        const jitter = (Math.random() - 0.5) * duration * 0.6; // +/- 30% of duration
+        const floor = duration * 0.15;
+        const ceiling = Math.max(floor, duration - PREVIEW_CLIP_SECONDS - 0.5);
+        start = Math.min(Math.max(mid + jitter, floor), ceiling);
+      }
+      botoneraPreviewVideo.currentTime = start;
+      botoneraPreviewVideo.play().catch(() => {});
+      clearPreviewLoopHandler();
+      previewLoopHandler = () => {
+        if (botoneraPreviewVideo.currentTime >= start + PREVIEW_CLIP_SECONDS) {
+          botoneraPreviewVideo.currentTime = start;
+        }
+      };
+      botoneraPreviewVideo.addEventListener('timeupdate', previewLoopHandler);
+    }
+    function playBotoneraPreview(index) {
+      const entry = BOTONERA_VIDEOS[index];
+      if (!entry) return;
+      botoneraPreviewVideo.classList.add('visible');
+      if (botoneraPreviewVideo.getAttribute('src') !== entry.src) {
+        botoneraPreviewVideo.setAttribute('src', entry.src);
+        botoneraPreviewVideo.addEventListener('loadedmetadata', startPreviewClip, { once: true });
+      } else if (botoneraPreviewVideo.readyState >= 1) {
+        startPreviewClip();
+      } else {
+        botoneraPreviewVideo.addEventListener('loadedmetadata', startPreviewClip, { once: true });
+      }
+    }
+    function stopBotoneraPreview() {
+      botoneraPreviewVideo.classList.remove('visible');
+      botoneraPreviewVideo.pause();
+      clearPreviewLoopHandler();
+    }
 
     const videoOverlay = document.getElementById('video-overlay');
     const videoPlayer = document.getElementById('video-player');
@@ -3283,7 +3734,7 @@
     // .video-overlay is already a fixed, viewport-filling flexbox that
     // centers .player on its own, so there's no gridBounds/left/top
     // math to redo here, just width/height
-    function openVideo(index) {
+    function openVideo(index, sourceEl) {
       const entry = BOTONERA_VIDEOS[index];
       if (!entry) return;
       const aspect = entry.aspect === 'square' ? 1 : 16 / 9;
@@ -3295,7 +3746,9 @@
         videoH = w / aspect;
       }
       const frameFraction = entry.frameH || 1;
-      const frameH = videoH * frameFraction;
+      const cropTop = entry.cropTop || 0;
+      const cropBottom = entry.cropBottom || 0;
+      const frameH = videoH * frameFraction - cropTop - cropBottom;
       videoPlayer.style.width = w + 'px';
       videoPlayer.style.height = frameH + 'px';
       if (frameFraction !== 1) {
@@ -3303,24 +3756,58 @@
         botoneraVideo.style.left = '0';
         botoneraVideo.style.height = videoH + 'px';
         botoneraVideo.style.top = ((frameH - videoH) / 2) + 'px';
+        botoneraVideo.style.objectFit = '';
       } else {
         botoneraVideo.style.position = '';
         botoneraVideo.style.left = '';
         botoneraVideo.style.height = '100%';
         botoneraVideo.style.top = '';
+        // frame's own top/bottom edges moved in by cropTop/cropBottom
+        // (anchored on center, same as the frameFraction branch above)
+        // while the video keeps its normal box - object-fit:cover just
+        // fills that now-shorter box instead of letterboxing it, which
+        // is what turns the height cut into a crop with no black bars
+        botoneraVideo.style.objectFit = (cropTop || cropBottom) ? 'cover' : '';
       }
       if (botoneraVideo.getAttribute('src') !== entry.src) botoneraVideo.setAttribute('src', entry.src);
-      botoneraVideo.currentTime = 0;
+      botoneraVideo.currentTime = entry.startAt || 0;
       botoneraVideo.muted = false;
       vcSeeking = false;
       vcSeek.value = 0;
       vcVolume.value = botoneraVideo.volume;
+
+      // "grows" out of the clicked botonera chip instead of just fading in
+      // centered - a FLIP: the overlay/player are already in the layout
+      // at this point (opacity:0, not display:none), so their real final
+      // rect can be read right now, before .visible even gets added.
+      // Animate a transform that starts by exactly overlapping the
+      // chip's own on-screen box down to identity, so the player visibly
+      // expands from wherever it was clicked rather than from its own
+      // center. Own WAAPI animation, not the CSS `transition: transform`
+      // below (that one's still what handles the CLOSE shrink-back) -
+      // switched off for the duration of this animation so the two don't
+      // fight over the same property.
+      const startRect = sourceEl ? sourceEl.getBoundingClientRect() : null;
+      videoPlayer.style.transition = 'none';
       videoOverlay.classList.add('visible');
-      // for videos whose own frame doesn't fill the screen (cropped/
-      // square - see .viewport.receded's CSS comment), recede the rect/
-      // botonera scene behind the overlay instead of leaving it visible
-      // through the backdrop around the small frame
       document.querySelector('.viewport').classList.toggle('receded', !!entry.recede);
+      if (startRect && startRect.width && startRect.height) {
+        const endRect = videoPlayer.getBoundingClientRect();
+        const scaleX = startRect.width / endRect.width;
+        const scaleY = startRect.height / endRect.height;
+        const dx = (startRect.left + startRect.width / 2) - (endRect.left + endRect.width / 2);
+        const dy = (startRect.top + startRect.height / 2) - (endRect.top + endRect.height / 2);
+        const flipAnim = videoPlayer.animate([
+          { transform: `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`, opacity: 0.5 },
+          { transform: 'translate(0, 0) scale(1)', opacity: 1 }
+        ], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        flipAnim.finished.then(() => flipAnim.cancel(), () => {}).then(() => {
+          videoPlayer.style.transition = '';
+        });
+      } else {
+        videoPlayer.style.transition = '';
+      }
+
       botoneraVideo.play().catch(() => {});
       wakeVideoControls();
     }
@@ -3336,6 +3823,83 @@
     // click anywhere on the overlay (backdrop or video itself) closes it
     // - the controls bar already stops its own clicks from bubbling here
     videoOverlay.addEventListener('click', closeVideo);
+
+    // TEMP/provisional - see the HTML comment above #ruler-top. Real
+    // viewport px (clientX/clientY), not canvas space - these are for
+    // eyeballing on-screen alignment, same as a Photoshop guide dragged
+    // off the ruler, not for measuring canvas-coordinate layout.
+    (function setupRulerGuides() {
+      const guidesLayer = document.getElementById('ruler-guides');
+      const rulerTop = document.getElementById('ruler-top');
+      const rulerLeft = document.getElementById('ruler-left');
+      let dragEl = null;
+      let dragAxis = null;
+      let label = null;
+
+      function showLabel(axis, pos) {
+        if (!label) {
+          label = document.createElement('div');
+          label.className = 'ruler-guide-label';
+          document.body.appendChild(label);
+        }
+        label.textContent = (axis === 'y' ? 'y: ' : 'x: ') + Math.round(pos) + 'px';
+        if (axis === 'y') {
+          label.style.top = (pos - 18) + 'px';
+          label.style.left = '20px';
+        } else {
+          label.style.left = (pos + 6) + 'px';
+          label.style.top = '20px';
+        }
+      }
+      function hideLabel() {
+        if (label) { label.remove(); label = null; }
+      }
+      function setGuidePos(g, axis, pos) {
+        if (axis === 'y') g.style.top = pos + 'px';
+        else g.style.left = pos + 'px';
+      }
+      function startDrag(g, axis) {
+        dragEl = g;
+        dragAxis = axis;
+        document.body.style.cursor = axis === 'y' ? 'ns-resize' : 'ew-resize';
+      }
+      function createGuide(axis, pos) {
+        const g = document.createElement('div');
+        g.className = 'ruler-guide ' + (axis === 'y' ? 'horizontal' : 'vertical');
+        setGuidePos(g, axis, pos);
+        g.addEventListener('mousedown', (e) => { e.preventDefault(); startDrag(g, axis); });
+        g.addEventListener('dblclick', () => g.remove());
+        guidesLayer.appendChild(g);
+        return g;
+      }
+
+      window.addEventListener('mousemove', (e) => {
+        if (!dragEl) return;
+        const pos = dragAxis === 'y' ? e.clientY : e.clientX;
+        setGuidePos(dragEl, dragAxis, pos);
+        showLabel(dragAxis, pos);
+      });
+      window.addEventListener('mouseup', () => {
+        if (!dragEl) return;
+        dragEl = null;
+        dragAxis = null;
+        document.body.style.cursor = '';
+        hideLabel();
+      });
+      rulerTop.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        startDrag(createGuide('y', e.clientY), 'y');
+        showLabel('y', e.clientY);
+      });
+      rulerLeft.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        startDrag(createGuide('x', e.clientX), 'x');
+        showLabel('x', e.clientX);
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') guidesLayer.querySelectorAll('.ruler-guide').forEach((g) => g.remove());
+      });
+    })();
   </script>
 </body>
 </html>

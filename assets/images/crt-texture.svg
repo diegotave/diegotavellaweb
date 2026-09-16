@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- tileable "TV tube filmed up close" texture: a fine pixel/phosphor
+       dot grid + horizontal scanlines + a layer of organic turbulence
+       grain, all rendered in black with varying alpha on a transparent
+       ground so this can be dropped straight in as a black+alpha overlay
+       (or later fed into a mask/luminance-to-alpha use). Repeats
+       seamlessly at 64x64 - see stitchTiles="stitch" on the noise. -->
+  <defs>
+    <!-- 8-unit tile (was 4) - more transparent gutter around each dot, so
+       the individual "pixels" read as separated instead of a tight weave.
+       64/8 divides evenly, so this still repeats seamlessly at 64x64. -->
+    <pattern id="dots" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect x="1.2" y="2.1" width="5.6" height="3.8" fill="#000" opacity="0.55"/>
+    </pattern>
+    <pattern id="scanlines" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect width="8" height="1.8" fill="#000" opacity="0.35"/>
+    </pattern>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="11" stitchTiles="stitch" result="n"/>
+      <!-- averaging (0.333 each), not summing (1 each) - summing clips
+           every mid-gray-ish turbulence pixel straight to alpha 1,
+           flattening the noise into a uniform wash instead of grain -->
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.333 0.333 0.333 0 0" result="nAlpha"/>
+      <feComponentTransfer in="nAlpha" result="nAlphaAdj">
+        <feFuncA type="linear" slope="0.9" intercept="0"/>
+      </feComponentTransfer>
+      <feFlood flood-color="#000" result="black"/>
+      <feComposite in="black" in2="nAlphaAdj" operator="in"/>
+    </filter>
+  </defs>
+  <rect width="64" height="64" fill="url(#dots)"/>
+  <rect width="64" height="64" fill="url(#scanlines)"/>
+  <rect width="64" height="64" filter="url(#grain)"/>
+</svg>
