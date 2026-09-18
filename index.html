@@ -5,6 +5,78 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Landing</title>
 <style>
+  /* opts this document into cross-document view transitions (Chromium
+     only, as of this writing - Safari/Firefox just fall back to a plain
+     navigation, no code needed for that). Paired with the matching
+     view-transition-name declarations below on #rect/#rect2/#blink-square
+     and the identical rule in contact.html - since both pages render that
+     trio at the exact same size/position/color in this instance (see
+     contact.html's own layout() math, copied from this page's overshoot
+     geometry), the browser treats them as one continuous element crossing
+     from this document to that one instead of cutting on navigation. */
+  @view-transition {
+    navigation: auto;
+  }
+  /* the browser's own DEFAULT for a cross-document transition crossfades
+     the ENTIRE page (an implicit ::view-transition-*(root) pair) on top
+     of whatever the named elements below are doing - that whole-page
+     fade is what read as a flash on arrival at index.html even with
+     #rect2's own position/size pixel-identical on both sides. Turned off
+     here (mirrored in contact.html). */
+  ::view-transition-image-pair(root) {
+    isolation: auto;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  /* the named groups (byn-rect/byn-rect2/byn-rect-frame/byn-blink-square)
+     default to their OWN 0.25s crossfade too, on top of whatever
+     position/size interpolation they need (none here - old/new match
+     exactly on both) - mix-blend-mode: plus-lighter is what the browser
+     blends that crossfade with by default, and it's what read as a gray
+     flicker over #rect2 (celeste): the old (contact.html) and new
+     (index.html) captures are the same color but never bit-for-bit
+     identical pixels (separate documents, separate rasterization passes
+     at whatever the canvas's own non-integer scale() happens to be), and
+     plus-lighter ADDS mismatched pixels together instead of just
+     replacing them, washing the overlap out toward white/gray for the
+     crossfade's duration. Turning the animation off swaps old->new in a
+     single frame instead - correct here since nothing actually needs to
+     interpolate. #rect went through two other states before landing
+     here: named, then unnamed once naming exposed it to this exact same
+     mismatch (with no color/opacity trick to mask it, it read as the
+     border itself thickening for a frame instead of a gray wash) -
+     folded into the generic root capture instead, which then turned out
+     to have its OWN problem: root waits on the WHOLE new page's
+     readiness, which is slower on index.html (video, images, far more
+     content than contact.html), so #rect's border sat there unpainted
+     for a beat right on arrival - worse than the thickening it was
+     trying to avoid. Named again now that animation:none is applied
+     directly to byn-rect below (the fix that was actually missing the
+     first time it was named) - that's what stops the thickening,
+     independent of whichever group #rect ends up folded into, so there's
+     no more reason to hide it inside root and inherit root's own slower
+     readiness. */
+  ::view-transition-group(byn-rect),
+  ::view-transition-group(byn-rect2),
+  ::view-transition-group(byn-rect-frame),
+  ::view-transition-group(byn-blink-square) {
+    animation: none;
+  }
+  ::view-transition-old(byn-rect),
+  ::view-transition-new(byn-rect),
+  ::view-transition-old(byn-rect2),
+  ::view-transition-new(byn-rect2),
+  ::view-transition-old(byn-rect-frame),
+  ::view-transition-new(byn-rect-frame),
+  ::view-transition-old(byn-blink-square),
+  ::view-transition-new(byn-blink-square) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
   * {
     margin: 0;
     padding: 0;
@@ -68,14 +140,110 @@
     will-change: transform;
   }
 
+  /* plain, permanent, solid white backdrop - deliberately the FIRST thing
+     in .canvas (behind literally everything) and carrying no view-
+     transition-name, so it's never captured/swapped/faded as part of the
+     cross-document transition at all: it's just always there, the exact
+     same flat white on both documents, immune to whatever old/new
+     timing hiccup causes #rect-frame's own white occlusion (or anything
+     else) to blink out for a frame right as a transition settles (seen
+     live on arrival at index.html - the gap read as black for an
+     instant instead of white). In normal use this changes nothing (body
+     is already white everywhere), it's purely a worst-case fallback
+     layer for exactly that gap. */
+  #canvas-backdrop {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    background: #fff;
+    pointer-events: none;
+  }
+
+  /* wraps #rect2/#rect2-black - exactly the same 1920x1080 coordinate
+     space as .canvas itself (so #rect2/#rect2-black's own left:960px/
+     top:539.5px absolute positioning still resolves exactly as before,
+     completely unaffected by this wrapper existing), no clip-path by
+     default so every OTHER existing use of #rect2 (hover preview,
+     press.finished's grow, advanceFromOvershoot/reverseFromWidened's
+     widen/shrink) behaves identically to before this wrapper existed.
+     Only playContactTransition ever sets a clip-path here, matching
+     #rect's own live box (round-tripped through inset()'s own `round`
+     argument for its corner radius) - the same "disappears exactly at
+     rect's edge" treatment #bg-video-mask's own overflow:hidden already
+     gives bg-video, applied here since #rect2/#rect2-black are siblings
+     of #rect, not its children, so nothing clips them on its own.
+     pointer-events:none since this sits early in the DOM but still
+     paints as a full 1920x1080 box - #rect2/#rect2-black don't have any
+     click handling of their own (everything real interaction-wise goes
+     through #rect-hover-zone), so this costs nothing and matches
+     #logo-text-mask's own guard below (see its comment for why that one
+     is load-bearing, not just precautionary). */
+  #rect2-mask {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    pointer-events: none;
+  }
+
+  /* permanent white "calle" occlusion, kept in sync by syncRectMasks
+     (see the script) - a plain box-shadow (non-inset ones only ever paint
+     OUTSIDE their own border-radius curve, never inside it) with a huge,
+     blur-free spread reads as "solid white everywhere outside this box's
+     silhouette, a clean see-through hole exactly inside it", rounded
+     corners included for free. Mirrors whichever of #rect2/#rect2-black
+     is actually visible - width/height/borderRadius AND top, not just the
+     first three (top defaults to 539.5px below, same as #rect's own fixed
+     center, but the widened/later-step instance moves rect2's own top
+     down as the header eats into it from above - missing that shift here
+     is what used to read as "top gap gone, bottom gap doubled": both
+     elements stayed centered on the old point while rect2 itself had
+     already moved). rect2/rect2-black's own box is ALREADY correctly
+     gapped on every side by design (see advanceFromOvershoot's own
+     rect2Gap) - once the position is right, mirroring it verbatim is
+     enough, no separate margin math needed. Sits right before #rect in
+     the DOM (see the markup) - deliberately behind #rect, not in front
+     of it: #rect's own border and its background both used to be fused
+     with its bg-video child into one stacking/paint unit (no DOM position
+     could sit "in front of the globe but behind #rect's own border"),
+     which is exactly why bg-video got pulled out into its own #bg-video-
+     mask sibling instead (see that element's own CSS comment) - with the
+     globe no longer inside #rect, this box can sit behind #rect
+     (protecting its border) while still sitting in front of #bg-video-
+     mask (still able to occlude the globe). #header-fill/"Diego Tavella"
+     were tried here too at one point (grouped in a wrapper to dodge the
+     same fused-stacking problem) but #rect's own background is OPAQUE in
+     several states (the idle button, at least) - not just its bg-video
+     child - so anything moved to sit behind #rect for masking purposes
+     goes invisible in those states instead. They're back to their
+     original spot, after #rect, and can still paint over this box-shadow
+     wherever they extend past rect2/rect2-black's own edge - a real but
+     much smaller-scoped case than the globe/border one this box exists
+     for. transparent fill (not white) so #rect's own live box still
+     shows through unaffected where this box doesn't apply to it anyway.
+     pointer-events:none for the same reason #logo-text-mask needs it -
+     see that comment. */
+  #rect-frame {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    pointer-events: none;
+    view-transition-name: byn-rect-frame;
+  }
+
   /* #rect2: experimental second rect, solid cyan-ish fill (#80dfff), no
      stroke - sits BEHIND #rect (first in the DOM, before even
      #rect-hover-zone). Shows through rect's own now-transparent fill
-     (see press.finished). bg-video stays a child of #rect, but #onda-video
-     is a child of THIS element instead (see below) - onda-video's own
-     bounds/crop/rounding now track rect2's live box, not rect's, so
-     overflow:hidden here does for it what .rect's own overflow:hidden
-     does for bg-video. "Born" on the very first hover over the
+     (see press.finished). #onda-video is a child of THIS element (see
+     below) - onda-video's own bounds/crop/rounding track rect2's live
+     box, not rect's, so overflow:hidden here does for it what #bg-video-
+     mask's own overflow:hidden does for bg-video. "Born" on the very
+     first hover over the
      un-pressed button (see setButtonHover) sized a fixed few px past
      rect's own (tiny, idle) edges at that moment, sticking out all
      around it - then held at that exact size while rect grows all the
@@ -92,8 +260,39 @@
     overflow: hidden;
     contain: layout paint;
     display: none;
+    /* default holder of byn-rect2 - see #rect2-black's own comment on why
+       this moved here: enterFromContact's own reassignment can't be
+       trusted to beat index.html's first paint, so the arrival-correct
+       state (celeste visible) now has to be the CSS default already,
+       not something JS has to fix up in time */
+    view-transition-name: byn-rect2;
   }
   #rect2.visible {
+    display: block;
+  }
+  /* #rect2's own black stand-in - see playContactTransition in the
+     script. Clicking "Contact" slides #rect2 (celeste) down and out while
+     this identically-sized/positioned element slides down INTO its spot
+     from just above, landing exactly where #rect2 was - a "push" swap,
+     not a color animation on one element. The arrival direction (from
+     contact.html's "Home" link) is handled differently now - see
+     enterFromContact/playHomeTransition (contact.html) - #rect2-black
+     plays no part in it at all, #rect2 (celeste) arrives already settled.
+     No view-transition-name by default (see #rect2's own comment on why
+     that moved there) - the contact-button click handler below moves
+     byn-rect2 over to THIS element only at the moment of the forward
+     departure, right before navigating away, which is early enough to
+     be safe (it's on the OLD page, well before unload) unlike trying to
+     do the reverse assignment on arrival here. */
+  #rect2-black {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: #000;
+    display: none;
+  }
+  #rect2-black.visible {
     display: block;
   }
   /* botonera hover preview: a random mid-video 5s clip (see
@@ -129,6 +328,32 @@
     opacity: 0.2;
   }
 
+  /* bg-video's own wrapper - used to live directly inside .rect and rely
+     on its overflow:hidden/border-radius for clipping "for free", but
+     that fused #rect's own border with its child's paint into one
+     stacking unit, with no DOM position able to sit "in front of the
+     globe but behind #rect's own border" once #rect-frame also needed to
+     mask the globe without covering that border (see #rect-frame's own
+     CSS comment for the full reasoning). Pulling bg-video out into this
+     plain sibling - positioned identically to #rect, with the same
+     overflow:hidden clipping - lets #rect-frame sit between the two:
+     behind #rect (protecting its border) but in front of this mask
+     (able to occlude the globe same as everything else). Kept in sync to
+     #rect's own live box every frame by syncRectMasks (renamed from
+     its rect2-only origins - see the script), since #rect's box changes
+     across WAAPI animations (the intro grow, hover preview, widen/
+     reverse) that can't be caught at a few fixed checkpoints the way
+     rect2's own simpler lifecycle could. */
+  #bg-video-mask {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    pointer-events: none;
+    contain: layout paint;
+  }
+
   /* Rectangulo Central: AE shape layer "RECTANGULO CENTRAL STROKE 2" -
      2px stroke, fill disabled (empty interior), layer Position fixed,
      Scale/Position never animated - only the rect's own Size and
@@ -146,6 +371,12 @@
     left: 960px;
     top: 539.5px;
     transform: translate(-50%, -50%);
+    /* view-transition-name: byn-rect - see the @view-transition CSS
+       block's own comment up top for the back-and-forth on this: named,
+       then unnamed (folded into root, which then turned out to wait on
+       root's OWN readiness - the actual bug), now named again since that
+       readiness gap didn't depend on this being unnamed after all. */
+    view-transition-name: byn-rect;
     /* starts as a solid "button": 80%-black fill (#333, not pure #000 -
        see IDLE_BLACK below, shared with the two JS spots that restore
        this same idle look), 10% bigger than the 206.15x143.15 it settles
@@ -166,11 +397,9 @@
     border-radius: 3px;
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease;
-    /* bg-video/onda-video are children (see below) - this clips them to
-       rect's own live bounds/rounded corners automatically (and to the
-       padding edge specifically, i.e. inside the 2px stroke, so neither
-       video ever paints over it), tracking every width/height/
-       border-radius animation with no extra per-video math needed */
+    /* no children anymore - bg-video moved out to its own #bg-video-mask
+       sibling (see its own CSS comment for why) - overflow:hidden kept
+       here anyway in case anything else ever needs clipping to this box */
     overflow: hidden;
     /* this box's own width/height/border-radius are keyframed every
        frame for most of the intro (see buildStage in the script) while
@@ -199,16 +428,15 @@
   }
 
   /* password gate: sits where the compact logo mark normally shows,
-     replacing it until "promo" is typed - see the input handler in the
-     script. The brackets framing the typed value are the REAL
-     #bracket-left/#bracket-right (see .password-mode further down)
-     rather than a separate placeholder - a separate glyph stand-in was
-     tried first and reads as an obvious swap/pop the moment it hands off
-     to the real asset, however closely it's sized; animating the real
-     sprite's own transform the whole time can't have that seam since
-     there's only ever the one element. #password-gate itself is just a
-     grouping div (not positioned) so unlockPassword can hide both
-     children in one shot.
+     replacing it until the password is entered - see the input handler
+     in the script. #bracket-left/#bracket-right have nothing to do with
+     this box any more (see their own .bracket-offstage comment) - they
+     used to shrink down and frame the typed value directly, but that
+     coupling is gone now: this is a plain, provisional password box on
+     its own, and the brackets slide in from outside the rect afterward
+     as a separate step. #password-gate itself is just a grouping div
+     (not positioned) so unlockPassword can hide both children in one
+     shot.
      "ENTER PASSWORD" sits OUTSIDE the button, above it (black text, on
      the white page - not white-on-black like the rest of this gate,
      since it's no longer over the black rect), width-matched to the
@@ -382,6 +610,28 @@
   #text-diego-half.entered, #text-tavella-half.entered {
     transform: translateX(0);
   }
+  /* wraps #logo-text only - exactly the same 1920x1080 coordinate space
+     as .canvas (same trick as #rect2-mask above), so #logo-text's own
+     left/top absolute positioning still resolves exactly as before. Only
+     playContactTransition ever sets a clip-path here, masking "Diego
+     Tavella" to #rect's own live box the same way #bg-video-mask's own
+     overflow:hidden already does for bg-video (see playContactTransition).
+     pointer-events:
+     none is load-bearing, not precautionary: #logo-text itself already
+     has pointer-events:none (see .logo-sprite), but this wrapper is a
+     plain div with no such rule of its own, and it paints a full,
+     invisible 1920x1080 box LATER in the DOM than #rect/#rect-hover-zone/
+     #password-gate - without this it silently sits on top of all three
+     and swallows every click (confirmed: this exact omission is what
+     broke the index page the first time this mask was added). */
+  #logo-text-mask {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    pointer-events: none;
+  }
   /* #logo-text stays hidden until the Diego/Tavella halves above finish
      converging (identical end state to what they just animated into, so
      the swap itself is invisible) */
@@ -425,21 +675,33 @@
      the src outright (an instant cut would read as a glitch) */
   #bracket-left-thin { left: 872px; top: 483px; width: 23px; height: 113px; transform: scale(1.1); transform-origin: 88px 56.5px; opacity: 0; }
   #bracket-right-thin { left: 1026px; top: 483px; width: 22px; height: 113px; transform: scale(1.1); transform-origin: -66px 56.5px; opacity: 0; }
+  /* highbracket-left/right.png: same ~23px width and ~7px cap thickness
+     as bracket-left/right.png above, but 226px tall (2x) instead of 113 -
+     the middle tick from the original 3-tick design is gone, its stroke
+     just extended, so the caps never get thicker no matter how tall this
+     renders. Cross-fades in for #bracket-left/#bracket-right (which stay
+     exactly as they've always been - this is a separate pair of
+     elements, not a src swap on the originals) partway through
+     syncLogoToRect's own growth - see its own comment for the timing.
+     top/transform-origin recalculated for this taller native size so its
+     own vertical center still lands on RECT_CENTER_Y, same center point
+     #bracket-left/right's own 483+56.5 already lands on. opacity:0 at
+     rest - only ever visible mid-crossfade or once settled past it. */
+  #bracket-left-tall { left: 872px; top: 426.5px; width: 23px; height: 226px; transform-origin: 88px 113px; opacity: 0; }
+  #bracket-right-tall { left: 1026px; top: 426.5px; width: 23px; height: 226px; transform-origin: -66px 113px; opacity: 0; }
   #logo-text { left: 895px; top: 504px; width: 131px; height: 72px; transform: scale(1.1); transform-origin: 65px 35.5px; }
-  /* password gate's own look for the real brackets - half their already-
-     shrunk 0.5 scale (now 0.25 of normal) and, this time, pushed OUTWARD
-     rather than together: translateX is negative here (translateX listed
-     before scale keeps it a fixed, scale-independent px offset - same
-     reasoning as the AE-stroke border-radius comment elsewhere in this
-     file), moving each bracket away from center for 3x the gap the
-     previous (closer-together) version had - measured directly via
-     getBoundingClientRect rather than derived by hand, since scale and
-     translateX compound with each bracket's own transform-origin in a
-     way that isn't simple to eyeball. normalizeBrackets in the script
-     animates away from this via WAAPI once "promo" is entered, landing
-     back on that exact scale(1.1) rest transform. */
-  #bracket-left.password-mode { transform: translateX(-37px) scale(0.375); }
-  #bracket-right.password-mode { transform: translateX(37px) scale(0.375); }
+  /* starting position before the password unlocks: parked outside the
+     button's own footprint on each bracket's own side (left bracket sits
+     comfortably left of the rect, right bracket comfortably right of it),
+     same scale(1.1) as the rest position - a slide, not a morph. Used to
+     be a shrunk-down, password-box-matched transform that grew/uncramped
+     into place (see git history) - simplified so the brackets no longer
+     have anything to do with what the password box itself looks like:
+     slideInBrackets in the script animates away from this via WAAPI once
+     the password is entered, landing back on that exact scale(1.1) rest
+     transform, translateX implicitly back to 0. */
+  #bracket-left.bracket-offstage { transform: translateX(-300px) scale(1.1); }
+  #bracket-right.bracket-offstage { transform: translateX(300px) scale(1.1); }
   /* filter: black ink on transparent, so invert() reads as solid white
      against the button's black fill - matches the button state above,
      swaps off at the same moment the fill does (see the press handling
@@ -461,6 +723,10 @@
   #blink-square {
     background: #000;
     display: none;
+    /* shared with contact.html's own #blink-square - see the
+       @view-transition rule up top and #rect2's own comment on why
+       this is safe unconditionally */
+    view-transition-name: byn-blink-square;
     clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
     /* clip-path isn't in this transition - animating a polygon morph
        (interpolating each point) was janky/stuttery, unlike transform,
@@ -519,6 +785,33 @@
   #blink-square-hover-zone.visible {
     display: block;
     cursor: pointer;
+  }
+  /* "Contact" link: plain white Helvetica Neue Thin text, no button
+     chrome - appears alongside the blink square once the rect reaches
+     its overshoot (square) hold, sharing that same reveal threshold/fade
+     (see syncLogoToRect's tick). Shares the blink square's own vertical
+     center and "Diego Tavella"'s own left edge (horizontal) - both
+     written there every frame, this element never computes its own
+     position. Links straight to contact.html - nothing happens on this
+     page itself. */
+  #contact-button {
+    position: absolute;
+    transform: translateY(-50%);
+    color: #fff;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 100;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  #contact-button.visible {
+    opacity: 1;
+    pointer-events: auto;
   }
   /* header divider: appears only once rect starts widening to 16:9 (see
      advanceFromOvershoot) - as wide as rect itself, tracking its width
@@ -851,7 +1144,8 @@
      rect), not #rect - width/height:100% plus rect2's own overflow:hidden
      (see #rect2) is what tracks rect2's live size/rounded corners
      automatically, no JS sizing needed, same technique #bg-video already
-     uses off #rect itself. object-fit:cover keeps the footage itself from
+     uses off its own #bg-video-mask. object-fit:cover keeps the footage
+     itself from
      ever stretching even as rect2's own aspect ratio changes (square ->
      16:9). Full opacity - the webm's own alpha channel already handles
      transparency, so .visible just needs to reveal it, no extra dimming
@@ -870,6 +1164,24 @@
     opacity: 1;
   }
 
+  /* rotates the globe footage itself 30deg clockwise around its own
+     center, without rotating #bg-video-mask's own crop shape (which has
+     to stay aligned with #rect - see its CSS comment) - a separate
+     wrapper sitting between the two, rather than putting the rotation on
+     #bg-video directly, since #bg-video's own transform is already
+     driven by a dozen different places in the script (scale for its
+     enter/exit, translateX/translateY for various slides - see its own
+     CSS comment) and adding a rotation there would mean threading
+     `rotate(30deg)` into every single one of them instead of just here,
+     once, on an element nothing else ever touches. 100%/100% of
+     #bg-video-mask's own live box, same as #bg-video used to be
+     positioned directly. */
+  #bg-video-rotate {
+    position: absolute;
+    inset: 0;
+    transform: rotate(30deg);
+  }
+
   /* fdo_invloop.webm: revealed the moment "Video Editor"/"motion graphics"
      start sliding out to their sides (see the showBgVideo() call in
      playCenterTagline, right next to that reveal's own classList.add
@@ -878,7 +1190,9 @@
      Enters by scaling from 0 to 100% over 0.75s (not a fade - opacity
      stays at 1 throughout); advanceFromOvershoot/reverseFromWidened later
      add a translateY on top of this same scale (never replacing it) to
-     slide the globe down/up for its own reveal effect - see there. */
+     slide the globe down/up for its own reveal effect - see there. Sits
+     inside #bg-video-rotate (see its own comment) - its own transform
+     here is unaffected by/unaware of that outer rotation. */
   #bg-video {
     position: absolute;
     inset: 0;
@@ -1076,15 +1390,33 @@
 <body>
   <div class="viewport">
     <div class="canvas">
-      <div id="rect2">
-        <video id="onda-video" src="assets/videos/ondablanca.webm" muted playsinline></video>
-        <video id="botonera-preview-video" muted loop playsinline></video>
+      <div id="canvas-backdrop"></div>
+      <div id="rect2-mask">
+        <div id="rect2">
+          <video id="onda-video" muted playsinline></video>
+          <video id="botonera-preview-video" muted loop playsinline></video>
+        </div>
+        <div id="rect2-black"></div>
       </div>
+      <div id="bg-video-mask">
+        <div id="bg-video-rotate">
+          <video id="bg-video" muted loop playsinline></video>
+        </div>
+      </div>
+      <div id="rect-frame"></div>
       <div id="rect-hover-zone"></div>
-      <div class="rect" id="rect">
-        <video id="bg-video" src="assets/videos/fdo_invloop.webm" muted loop playsinline></video>
-      </div>
+      <div class="rect" id="rect"></div>
       <div id="header-fill"></div>
+      <div class="tagline-window" id="logo-text-window">
+        <div id="logo-text-invert">
+          <img class="logo-sprite" id="text-diego-half" src="assets/images/logo-desarme/text.png" alt="">
+          <img class="logo-sprite" id="text-tavella-half" src="assets/images/logo-desarme/text.png" alt="">
+        </div>
+      </div>
+      <div id="logo-text-mask">
+        <img class="logo-sprite" id="logo-text" src="assets/images/logo-desarme/text.png" alt="">
+      </div>
+      <img class="logo-sprite" id="logo-text-white" src="assets/images/logo-desarme/text.png" alt="">
 
       <div id="password-gate">
         <div id="password-label-clip"><div id="password-label">ENTER PASSWORD</div></div>
@@ -1094,20 +1426,15 @@
         </span>
       </div>
 
-      <img class="logo-sprite password-mode" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
-      <img class="logo-sprite password-mode" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png" alt="">
+      <img class="logo-sprite bracket-offstage" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
+      <img class="logo-sprite bracket-offstage" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png" alt="">
+      <img class="logo-sprite" id="bracket-left-tall" src="assets/images/logo-desarme/highbracket-left.png" alt="">
+      <img class="logo-sprite" id="bracket-right-tall" src="assets/images/logo-desarme/highbracket-right.png" alt="">
       <img class="logo-sprite" id="bracket-left-thin" src="assets/images/logo-desarme/bracket-left-thin.png" alt="">
       <img class="logo-sprite" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png" alt="">
-      <div class="tagline-window" id="logo-text-window">
-        <div id="logo-text-invert">
-          <img class="logo-sprite" id="text-diego-half" src="assets/images/logo-desarme/text.png" alt="">
-          <img class="logo-sprite" id="text-tavella-half" src="assets/images/logo-desarme/text.png" alt="">
-        </div>
-      </div>
-      <img class="logo-sprite" id="logo-text" src="assets/images/logo-desarme/text.png" alt="">
-      <img class="logo-sprite" id="logo-text-white" src="assets/images/logo-desarme/text.png" alt="">
       <div class="logo-sprite" id="blink-square"></div>
       <div id="blink-square-hover-zone"></div>
+      <a id="contact-button" href="contact.html">Contact</a>
       <div id="header-line"></div>
       <div id="header-box"></div>
       <div id="body-box"></div>
@@ -1157,6 +1484,37 @@
 
 
   <script>
+    // back/forward navigation between this page and contact.html restores
+    // the page from the browser's bfcache instead of actually reloading
+    // it - none of this script re-runs, so the page pops back in frozen
+    // however it happened to look the instant it was navigated away from,
+    // instead of its real resting state - see contact.html's own matching
+    // handler for the fuller version of this comment. Forcing a reload
+    // fixes it the same way there, but a PLAIN reload here would land back
+    // on the password gate, which is wrong: the only way to ever be on
+    // this page mid-history with contact.html on the stack is having
+    // already unlocked it once, so bfcache restoring it should always
+    // re-form the way it does after Home on contact.html - straight into
+    // enterFromContact() - not reset all the way back to square one.
+    // setting the hash first, THEN reloading (rather than
+    // location.replace('index.html#from-contact') in one shot) matters:
+    // this page's own URL already has no hash at the point bfcache
+    // restores it, and replace()/href to a URL that differs ONLY by hash
+    // is a same-document jump to the browser, not a real navigation - the
+    // script never re-runs, so enterFromContact() never fires and this
+    // silently no-ops. history.replaceState (not location.hash=, which
+    // pushes a real history entry of its own - and since we're sitting
+    // in the MIDDLE of the stack right after a back(), that push
+    // truncates contact.html back off the forward list entirely) updates
+    // this entry's own URL in place instead, forward stack untouched.
+    // location.reload() then reloads the page at that now-updated URL.
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) {
+        history.replaceState(null, '', '#from-contact');
+        location.reload();
+      }
+    });
+
     // touch/coarse-pointer devices (phones, tablets) get the animation
     // durations below compressed by this factor - same code path, same
     // easing/geometry as desktop, just compressed into far fewer
@@ -1176,6 +1534,33 @@
     // elsewhere, which scaling here would just desync).
     const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
     const MOTION_SCALE = isCoarsePointer ? 0.15 : 1;
+
+    // #bg-video (fdo_invloop.webm, ~3.4MB) and #onda-video no longer carry
+    // a `src` in the markup (see their own tags) - on a normal cold visit
+    // there's a whole password gate + intro to get through before either
+    // is ever shown, so kicking off their fetch/decode here instead of at
+    // parse time costs nothing visible. Arriving via contact.html's "Home"
+    // link is different: enterFromContact/playArrivalReveal below land
+    // directly on the resting page with #bg-video already sliding in, no
+    // intro to buy time - and that ~3.4MB fetch+decode competing with the
+    // cross-document view transition's own "new page ready" check is
+    // exactly what used to make #rect's own outline (unnamed - see the
+    // @view-transition CSS block's comment on why) sit there unpainted
+    // for a beat right on arrival. playArrivalReveal defers loading (and
+    // showing) #bg-video specifically until the `pagereveal` event says
+    // the transition has already resolved, so "root" stays light while
+    // it's actually being judged ready. Idempotent since both paths could
+    // otherwise race to set `src` twice.
+    let heavyVideosLoaded = false;
+    function loadHeavyVideos() {
+      if (heavyVideosLoaded) return;
+      heavyVideosLoaded = true;
+      document.getElementById('bg-video').src = 'assets/videos/fdo_invloop.webm';
+      document.getElementById('onda-video').src = 'assets/videos/ondablanca.webm';
+    }
+    if (location.hash !== '#from-contact') {
+      loadHeavyVideos();
+    }
 
     // the tagline<->botonera transformation (collapseCenterTagline /
     // multiplyPlusIntoBars / restoreCenterTagline below) animates close
@@ -1230,19 +1615,18 @@
     fitCanvas();
     window.addEventListener('resize', fitCanvas);
 
-    // password gate: replaces the compact "logo desarme" mark until
-    // "promo" is typed (see #password-gate and the real brackets'
-    // .password-mode in the stylesheet) - onRectClick/setButtonHover
-    // below both bail out while locked, since the button sits underneath
-    // the password UI anyway.
+    // password gate: replaces the compact "logo desarme" mark until the
+    // password is typed (see #password-gate in the stylesheet) -
+    // onRectClick/setButtonHover below both bail out while locked, since
+    // the button sits underneath the password UI anyway.
     // SHA-256 of the real password, hex-encoded - keeps it out of plain
     // view (a Ctrl+F in "view source" finds nothing readable) rather
     // than storing it as a literal string. Doesn't make this gate
     // actually secure (nothing sensitive sits behind it - it's the
     // intro's own UX beat, see the block comment below), just not a
     // one-glance reveal. See isCorrectPassword/sha256Hex just below.
-    const PASSWORD_HASH = '03666723c04d5f458f9691e358adc726277b674022817cc79b40234a5a76b889';
-    const PASSWORD_LENGTH = 8; // 'promo78*'.length - safe to reveal on its own, doesn't help crack the hash
+    const PASSWORD_HASH = '8254c329a92850f6d539dd376f4816ee2764517da5e0235514af433164480d7a';
+    const PASSWORD_LENGTH = 1; // 'k'.length - safe to reveal on its own, doesn't help crack the hash
     async function sha256Hex(text) {
       const bytes = new TextEncoder().encode(text);
       const digestBuf = await crypto.subtle.digest('SHA-256', bytes);
@@ -1346,74 +1730,53 @@
     });
     document.getElementById('password-value-wrap').addEventListener('click', trySubmitPassword);
 
-    // brackets go from .password-mode's shrunk/close transform back to
-    // their normal scale(1.1) rest position - via WAAPI rather than
-    // toggling the class and leaning on a CSS transition, since the
-    // shared transition on these two elements (filter 0.2s, transform
-    // 0.09s - see the .logo-sprite-adjacent rule below) is tuned for the
-    // click-press's own snappy shrink and would make this look like a
-    // cut if reused here; an explicit animation sidesteps that entirely,
-    // same reasoning as the button's own borderGrow/borderDarken earlier
-    // in this file.
-    function normalizeBrackets() {
+    // brackets slide in from #bracket-left/#bracket-right's own
+    // .bracket-offstage position (see the CSS comment) to their normal
+    // scale(1.1) rest transform - via WAAPI rather than toggling the
+    // class and leaning on a CSS transition, since the shared transition
+    // on these two elements (filter 0.2s, transform 0.09s - see the
+    // .logo-sprite-adjacent rule below) is tuned for the click-press's
+    // own snappy shrink and would make this look like a cut if reused
+    // here; an explicit animation sidesteps that entirely, same reasoning
+    // as the button's own borderGrow/borderDarken earlier in this file.
+    // Returns the finished promise so unlockPassword can wait for it
+    // before starting "Diego"/"Tavella" - see its own comment on why
+    // that's sequential now instead of running alongside this.
+    function slideInBrackets() {
       const bl = document.getElementById('bracket-left');
       const br = document.getElementById('bracket-right');
-      const opts = { duration: BRACKET_GROW_MS, easing: 'ease-in', fill: 'forwards' };
+      const opts = { duration: BRACKET_SLIDE_MS, easing: 'ease-in', fill: 'forwards' };
       const blAnim = bl.animate([{ transform: getComputedStyle(bl).transform }, { transform: 'scale(1.1)' }], opts);
       const brAnim = br.animate([{ transform: getComputedStyle(br).transform }, { transform: 'scale(1.1)' }], opts);
-
-      // the Diego/Tavella window (#logo-text-window) tracks the brackets'
-      // own interior span every frame, live, rather than sitting fixed at
-      // the final (895-1026) rest position for the whole animation (which
-      // wouldn't match where the still-normalizing brackets actually are)
-      // - or, as tried first, running its own separate clip-path
-      // animation with the same duration/easing as the brackets' own
-      // transform one. That second approach only actually coincided with
-      // the brackets at the two endpoints: clip-path interpolates its
-      // inset values linearly, but a bracket's VISUAL edge under a
-      // combined translateX+scale transform does not move through pixel
-      // space the same way, so mid-animation the window's edge and the
-      // bracket's real edge drifted apart, letting "Tavella" plainly
-      // stick out past the right bracket. Reading the live rendered edge
-      // every frame (same rAF-polling approach as syncLogoToRect
-      // elsewhere in this file) sidesteps that mismatch entirely, since
-      // it's never trying to independently replicate the bracket's own
-      // curve - it just reads wherever it actually is.
-      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const win = document.getElementById('logo-text-window');
-      let trackRafId;
-      function trackWindow() {
-        const canvasLeft = canvas.getBoundingClientRect().left;
-        const leftCut = (bl.getBoundingClientRect().right - canvasLeft) / canvasScale;
-        const rightCut = 1920 - (br.getBoundingClientRect().left - canvasLeft) / canvasScale;
-        win.style.clipPath = `inset(504px ${rightCut}px 504px ${leftCut}px)`;
-        trackRafId = requestAnimationFrame(trackWindow);
-      }
-      trackWindow();
-
-      Promise.allSettled([blAnim.finished, brAnim.finished]).then(() => {
-        cancelAnimationFrame(trackRafId);
+      return Promise.allSettled([blAnim.finished, brAnim.finished]).then(() => {
         // these two share a `transform 0.09s ease-out` transition with
         // #logo-text (see .logo-sprite-adjacent) for a different, later
         // interaction - commitAndCancel keeps that transition from
         // spuriously replaying over this animation's own final value
         commitAndCancel(bl, blAnim);
         commitAndCancel(br, brAnim);
-        bl.classList.remove('password-mode');
-        br.classList.remove('password-mode');
-        win.style.clipPath = 'inset(504px 894px 504px 895px)'; // exact final value, in case the last rAF tick landed a hair off from float rounding
+        bl.classList.remove('bracket-offstage');
+        br.classList.remove('bracket-offstage');
       });
     }
 
     // success sequence: "ENTER PASSWORD" and the typed value exit first
-    // (LABEL_EXIT_MS, matching their own 0.25s CSS transition) - only
-    // once that's done do the brackets normalize while "Diego"/"Tavella"
-    // converge from above/below (BRACKET_GROW_MS, matching their own
-    // 0.75s ease-in transitions) - and only once THAT'S done does
-    // #logo-text get revealed, an invisible swap since the Diego/Tavella
-    // halves just animated into exactly its own look.
+    // (LABEL_EXIT_MS, matching their own 0.25s CSS transition) - THEN the
+    // brackets slide in from outside the rect (BRACKET_SLIDE_MS) - only
+    // once they're fully settled do "Diego"/"Tavella" converge from
+    // above/below (TEXT_CONVERGE_MS, matching their own 0.75s ease-in CSS
+    // transition - previously ran at the same time as the brackets, now
+    // sequential instead) - and only once THAT'S done does #logo-text get
+    // revealed, an invisible swap since the Diego/Tavella halves just
+    // animated into exactly its own look. #logo-text-window's clip-path
+    // just sits at its own fixed CSS value the whole time now (no JS ever
+    // touches it) instead of tracking the brackets' live position frame
+    // by frame - that tracking only mattered while text and brackets
+    // moved at the same time, and the brackets are already at rest by
+    // the time the text ever starts moving now.
     const LABEL_EXIT_MS = 250;
-    const BRACKET_GROW_MS = 750;
+    const BRACKET_SLIDE_MS = 750;
+    const TEXT_CONVERGE_MS = 750;
     function unlockPassword() {
       passwordUnlocked = true;
       passwordInput.blur();
@@ -1427,48 +1790,49 @@
 
       setTimeout(() => {
         valueWrap.style.display = 'none';
-        normalizeBrackets();
-        document.getElementById('text-diego-half').classList.add('entered');
-        document.getElementById('text-tavella-half').classList.add('entered');
+        slideInBrackets().then(() => {
+          document.getElementById('text-diego-half').classList.add('entered');
+          document.getElementById('text-tavella-half').classList.add('entered');
 
-        setTimeout(() => {
-          passwordGate.style.display = 'none';
-          document.getElementById('text-diego-half').style.display = 'none';
-          document.getElementById('text-tavella-half').style.display = 'none';
-          document.getElementById('logo-text').classList.add('revealed');
-          // the button itself only goes live a beat after the password
-          // box has actually finished leaving, not the instant its gate
-          // disappears - the two are meant to be entirely separate
-          // objects, and this gap is what keeps it that way instead of
-          // whatever state the password box exited in bleeding straight
-          // into the button underneath it.
-          const RECT_INTERACTION_GRACE_MS = 400;
           setTimeout(() => {
-            rectInteractionReady = true;
-            // the password gate was covering/blocking #rect this whole
-            // time, so if the mouse was already sitting over it (e.g.
-            // came in over the gate, or the password was submitted with
-            // Enter instead of a click that would've moved the cursor),
-            // no mouseenter ever fires once the gate's gone - and :hover
-            // is no help either (confirmed - still didn't catch this):
-            // it's only re-evaluated on an actual pointer event, not just
-            // because the gate disappeared out from under a stationary
-            // cursor, so #rect can be geometrically right under the mouse
-            // and still not match :hover. Hit-testing the last real
-            // mousemove coordinates (see the listener up top) against the
-            // hover-zone's own current rect sidesteps that, and runs the
-            // exact same hover-start logic a real mouseenter would have
-            // (in particular, #rect2 being "born" - see setButtonHover),
-            // instead of the button silently skipping straight to a first
-            // click with none of that ever having happened.
-            if (lastMouseX !== null) {
-              const hz = document.getElementById('rect-hover-zone').getBoundingClientRect();
-              if (lastMouseX >= hz.left && lastMouseX <= hz.right && lastMouseY >= hz.top && lastMouseY <= hz.bottom) {
-                setButtonHover(true);
+            passwordGate.style.display = 'none';
+            document.getElementById('text-diego-half').style.display = 'none';
+            document.getElementById('text-tavella-half').style.display = 'none';
+            document.getElementById('logo-text').classList.add('revealed');
+            // the button itself only goes live a beat after the password
+            // box has actually finished leaving, not the instant its gate
+            // disappears - the two are meant to be entirely separate
+            // objects, and this gap is what keeps it that way instead of
+            // whatever state the password box exited in bleeding straight
+            // into the button underneath it.
+            const RECT_INTERACTION_GRACE_MS = 400;
+            setTimeout(() => {
+              rectInteractionReady = true;
+              // the password gate was covering/blocking #rect this whole
+              // time, so if the mouse was already sitting over it (e.g.
+              // came in over the gate, or the password was submitted with
+              // Enter instead of a click that would've moved the cursor),
+              // no mouseenter ever fires once the gate's gone - and :hover
+              // is no help either (confirmed - still didn't catch this):
+              // it's only re-evaluated on an actual pointer event, not just
+              // because the gate disappeared out from under a stationary
+              // cursor, so #rect can be geometrically right under the mouse
+              // and still not match :hover. Hit-testing the last real
+              // mousemove coordinates (see the listener up top) against the
+              // hover-zone's own current rect sidesteps that, and runs the
+              // exact same hover-start logic a real mouseenter would have
+              // (in particular, #rect2 being "born" - see setButtonHover),
+              // instead of the button silently skipping straight to a first
+              // click with none of that ever having happened.
+              if (lastMouseX !== null) {
+                const hz = document.getElementById('rect-hover-zone').getBoundingClientRect();
+                if (lastMouseX >= hz.left && lastMouseX <= hz.right && lastMouseY >= hz.top && lastMouseY <= hz.bottom) {
+                  setButtonHover(true);
+                }
               }
-            }
-          }, RECT_INTERACTION_GRACE_MS);
-        }, BRACKET_GROW_MS);
+            }, RECT_INTERACTION_GRACE_MS);
+          }, TEXT_CONVERGE_MS);
+        });
       }, LABEL_EXIT_MS);
     }
 
@@ -1574,6 +1938,26 @@
     // its overall size
     const TOP_MARGIN_VH = 5;
     const BOTTOM_MARGIN_VH = 5;
+    // portrait ("vertical version"): same idea as contact.html's own
+    // PORTRAIT_RATIO/SIDE_MARGIN_VW (see its comment there) - the
+    // overshoot stops being square and is sized by WIDTH instead, capped
+    // by the same height budget above so it still can't overshoot
+    // vertically. Not used for BASE_WIDTHS[0]/[1] (the small idle
+    // button) - only the overshoot (index 2/3), which is what "step 1"'s
+    // whole layout (logo/contact/blink-square/tagline/globe, all
+    // positioned off this box's own live edges) is actually built around.
+    const SIDE_MARGIN_VW = 8;
+    // portrait's own rect block (rect/rect2/their frames) reads small
+    // with the same margins landscape uses - tightened 65% for portrait
+    // ONLY (landscape keeps TOP_MARGIN_VH/BOTTOM_MARGIN_VH/SIDE_MARGIN_VW
+    // exactly as they've always been) so the whole block sits closer to
+    // the real viewport edges and reads bigger overall
+    const PORTRAIT_MARGIN_SCALE = 0.35; // 65% reduction from the base margins above
+    // #rect's own border reads noticeably thin once the whole block is
+    // bigger (see PORTRAIT_MARGIN_SCALE above) - a bit heavier in
+    // portrait only, landscape's own 2px (set at both spots below)
+    // untouched
+    const RECT_BORDER_WIDTH_PORTRAIT = 3;
 
     const wEase = ['linear', 'cubic-bezier(0.2604,0,0.1443,1)', 'cubic-bezier(0.3333,0.3333,0.6667,0.6667)', 'cubic-bezier(0.1667,0,0.6667,1)'];
     const hEase = ['linear', 'cubic-bezier(0.2883,0,0.2990,1)', 'cubic-bezier(0.3333,0.3333,0.6667,0.6667)', 'cubic-bezier(0.1667,0,0.8333,1)'];
@@ -1617,16 +2001,36 @@
     // never distorts, only grows/shrinks as a whole.
     function overshootValues() {
       const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const desiredRealHeightPx = window.innerHeight * (1 - (TOP_MARGIN_VH + BOTTOM_MARGIN_VH) / 100);
+      const isPortrait = window.innerWidth < window.innerHeight;
+      // landscape uses TOP_MARGIN_VH/BOTTOM_MARGIN_VH/SIDE_MARGIN_VW
+      // untouched - portrait gets all three tightened by
+      // PORTRAIT_MARGIN_SCALE (see its own comment)
+      const topMarginVH = isPortrait ? TOP_MARGIN_VH * PORTRAIT_MARGIN_SCALE : TOP_MARGIN_VH;
+      const bottomMarginVH = isPortrait ? BOTTOM_MARGIN_VH * PORTRAIT_MARGIN_SCALE : BOTTOM_MARGIN_VH;
+      const desiredRealHeightPx = window.innerHeight * (1 - (topMarginVH + bottomMarginVH) / 100);
       const desiredLocalHeightPx = desiredRealHeightPx / canvasScale;
-      const s = desiredLocalHeightPx / BASE_HEIGHTS[2];
 
       const widths = BASE_WIDTHS.slice();
       const heights = BASE_HEIGHTS.slice();
       const radii = BASE_RADII.slice();
-      widths[2] = widths[3] = BASE_WIDTHS[2] * s;
+
+      let desiredLocalWidthPx;
+      if (isPortrait) {
+        const sideMarginVW = SIDE_MARGIN_VW * PORTRAIT_MARGIN_SCALE;
+        const desiredRealWidthPx = window.innerWidth * (1 - (sideMarginVW * 2) / 100);
+        desiredLocalWidthPx = desiredRealWidthPx / canvasScale;
+      } else {
+        const s = desiredLocalHeightPx / BASE_HEIGHTS[2];
+        desiredLocalWidthPx = BASE_WIDTHS[2] * s;
+      }
+      // radius still scales by ONE factor shared by both axes (the
+      // smaller of the two, same reasoning as contact.html's own rect2
+      // margin) so it stays circular instead of stretching into an
+      // ellipse once width and height stop matching
+      const radiusScale = Math.min(desiredLocalWidthPx, desiredLocalHeightPx) / BASE_HEIGHTS[2];
+      widths[2] = widths[3] = desiredLocalWidthPx;
       heights[2] = heights[3] = desiredLocalHeightPx;
-      radii[2] = radii[3] = BASE_RADII[2] * s;
+      radii[2] = radii[3] = BASE_RADII[2] * radiusScale;
       return { widths, heights, radii };
     }
 
@@ -1727,9 +2131,15 @@
           const rect2StartWidth = parseFloat(rect2.style.width);
           const rect2StartHeight = parseFloat(rect2.style.height);
           const rect2StartRadius = parseFloat(rect2.style.borderRadius);
-          const rect2TargetWidth = widths[3] * RECT2_SCALE;
-          const rect2TargetHeight = heights[3] * RECT2_SCALE;
-          const rect2Margin = (widths[3] - rect2TargetWidth) / 2;
+          // one shared margin (off widths[3] - the narrower axis outside
+          // portrait, same value as heights[3] anyway) applied to BOTH
+          // width and height, rather than each axis keeping its own 3%
+          // - that made the "calle" gap noticeably wider on whichever
+          // axis was bigger (heights[3], once portrait stopped keeping
+          // width===height) instead of the same width all the way around
+          const rect2Margin = (widths[3] * (1 - RECT2_SCALE)) / 2;
+          const rect2TargetWidth = widths[3] - rect2Margin * 2;
+          const rect2TargetHeight = heights[3] - rect2Margin * 2;
           const rect2TargetRadius = Math.max(0, radii[3] - rect2Margin);
           // maps rect's own keyframe VALUES (baseArr) onto rect2's
           // start/target range, point for point - baseArr[i]'s own
@@ -1797,7 +2207,7 @@
             borderGrow.commitStyles();
             borderGrow.cancel();
             el.style.boxShadow = '';
-            el.style.borderWidth = '2px';
+            el.style.borderWidth = (window.innerWidth < window.innerHeight ? RECT_BORDER_WIDTH_PORTRAIT : 2) + 'px';
             el.style.borderColor = swapColor;
             const borderDarken = el.animate([{ borderColor: swapColor }, { borderColor: '#000' }], { duration: phase2Duration, easing: 'ease', fill: 'forwards' });
             borderDarken.finished.then(() => {
@@ -1805,10 +2215,12 @@
               borderDarken.cancel();
             });
           });
-          // bg-video/onda-video are both children of #rect now (width:100%/
-          // height:100%/object-fit:cover in their own CSS), so they track
-          // rect's own live size and rounded corners (via its
-          // overflow:hidden) automatically - nothing to size here anymore.
+          // bg-video/onda-video both track their own mask's live size and
+          // rounded corners automatically (width:100%/height:100%/
+          // object-fit:cover in their own CSS, clipped by their mask's
+          // overflow:hidden - #bg-video-mask kept in sync to #rect by
+          // syncRectMasks, onda-video's own #rect2 tracks itself) -
+          // nothing to size here anymore.
           // scheduled directly off the stage's own duration instead of
           // chaining off its promise (which only resolves after the full
           // hold tail too) - fires TAGLINE_EARLY_MS sooner than that,
@@ -1899,6 +2311,9 @@
       // the instant the rect finishes widening.
       const sq = document.getElementById('blink-square');
       const hz = document.getElementById('blink-square-hover-zone');
+      // "Contact" only belongs to the square hold - hides for the
+      // widened layout, restored by reverseFromWidened once back
+      document.getElementById('contact-button').classList.remove('visible');
       sq.classList.add('triangle'); // guaranteed even if this fires without a prior hover (e.g. touch)
       const sqStartLeft = parseFloat(sq.style.left);
       const hzStartLeft = parseFloat(hz.style.left);
@@ -2090,10 +2505,12 @@
         txtWhite.style.clipPath = 'inset(0 0 0 0)'; // fully revealed - the line's ended up past textBottom by then
       });
 
-      // globe video: now a child of #rect (width/height:100%, object-fit:
-      // cover - see its own CSS), so it already tracks rect's widening
-      // width automatically, with zero extra code, clipped to rect's own
-      // rounded corners via its overflow:hidden. All that's left to
+      // globe video: #bg-video-mask (width/height:100%, object-fit:
+      // cover - see its own CSS) is kept in sync to rect's own live box
+      // by syncRectMasks, so it already tracks rect's widening width
+      // automatically, with zero extra code here, clipped to rect's own
+      // rounded corners via #bg-video-mask's own overflow:hidden. All
+      // that's left to
       // animate by hand is the deliberate reveal: sliding down by 50% of
       // its own height (=rect's height, unchanged throughout this stage)
       // so its natural center ends up level with rect's own bottom edge
@@ -2271,6 +2688,10 @@
         fill.classList.remove('visible');
         txtWhite.classList.remove('visible');
         txtWhite.style.clipPath = 'inset(0 0 100% 0)'; // fully hidden again - the line's ended up back at rectTop by then
+        // "Contact" reappears - txt/sq's left/top have already landed back
+        // on the exact values contactBtn's own (stale since advanceFromOvershoot
+        // hid it) left/top were computed from, so no repositioning is needed
+        document.getElementById('contact-button').classList.add('visible');
         rectAnimating = false;
         step = 1;
       });
@@ -2429,17 +2850,63 @@
     // advanceFromOvershoot
     const BLINK_HIT_PADDING = 5;
 
+    // highbracket-left/right.png (#bracket-left-tall/#bracket-right-tall
+    // in the markup - see their own CSS comment for the asset itself)
+    // cross-fades in for the ORIGINAL #bracket-left/#bracket-right during
+    // the first BRACKET_CROSSFADE_END fraction of syncLogoToRect's own
+    // growth, while everything else here (position, text, rect) is
+    // already moving too - swapping assets mid-motion like this reads as
+    // part of the same transition instead of a seam, the same reasoning
+    // multiplyPlusIntoBars' own bold->thin crossfade is built on. A hard
+    // instant swap (tried first) needed the tall asset to match the
+    // original's rendered box exactly on its very first frame, which
+    // meant either matching height (leaving its own width half-sized) or
+    // matching width (leaving its caps visibly thinner) - both read as a
+    // pop no matter which axis lost out. Overlapping the two instead
+    // means neither one has to be geometrically perfect on its own: the
+    // original keeps growing (BRACKET_ENLARGE_SCALE, past its usual rest
+    // size - accepted deformation, brief and mid-motion) while the tall
+    // one grows in from a matching-ish size of its own, and the opacity
+    // cross-fade blends over whatever mismatch is left between them.
+    const TALL_BRACKET_HEIGHT = 226; // highbracket-left/right's own native height (bracket-left/right's own is 113)
+    const BRACKET_REST_SCALE = 1.1; // matches bracket-left/right's own CSS scale(1.1)
+    const BRACKET_ENLARGE_SCALE = 1.3; // how far the originals grow before they're fully faded out
+    const TALL_BRACKET_START_SCALE_Y = (113 * BRACKET_REST_SCALE) / TALL_BRACKET_HEIGHT; // matches the originals' own rendered height at p=0
+    const BRACKET_CROSSFADE_END = 0.35; // fraction of the overall growth the cross-fade finishes by
+
     function syncLogoToRect(overshootWidth, overshootHeight) {
       const rectEl = document.getElementById('rect');
       const bl = document.getElementById('bracket-left');
       const br = document.getElementById('bracket-right');
+      const blTall = document.getElementById('bracket-left-tall');
+      const brTall = document.getElementById('bracket-right-tall');
       const txt = document.getElementById('logo-text');
       const sq = document.getElementById('blink-square');
       const hz = document.getElementById('blink-square-hover-zone');
+      const contactBtn = document.getElementById('contact-button');
       sq.style.width = BRACKET_WIDTH + 'px';
       sq.style.height = BRACKET_WIDTH + 'px';
       hz.style.width = (BRACKET_WIDTH + BLINK_HIT_PADDING * 2) + 'px';
       hz.style.height = (BRACKET_WIDTH + BLINK_HIT_PADDING * 2) + 'px';
+
+      // the tall pair (see its own CSS/JS comments) only ever replaces
+      // the originals in portrait - in landscape the rect stays the same
+      // near-square shape it's always been, so there's no extra vertical
+      // room the taller bracket was ever meant to fill, and #bracket-left/
+      // #bracket-right just keep doing exactly what they did before any
+      // of this - plain scale(1.1), no cross-fade, no per-frame transform
+      // writes at all (so no need to touch their `transition` either)
+      const isPortrait = window.innerWidth < window.innerHeight;
+      if (isPortrait) {
+        // #bracket-left/right's own CSS transition on `transform` (see
+        // that rule) would otherwise fight/lag every one of tick()'s
+        // per-frame scale writes instead of snapping to them immediately,
+        // the same class of issue commitAndCancel exists for elsewhere in
+        // this file - off for the duration of the growth below, restored
+        // once done
+        bl.style.transition = 'none';
+        br.style.transition = 'none';
+      }
 
       const startW = BASE_WIDTHS[0];
       const startH = BASE_HEIGHTS[0];
@@ -2467,10 +2934,34 @@
         ));
 
         const lerp = (a, b) => a + p * (b - a);
+        const lerpAt = (a, b, t) => a + t * (b - a);
 
-        bl.style.left = (lerp(BRACKET_START_X0, bracketEndX0) - 4) + 'px';
+        const blLeft = lerp(BRACKET_START_X0, bracketEndX0) - 4;
+        bl.style.left = blLeft + 'px';
         const brLeft = lerp(bracketRightLeft(BRACKET_START_X0), bracketRightLeft(bracketEndX0));
         br.style.left = brLeft + 'px';
+        if (isPortrait) {
+          // originals: grow past their usual rest size while fading out -
+          // see this function's own header comment on why
+          const crossfadeP = Math.min(1, p / BRACKET_CROSSFADE_END);
+          const originalScale = lerpAt(BRACKET_REST_SCALE, BRACKET_ENLARGE_SCALE, crossfadeP);
+          bl.style.transform = `scale(${originalScale})`;
+          br.style.transform = `scale(${originalScale})`;
+          bl.style.opacity = 1 - crossfadeP;
+          br.style.opacity = 1 - crossfadeP;
+          // tall pair: same live left as the originals (so the two stay
+          // aligned through the whole cross-fade overlap), non-uniform
+          // scale so its OWN first frame matches the originals' rendered
+          // height without touching its already-correct width, growing to
+          // a uniform BRACKET_REST_SCALE by p=1 same as everything else
+          blTall.style.left = blLeft + 'px';
+          brTall.style.left = brLeft + 'px';
+          const tallScaleY = lerp(TALL_BRACKET_START_SCALE_Y, BRACKET_REST_SCALE);
+          blTall.style.transform = `scale(${BRACKET_REST_SCALE}, ${tallScaleY})`;
+          brTall.style.transform = `scale(${BRACKET_REST_SCALE}, ${tallScaleY})`;
+          blTall.style.opacity = crossfadeP;
+          brTall.style.opacity = crossfadeP;
+        }
         txt.style.left = lerp(TEXT_START.left, textEnd.left) + 'px';
         txt.style.top = (lerp(TEXT_START.top, textEnd.top) - 4) + 'px';
         const textScale = lerp(1, TEXT_END_SCALE);
@@ -2501,6 +2992,14 @@
         hz.style.top = (sqTop - BLINK_HIT_PADDING) + 'px';
         hz.classList.toggle('visible', squareVisible);
 
+        // "Contact": shares the blink square's own vertical center and
+        // "Diego Tavella"'s own left edge (txt.style.left, set just
+        // above) - both live values, so this tracks correctly at any
+        // point in the growth, not just once settled at p=1
+        contactBtn.style.left = txt.style.left;
+        contactBtn.style.top = (sqTop + BRACKET_WIDTH / 2) + 'px';
+        contactBtn.classList.toggle('visible', squareVisible);
+
         // >= 0.999 rather than === 1: the rect's own computed style and
         // this function's independently-computed overshoot target can
         // differ by a hair of floating-point error, so waiting for exact
@@ -2510,6 +3009,11 @@
           logoRafId = requestAnimationFrame(tick);
         } else {
           logoRafId = null;
+          // hands back off to the CSS transition (see this function's
+          // own header comment on why it was off for the growth above) -
+          // safe now, nothing here writes `transform` again afterward
+          bl.style.transition = '';
+          br.style.transition = '';
         }
       }
       tick();
@@ -2556,7 +3060,12 @@
     // does the spread above
     let armVWidthPreThin = null;
 
-    function playCenterTagline() {
+    // instant: skips the swap-slide/fade entirely and commits the final
+    // computed positions with no transition - used by enterFromContact so
+    // "Video Editor"/"motion graphics" are already sitting in their resting
+    // place, POR CORTE, before rect2-black even starts sliding away to
+    // reveal them (see its own call site).
+    function playCenterTagline(instant) {
       const plus = document.getElementById('tagline-plus');
       const left = document.getElementById('tagline-left');
       const right = document.getElementById('tagline-right');
@@ -2571,8 +3080,19 @@
       // sit (the "+" shrinking to 0.65x means less of the old gap comes
       // from "+"-width, so PLUS_GAP has to make up that difference on top
       // of the 10%)
-      const PLUS_GAP = 37.3; // same for both blocks - primary anchor
-      const baseSize = 89.25 * 0.9;
+      // portrait ("vertical version"): text roughly tripled - the whole
+      // rect block reads much bigger there too (see PORTRAIT_MARGIN_SCALE
+      // above), so the tagline needs to scale up to match rather than
+      // stay pinned to landscape's own size. PLUS_GAP scales along with
+      // it - left as the fixed landscape value, the gap between the two
+      // blocks' own inner ("+"-side) edges stays landscape-sized while
+      // the blocks themselves balloon to 3x, so they collide into each
+      // other right around the "+" despite each one correctly fitting
+      // its own bracket on the outer side.
+      const isPortrait = window.innerWidth < window.innerHeight;
+      const TAGLINE_PORTRAIT_SCALE = 3;
+      const PLUS_GAP = 37.3 * (isPortrait ? TAGLINE_PORTRAIT_SCALE : 1); // same for both blocks - primary anchor
+      const baseSize = 89.25 * 0.9 * (isPortrait ? TAGLINE_PORTRAIT_SCALE : 1);
       left.style.fontSize = baseSize + 'px';
       right.style.fontSize = (baseSize * 0.85) + 'px';
 
@@ -2585,7 +3105,14 @@
       // Stroke bumped from 3 to 11 (pre-scale) so the "+"/bar reads as
       // bold, matching "Video Editor"'s own bold weight instead of
       // looking thin/light next to it.
-      const PLUS_SCALE = 0.65;
+      // portrait: scaled up by the same TAGLINE_PORTRAIT_SCALE the text
+      // itself uses above - left alone, the "+" (its own two arms/masks,
+      // .plus-arm-h and .plus-arm-v) stayed pinned to its landscape size
+      // while the wordmarks around it tripled, so it rendered at ~9x9
+      // real screen px on a phone - thin enough that its two arms
+      // anti-alias into what reads as a single diagonal stroke rather
+      // than a cross.
+      const PLUS_SCALE = 0.65 * (isPortrait ? TAGLINE_PORTRAIT_SCALE : 1);
       const armSpan = 48 * PLUS_SCALE;
       const armThickness = 11 * PLUS_SCALE;
       plus.style.width = armSpan + 'px';
@@ -2618,92 +3145,140 @@
 
       const plusHalfWidth = plus.offsetWidth / 2;
 
-      const leftAvailable = (960 - plusHalfWidth - PLUS_GAP) - (FROZEN_BRACKET_LEFT_INNER_X + BRACKET_GAP);
-      if (left.offsetWidth > leftAvailable) {
-        left.style.fontSize = (baseSize * (leftAvailable / left.offsetWidth)) + 'px';
-      }
-
-      // anchored on the "V" now, not the "+" side: measure the width at
-      // the CSS-default 3px tracking first (this fixes where the V ends
-      // up), then tighten the tracking a touch - the block shrinks
-      // toward the bracket it's already pinned to, so only its "+"-side
-      // edge recedes further from the plus, rather than the whole block
-      // sliding as one piece
-      const targetRightEdge = 960 - plusHalfWidth - PLUS_GAP;
-      const widthBeforeTightening = left.offsetWidth;
-      const vAnchorX = targetRightEdge - widthBeforeTightening;
-      left.style.letterSpacing = '1.5px';
-      const recedeDelta = widthBeforeTightening - left.offsetWidth; // offsetWidth is a pure width measurement, unaffected by position, so this doesn't need left.style.left set yet
-
-      const rightAvailable = (FROZEN_BRACKET_RIGHT_INNER_X - BRACKET_GAP) - (960 + plusHalfWidth + PLUS_GAP);
-      if (right.offsetWidth > rightAvailable) {
-        right.style.fontSize = (baseSize * 0.85 * (rightAvailable / right.offsetWidth)) + 'px';
-      }
-      // "motion graphics" moves away from the plus by the same distance
-      // "Video Editor" just receded, to keep both blocks' distance from
-      // the "+" matched
-      const rightTargetLeft = 960 + plusHalfWidth + PLUS_GAP + recedeDelta;
-
-      // final pass: grow both blocks 15%, each around its own center (not
-      // the "+" or the bracket) - applied last so it doesn't disturb the
-      // V/plus-gap anchoring above, just scales each block in place. Takes
-      // and returns a plain left value rather than reading/writing
-      // el.style.left directly - see the swap-slide comment below for why
-      // that write has to wait until everything is computed.
-      function growAroundOwnCenter(el, factor, currentLeft) {
-        const oldWidth = el.offsetWidth;
-        const centerX = currentLeft + oldWidth / 2;
-        const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
-        el.style.fontSize = newSize + 'px';
-        return centerX - el.offsetWidth / 2;
-      }
-      const GROW_FACTOR = 1.3;
-      let leftFinalLeft = growAroundOwnCenter(left, GROW_FACTOR, vAnchorX);
-      let rightFinalLeft = growAroundOwnCenter(right, GROW_FACTOR, rightTargetLeft);
-
-      // shrink both text blocks 15%, anchored on the "+"'s own center
-      // (960, its `left` in the CSS) rather than each block's own center
-      // like growAroundOwnCenter above - scaling around an external point
-      // both shrinks the block AND pulls it toward that point, unlike
-      // growAroundOwnCenter which only changes size in place. Brackets are
-      // untouched - this only resizes/repositions the tagline text.
-      const PLUS_ANCHOR_X = 960;
-      const TEXT_SHRINK_FACTOR = 0.85;
-      function scaleTowardAnchor(el, factor, anchorX, currentLeft) {
-        const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
-        el.style.fontSize = newSize + 'px';
-        return anchorX + (currentLeft - anchorX) * factor;
-      }
-      leftFinalLeft = scaleTowardAnchor(left, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, leftFinalLeft);
-      rightFinalLeft = scaleTowardAnchor(right, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, rightFinalLeft);
-
-      // equalize the left/right bracket gaps: growing each block around its
-      // OWN center (above) keeps each one balanced in isolation, but "Video
-      // Editor" and "motion graphics" don't have the same width or the same
-      // distance from the "+" to begin with, so the two gaps to their
-      // brackets land at different sizes on their own. Reads the brackets'
-      // real rendered position (not the FROZEN_BRACKET_*_INNER_X constants
-      // above, which are deliberately stale - see their own comment) since
-      // an equal-gap result has to track wherever the brackets actually
-      // are, same reasoning as trackWindow()'s live read elsewhere in this
-      // file. Only shifts each block (translate, not a re-grow), split the
-      // difference so neither side eats the whole correction.
+      // live bracket positions - #bracket-left-tall/#bracket-right-tall
+      // in portrait (see syncLogoToRect's own comment on why #bracket-
+      // left/#bracket-right mirror the same live X position there too,
+      // even invisible) so an equal-gap/fit result always tracks wherever
+      // the brackets actually are, same reasoning as trackWindow()'s live
+      // read elsewhere in this file.
       const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
       const canvasLeftPx = canvas.getBoundingClientRect().left;
-      const bracketLeftInnerX = (document.getElementById('bracket-left').getBoundingClientRect().right - canvasLeftPx) / canvasScaleNow;
-      const bracketRightInnerX = (document.getElementById('bracket-right').getBoundingClientRect().left - canvasLeftPx) / canvasScaleNow;
-      const leftGap = leftFinalLeft - bracketLeftInnerX;
-      const rightGap = bracketRightInnerX - (rightFinalLeft + right.offsetWidth);
-      // moves a third of the (now-equal) bracket gap over to the "+" side
-      // instead: each block shifts outward, toward its own bracket, by a
-      // proportional fraction of whatever gap it actually has - not a
-      // fixed px amount - so this keeps working regardless of actual
-      // rendered text width (font metrics/hinting can measure noticeably
-      // different across browsers).
-      const BRACKET_GAP_KEEP_FRACTION = 2 / 3;
-      const targetGap = ((leftGap + rightGap) / 2) * BRACKET_GAP_KEEP_FRACTION;
-      leftFinalLeft = bracketLeftInnerX + targetGap;
-      rightFinalLeft = bracketRightInnerX - targetGap - right.offsetWidth;
+      const leftBracketEl = document.getElementById(isPortrait ? 'bracket-left-tall' : 'bracket-left');
+      const rightBracketEl = document.getElementById(isPortrait ? 'bracket-right-tall' : 'bracket-right');
+      const bracketLeftInnerX = (leftBracketEl.getBoundingClientRect().right - canvasLeftPx) / canvasScaleNow;
+      const bracketRightInnerX = (rightBracketEl.getBoundingClientRect().left - canvasLeftPx) / canvasScaleNow;
+
+      let leftFinalLeft, rightFinalLeft;
+      if (isPortrait) {
+        // portrait: fits each block to the live gap between the "+" and
+        // its own bracket, with a small deliberate PORTRAIT_BRACKET_GAP
+        // rather than the much wider landscape BRACKET_GAP - "sin margen
+        // excesivo" is the actual goal here, not a soft safety clamp -
+        // then places it flush against that same gap. Skips landscape's
+        // whole V-anchor-tightening/growAroundOwnCenter/scaleTowardAnchor/
+        // gap-equalization pipeline below entirely: that exists to make
+        // SMALL fine-tuning adjustments (a few px) at landscape's own
+        // scale, and its growAroundOwnCenter step in particular grows
+        // from each block's OWN center while scaleTowardAnchor then pulls
+        // it toward the shared "+" - both fine at a few px, but at 3x
+        // portrait scale the combination visibly pulls "Video Editor" and
+        // "motion graphics" into each other (confirmed by direct
+        // measurement - the two blocks' rendered boxes overlapped by
+        // ~150 canvas-space px). Fitting directly to the live gap and
+        // placing flush against it sidesteps that entirely instead of
+        // trying to cancel it out with compensating factors.
+        const PORTRAIT_BRACKET_GAP = 20;
+        left.style.fontSize = (baseSize * (((960 - plusHalfWidth - PLUS_GAP) - (bracketLeftInnerX + PORTRAIT_BRACKET_GAP)) / left.offsetWidth)) + 'px';
+        right.style.fontSize = (baseSize * 0.85 * ((bracketRightInnerX - PORTRAIT_BRACKET_GAP - (960 + plusHalfWidth + PLUS_GAP)) / right.offsetWidth)) + 'px';
+        leftFinalLeft = bracketLeftInnerX + PORTRAIT_BRACKET_GAP;
+        rightFinalLeft = bracketRightInnerX - PORTRAIT_BRACKET_GAP - right.offsetWidth;
+      } else {
+        // both blocks anchor off the "+" by the same gap, so the visible
+        // distance from the plus is identical on both sides. Bracket
+        // clearance is a soft cap, not a second anchor: a block only
+        // shrinks (font-size, not tracking) if it would otherwise sit
+        // closer than BRACKET_GAP to its bracket. Checked against a frozen
+        // reference position (168.7/148.3 margin, the values in place when
+        // this tagline was last tuned), not the brackets' live position -
+        // without the check the tagline overlapped them outright once the
+        // brackets moved 10vh further out; reading it live would instead
+        // silently resize the tagline on every future bracket-only tweak,
+        // which is exactly what wasn't wanted here.
+        const FROZEN_BRACKET_LEFT_INNER_X = 528.715;
+        const FROZEN_BRACKET_RIGHT_INNER_X = 1392.285;
+        const BRACKET_GAP = 90;
+
+        const leftAvailable = (960 - plusHalfWidth - PLUS_GAP) - (FROZEN_BRACKET_LEFT_INNER_X + BRACKET_GAP);
+        if (left.offsetWidth > leftAvailable) {
+          left.style.fontSize = (baseSize * (leftAvailable / left.offsetWidth)) + 'px';
+        }
+
+        // anchored on the "V" now, not the "+" side: measure the width at
+        // the CSS-default 3px tracking first (this fixes where the V ends
+        // up), then tighten the tracking a touch - the block shrinks
+        // toward the bracket it's already pinned to, so only its "+"-side
+        // edge recedes further from the plus, rather than the whole block
+        // sliding as one piece
+        const targetRightEdge = 960 - plusHalfWidth - PLUS_GAP;
+        const widthBeforeTightening = left.offsetWidth;
+        const vAnchorX = targetRightEdge - widthBeforeTightening;
+        left.style.letterSpacing = '1.5px';
+        const recedeDelta = widthBeforeTightening - left.offsetWidth; // offsetWidth is a pure width measurement, unaffected by position, so this doesn't need left.style.left set yet
+
+        const rightAvailable = (FROZEN_BRACKET_RIGHT_INNER_X - BRACKET_GAP) - (960 + plusHalfWidth + PLUS_GAP);
+        if (right.offsetWidth > rightAvailable) {
+          right.style.fontSize = (baseSize * 0.85 * (rightAvailable / right.offsetWidth)) + 'px';
+        }
+        // "motion graphics" moves away from the plus by the same distance
+        // "Video Editor" just receded, to keep both blocks' distance from
+        // the "+" matched
+        const rightTargetLeft = 960 + plusHalfWidth + PLUS_GAP + recedeDelta;
+
+        // final pass: grow both blocks 15%, each around its own center
+        // (not the "+" or the bracket) - applied last so it doesn't
+        // disturb the V/plus-gap anchoring above, just scales each block
+        // in place. Takes and returns a plain left value rather than
+        // reading/writing el.style.left directly - see the swap-slide
+        // comment below for why that write has to wait until everything
+        // is computed.
+        function growAroundOwnCenter(el, factor, currentLeft) {
+          const oldWidth = el.offsetWidth;
+          const centerX = currentLeft + oldWidth / 2;
+          const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
+          el.style.fontSize = newSize + 'px';
+          return centerX - el.offsetWidth / 2;
+        }
+        const GROW_FACTOR = 1.3;
+        leftFinalLeft = growAroundOwnCenter(left, GROW_FACTOR, vAnchorX);
+        rightFinalLeft = growAroundOwnCenter(right, GROW_FACTOR, rightTargetLeft);
+
+        // shrink both text blocks 15%, anchored on the "+"'s own center
+        // (960, its `left` in the CSS) rather than each block's own
+        // center like growAroundOwnCenter above - scaling around an
+        // external point both shrinks the block AND pulls it toward that
+        // point, unlike growAroundOwnCenter which only changes size in
+        // place. Brackets are untouched - this only resizes/repositions
+        // the tagline text.
+        const PLUS_ANCHOR_X = 960;
+        const TEXT_SHRINK_FACTOR = 0.85;
+        function scaleTowardAnchor(el, factor, anchorX, currentLeft) {
+          const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
+          el.style.fontSize = newSize + 'px';
+          return anchorX + (currentLeft - anchorX) * factor;
+        }
+        leftFinalLeft = scaleTowardAnchor(left, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, leftFinalLeft);
+        rightFinalLeft = scaleTowardAnchor(right, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, rightFinalLeft);
+
+        // equalize the left/right bracket gaps: growing each block around
+        // its OWN center (above) keeps each one balanced in isolation,
+        // but "Video Editor" and "motion graphics" don't have the same
+        // width or the same distance from the "+" to begin with, so the
+        // two gaps to their brackets land at different sizes on their
+        // own. Only shifts each block (translate, not a re-grow), split
+        // the difference so neither side eats the whole correction.
+        const leftGap = leftFinalLeft - bracketLeftInnerX;
+        const rightGap = bracketRightInnerX - (rightFinalLeft + right.offsetWidth);
+        // moves a third of the (now-equal) bracket gap over to the "+"
+        // side instead: each block shifts outward, toward its own
+        // bracket, by a proportional fraction of whatever gap it
+        // actually has - not a fixed px amount - so this keeps working
+        // regardless of actual rendered text width (font metrics/hinting
+        // can measure noticeably different across browsers).
+        const BRACKET_GAP_KEEP_FRACTION = 2 / 3;
+        const targetGap = ((leftGap + rightGap) / 2) * BRACKET_GAP_KEEP_FRACTION;
+        leftFinalLeft = bracketLeftInnerX + targetGap;
+        rightFinalLeft = bracketRightInnerX - targetGap - right.offsetWidth;
+      }
       taglineLeftFinalX = leftFinalLeft;
       taglineRightFinalX = rightFinalLeft;
 
@@ -2727,51 +3302,80 @@
       // 0 is the swap value no matter what either element's style already
       // says, so this animates identically for both.
       left.style.right = 'auto'; // '' would fall back to the stylesheet's own right:984px, not clear it - with both left and right set the browser forces the box width to span between them instead of sizing to content
-      const swapAnimOpts = { duration: TAGLINE_SWAP_MS, easing: 'ease', fill: 'forwards' };
-      leftSwapAnim = left.animate([{ left: rightFinalLeft + 'px' }, { left: leftFinalLeft + 'px' }], swapAnimOpts);
-      // "Video Editor" moves right-to-left into a mask open on its right
-      // side, so its own left edge (where "V" sits) is what's closest to
-      // that mask and crosses in first - already a left-to-right reveal,
-      // no extra help needed. "motion graphics" is the mirror case: moving
-      // left-to-right into a mask open on its LEFT side means its own
-      // RIGHT edge ("s" in graphics) is what's closest and crosses in
-      // first - reading end-to-start, backwards. A fixed window can't fix
-      // that (it's just clipping absolute screen position, blind to which
-      // characters are there), so this adds its own clip-path, animated
-      // left-to-right in lockstep with the slide, to force the correct
-      // reading order regardless of which edge the window itself reveals.
-      // -20px on the bottom inset (instead of 0) is deliberate: this
-      // clip-path is the first thing to ever clip this element at all, so
-      // a plain 0 clips flush against the box's own bottom edge - which
-      // cuts off "graphics"' g-descender, since line-height:1 already lets
-      // descenders spill well below the box with nothing previously there
-      // to clip them (a smaller -3px still left it visibly flat-cropped,
-      // confirmed by screenshot - Helvetica Neue Light's descender at this
-      // font-size reaches further than that). The negative inset pushes
-      // that edge down past where the descender actually ends.
-      rightSwapAnim = right.animate([
-        { left: leftFinalLeft + 'px', clipPath: 'inset(0 100% -20px 0)' },
-        { left: rightFinalLeft + 'px', clipPath: 'inset(0 0% -20px 0)' }
-      ], swapAnimOpts);
-      Promise.allSettled([leftSwapAnim.finished, rightSwapAnim.finished]).then(() => {
-        // resetCenterTagline may have already canceled+nulled these (a
-        // reset mid-slide) - commitStyles on an already-canceled
-        // animation throws, so skip anything that's not still running.
-        // commitAndCancel (not a plain commitStyles+cancel) since both
-        // elements share a `left`/`right` transition (see .tagline-left/
-        // -right) with a later, separately-triggered swap - see its own
-        // comment for why that combination needs the extra step here.
-        if (leftSwapAnim && leftSwapAnim.playState !== 'idle') commitAndCancel(left, leftSwapAnim);
-        if (rightSwapAnim && rightSwapAnim.playState !== 'idle') commitAndCancel(right, rightSwapAnim);
-        leftSwapAnim = null;
-        rightSwapAnim = null;
-      });
-      left.classList.add('visible');
-      right.classList.add('visible');
-      plus.classList.add('visible');
+      if (instant) {
+        // POR CORTE: commits the same final left/clipPath values the swap
+        // below animates toward, but with transition:none bracketing the
+        // write (same commitAndCancel-style trick) so neither .tagline-*'s
+        // own left/right transition nor #tagline-plus's own opacity
+        // transition gets a chance to animate it - enterFromContact needs
+        // these already resting in place the instant it calls this, not
+        // still fading/sliding when rect2-black starts moving away.
+        const prevLeftTransition = left.style.transition;
+        const prevRightTransition = right.style.transition;
+        const prevPlusTransition = plus.style.transition;
+        left.style.transition = 'none';
+        right.style.transition = 'none';
+        plus.style.transition = 'none';
+        left.style.left = leftFinalLeft + 'px';
+        right.style.left = rightFinalLeft + 'px';
+        right.style.clipPath = 'inset(0 0% -20px 0)';
+        left.classList.add('visible');
+        right.classList.add('visible');
+        plus.classList.add('visible');
+        void plus.offsetHeight;
+        left.style.transition = prevLeftTransition;
+        right.style.transition = prevRightTransition;
+        plus.style.transition = prevPlusTransition;
+      } else {
+        const swapAnimOpts = { duration: TAGLINE_SWAP_MS, easing: 'ease', fill: 'forwards' };
+        leftSwapAnim = left.animate([{ left: rightFinalLeft + 'px' }, { left: leftFinalLeft + 'px' }], swapAnimOpts);
+        // "Video Editor" moves right-to-left into a mask open on its right
+        // side, so its own left edge (where "V" sits) is what's closest to
+        // that mask and crosses in first - already a left-to-right reveal,
+        // no extra help needed. "motion graphics" is the mirror case: moving
+        // left-to-right into a mask open on its LEFT side means its own
+        // RIGHT edge ("s" in graphics) is what's closest and crosses in
+        // first - reading end-to-start, backwards. A fixed window can't fix
+        // that (it's just clipping absolute screen position, blind to which
+        // characters are there), so this adds its own clip-path, animated
+        // left-to-right in lockstep with the slide, to force the correct
+        // reading order regardless of which edge the window itself reveals.
+        // -20px on the bottom inset (instead of 0) is deliberate: this
+        // clip-path is the first thing to ever clip this element at all, so
+        // a plain 0 clips flush against the box's own bottom edge - which
+        // cuts off "graphics"' g-descender, since line-height:1 already lets
+        // descenders spill well below the box with nothing previously there
+        // to clip them (a smaller -3px still left it visibly flat-cropped,
+        // confirmed by screenshot - Helvetica Neue Light's descender at this
+        // font-size reaches further than that). The negative inset pushes
+        // that edge down past where the descender actually ends.
+        rightSwapAnim = right.animate([
+          { left: leftFinalLeft + 'px', clipPath: 'inset(0 100% -20px 0)' },
+          { left: rightFinalLeft + 'px', clipPath: 'inset(0 0% -20px 0)' }
+        ], swapAnimOpts);
+        Promise.allSettled([leftSwapAnim.finished, rightSwapAnim.finished]).then(() => {
+          // resetCenterTagline may have already canceled+nulled these (a
+          // reset mid-slide) - commitStyles on an already-canceled
+          // animation throws, so skip anything that's not still running.
+          // commitAndCancel (not a plain commitStyles+cancel) since both
+          // elements share a `left`/`right` transition (see .tagline-left/
+          // -right) with a later, separately-triggered swap - see its own
+          // comment for why that combination needs the extra step here.
+          if (leftSwapAnim && leftSwapAnim.playState !== 'idle') commitAndCancel(left, leftSwapAnim);
+          if (rightSwapAnim && rightSwapAnim.playState !== 'idle') commitAndCancel(right, rightSwapAnim);
+          leftSwapAnim = null;
+          rightSwapAnim = null;
+        });
+        left.classList.add('visible');
+        right.classList.add('visible');
+        plus.classList.add('visible');
+      }
       // video appears right as the phrases start sliding back into their
-      // own windows, not later at the "+"-to-"/" spin
-      showBgVideo();
+      // own windows, not later at the "+"-to-"/" spin - skipped in instant
+      // mode, where bg-video's own reveal is already handled by whichever
+      // caller needed the POR CORTE tagline (see enterFromContact, which
+      // hands its own reveal off to playContactTransition's reverse path)
+      if (!instant) showBgVideo();
 
       // once the fade-in settles (its own 0.8s opacity transition), start
       // the endless "+"<->bar flourish loop - see startSpinLoop
@@ -3523,6 +4127,10 @@
       hz.classList.remove('visible');
       hz.style.left = '';
       hz.style.top = '';
+      const contactBtn = document.getElementById('contact-button');
+      contactBtn.classList.remove('visible');
+      contactBtn.style.left = '';
+      contactBtn.style.top = '';
       const line = document.getElementById('header-line');
       line.classList.remove('visible');
       line.style.top = '';
@@ -3728,21 +4336,51 @@
     });
     updateMuteIcon();
 
-    // sizes .player exactly like marco.html's own expand step (90% of
-    // viewport height, capped by 95% of viewport width, cropped to
-    // frameH for videos with baked-in letterboxing) - the difference is
-    // .video-overlay is already a fixed, viewport-filling flexbox that
-    // centers .player on its own, so there's no gridBounds/left/top
-    // math to redo here, just width/height
+    // three fixed size instances instead of a pure vh/vw scale that grew
+    // (or shrank/cropped) without any limit - standard, "universal"
+    // breakpoints (768/1024, same ones Bootstrap/Tailwind use for
+    // mobile/tablet/desktop) rather than anything specific to this site:
+    //   - computer (>1024px wide): capped well below "fills a 4K
+    //     monitor" territory
+    //   - tablet horizontal (768-1024px wide): a modest, fixed-feeling
+    //     size in between
+    //   - vertical (<768px wide - phones, and tablets held upright):
+    //     width-driven instead of height-driven, since a narrow viewport
+    //     runs out of WIDTH long before it runs out of height - the old
+    //     height-first formula kept demanding a wide player and only
+    //     caught the overflow after the fact, which is what read as
+    //     "se cropea"
+    // Each tier is still a min/max BOX (maxW x maxH), not one single
+    // hardcoded pixel size - openVideo below still fits the video's own
+    // aspect ratio inside whichever box applies, so it isn't a step
+    // function at the exact breakpoint edges within a tier's own range.
+    function playerBounds() {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      if (vw < 768) {
+        return { maxW: vw * 0.92, maxH: vh * 0.8 };
+      }
+      if (vw <= 1024) {
+        return { maxW: Math.min(vw * 0.9, 900), maxH: Math.min(vh * 0.85, 640) };
+      }
+      return { maxW: Math.min(vw * 0.95, 1400), maxH: Math.min(vh * 0.9, 900) };
+    }
+
+    // sizes .player to fit within playerBounds() (fit-by-height first,
+    // capped by width, same shape as marco.html's own expand step) -
+    // cropped to frameH for videos with baked-in letterboxing. .video-
+    // overlay is already a fixed, viewport-filling flexbox that centers
+    // .player on its own, so there's no gridBounds/left/top math to redo
+    // here, just width/height
     function openVideo(index, sourceEl) {
       const entry = BOTONERA_VIDEOS[index];
       if (!entry) return;
       const aspect = entry.aspect === 'square' ? 1 : 16 / 9;
-      let videoH = window.innerHeight * 0.9;
+      const bounds = playerBounds();
+      let videoH = bounds.maxH;
       let w = videoH * aspect;
-      const maxW = window.innerWidth * 0.95;
-      if (w > maxW) {
-        w = maxW;
+      if (w > bounds.maxW) {
+        w = bounds.maxW;
         videoH = w / aspect;
       }
       const frameFraction = entry.frameH || 1;
@@ -3823,6 +4461,481 @@
     // click anywhere on the overlay (backdrop or video itself) closes it
     // - the controls bar already stops its own clicks from bubbling here
     videoOverlay.addEventListener('click', closeVideo);
+
+    // "Contact"/"Home" transition: clicking "Contact" doesn't just link
+    // out - #rect2 (celeste) slides down and out while #rect2-black
+    // (identically sized/positioned, see its own CSS comment) slides down
+    // into its place from just above; at the same time bg-video (the
+    // globe) slides right until it disappears behind #rect's own edge
+    // (already clipped there by #bg-video-mask's own overflow:hidden -
+    // this only has to move it, not mask it), and #logo-text ("Diego
+    // Tavella") slides
+    // out the same way, fading as it goes, clipped to #rect's own live
+    // box by #logo-text-mask (see its own CSS comment) the same way
+    // #rect2-mask clips #rect2/#rect2-black below - it's a sibling of
+    // #rect, not a child, so nothing clips it on its own otherwise. By
+    // the time all four finish, the page is
+    // already sitting on exactly contact.html's own look (black #rect2,
+    // no globe, no wordmark, same blink square/"Contact"->"Home" label)
+    // - so the actual navigation lands on what looks like the same frame,
+    // no visible cut. contact.html's "Home" link then reverses this: it
+    // lands back here (skipping the password gate - see enterFromContact)
+    // already showing that same black-#rect2/no-globe/no-wordmark look,
+    // then immediately plays this exact transition backwards to arrive
+    // at the page's actual resting state.
+    const CONTACT_TRANSITION_MS = 690; // 600 * 1.15 - 15% slower
+    let contactTransitioning = false;
+
+    function playContactTransition(reverse) {
+      const rect2 = document.getElementById('rect2');
+      const rect2Black = document.getElementById('rect2-black');
+      const video = document.getElementById('bg-video');
+      const txt = document.getElementById('logo-text');
+      const opts = { duration: CONTACT_TRANSITION_MS, easing: 'ease-in', fill: 'forwards' };
+
+      // masks #rect2/#rect2-black to #rect's own current box for the
+      // duration of this transition (see #rect2-mask's own CSS comment) -
+      // both slide by a full rect2-height (well past #rect's own edge,
+      // see slideDistance below), which without this would fly them
+      // several screen-heights past #rect and get cut off raggedly by the
+      // browser window's own edge instead of disappearing cleanly right
+      // at #rect's - the same "vanishes exactly at rect's edge" look
+      // #bg-video-mask's own overflow:hidden already gives bg-video for
+      // free (kept in sync to #rect's own box continuously - see
+      // syncRectMasks - so this transition doesn't need to touch it)
+      const rectEl = document.getElementById('rect');
+      const rectCs = getComputedStyle(rectEl);
+      const rectW = parseFloat(rectCs.width);
+      const rectH = parseFloat(rectCs.height);
+      const rectRadius = parseFloat(rectCs.borderRadius);
+      const rectLeftPx = RECT_CENTER_X - rectW / 2;
+      const rectTopPx = RECT_CENTER_Y - rectH / 2;
+      const rectClipPath = `inset(${rectTopPx}px ${1920 - rectLeftPx - rectW}px ${1080 - rectTopPx - rectH}px ${rectLeftPx}px round ${rectRadius}px)`;
+      const rect2Mask = document.getElementById('rect2-mask');
+      const logoTextMask = document.getElementById('logo-text-mask');
+      rect2Mask.style.clipPath = rectClipPath;
+      logoTextMask.style.clipPath = rectClipPath;
+
+      // "reverse" plays each element's own forward array backwards (time-
+      // reversal), not a fresh animation with the two elements' roles
+      // swapped - #rect2 (celeste) always retraces its own down-and-out
+      // path (so reverse has it re-entering from BELOW, sliding up), and
+      // #rect2-black always retraces its own down-into-place path (so
+      // reverse has it exiting back UPWARD, the way it arrived)
+      const shownEl = reverse ? rect2 : rect2Black;
+      const hiddenEl = reverse ? rect2Black : rect2;
+      const cs = getComputedStyle(hiddenEl);
+      shownEl.style.width = cs.width;
+      shownEl.style.height = cs.height;
+      shownEl.style.borderRadius = cs.borderRadius;
+      // #rect-frame's own hole stays put at rect2's resting box the whole
+      // time - it's meant to keep masking whatever's outside it even
+      // while rect2/rect2-black slide past each other underneath, not
+      // grow to let them travel unmasked (see syncRectMasks, which
+      // keeps applying this same box every frame, transition or not -
+      // only `transform` is animated below, so this box never actually
+      // changes mid-slide)
+      const rect2Side = parseFloat(cs.height); // ===cs.width - square at this step
+      // the same "calle" gap #rect2/#rect2-black already keep around their
+      // own outline in the square instance (rectW/rect2Side both centered
+      // on the same point, so half the difference is the uniform margin
+      // all around) - since both elements always move by the exact same
+      // translateY at the exact same instant, traveling rect2Side+calle
+      // instead of just rect2Side keeps this same gap between them for the
+      // WHOLE slide instead of landing them flush/overlapping
+      const calle = (rectW - rect2Side) / 2;
+      const slideDistance = rect2Side + calle;
+      shownEl.classList.add('visible');
+
+      const rect2Forward = [
+        { transform: 'translate(-50%, -50%) translateY(0px)' },
+        { transform: `translate(-50%, -50%) translateY(${slideDistance}px)` }
+      ];
+      const rect2BlackForward = [
+        { transform: `translate(-50%, -50%) translateY(${-slideDistance}px)` },
+        { transform: 'translate(-50%, -50%) translateY(0px)' }
+      ];
+      const rect2Anim = rect2.animate(reverse ? rect2Forward.slice().reverse() : rect2Forward, opts);
+      const rect2BlackAnim = rect2Black.animate(reverse ? rect2BlackForward.slice().reverse() : rect2BlackForward, opts);
+
+      const videoForward = [
+        { transform: 'scale(1) translateX(0%)' },
+        { transform: 'scale(1) translateX(120%)' }
+      ];
+      if (reverse) showBgVideo(); // (re)starts playback - the animation below drives its actual transform
+      const videoAnim = video.animate(reverse ? videoForward.slice().reverse() : videoForward, opts);
+
+      const txtForward = [
+        { transform: 'scale(1) translateX(0px)', opacity: GRAY_OPACITY },
+        { transform: 'scale(1) translateX(-400px)', opacity: 0 }
+      ];
+      const txtAnim = txt.animate(reverse ? txtForward.slice().reverse() : txtForward, opts);
+
+      return Promise.allSettled([rect2Anim.finished, rect2BlackAnim.finished, videoAnim.finished, txtAnim.finished]).then(() => {
+        [rect2Anim, rect2BlackAnim].forEach((a) => { a.commitStyles(); a.cancel(); });
+        // video/txt (unlike rect2/rect2-black) share a CSS `transition` on
+        // this same `transform` property with other code elsewhere (bg-
+        // video's own .visible toggle, #logo-text's own hover/press
+        // treatment) - commitAndCancel avoids the Firefox stutter a plain
+        // commitStyles+cancel can trigger there (see its own comment)
+        commitAndCancel(video, videoAnim);
+        commitAndCancel(txt, txtAnim);
+        rect2Mask.style.clipPath = '';
+        logoTextMask.style.clipPath = '';
+        // rectFrame's box-shadow stays ON - it's meant to be a permanent
+        // occlusion now, kept in sync continuously by syncRectMasks
+        // (see below), not something this one transition turns off again
+        (reverse ? rect2Black : rect2).classList.remove('visible');
+        if (!reverse) {
+          // "Video Editor"/"motion graphics"/"+" disappear POR CORTE now
+          // that rect2-black has fully covered them - contact.html has no
+          // center tagline of its own, so nothing should still read
+          // on-screen in the moment before the actual navigation
+          const plus = document.getElementById('tagline-plus');
+          const prevPlusTransition = plus.style.transition;
+          plus.style.transition = 'none';
+          plus.classList.remove('visible');
+          document.getElementById('tagline-left').classList.remove('visible');
+          document.getElementById('tagline-right').classList.remove('visible');
+          void plus.offsetHeight;
+          plus.style.transition = prevPlusTransition;
+        }
+      });
+    }
+
+    // globe + "Diego Tavella" entrance on arrival from contact.html - the
+    // exact reverse of their own exit in playContactTransition's txtForward/
+    // videoForward, just split out on its own since #rect2 (celeste) and
+    // the tagline no longer need any animating here (see enterFromContact -
+    // #rect2 arrives already settled from contact.html's own swap, and the
+    // tagline lands POR CORTE via playCenterTagline(true)).
+    function playArrivalReveal() {
+      const video = document.getElementById('bg-video');
+      const txt = document.getElementById('logo-text');
+      const opts = { duration: CONTACT_TRANSITION_MS, easing: 'ease-in', fill: 'forwards' };
+
+      // "Diego Tavella" starts at translateX(-400px) - well past #rect's
+      // own left edge - so it needs the same #logo-text-mask treatment
+      // playContactTransition gives it on the way out, or it'd cross the
+      // white background in plain view instead of only appearing once it
+      // reaches #rect's own silhouette. bg-video doesn't need this - it's
+      // already clipped for free by #bg-video-mask's own overflow:hidden.
+      const rectEl = document.getElementById('rect');
+      const rectCs = getComputedStyle(rectEl);
+      const rectW = parseFloat(rectCs.width);
+      const rectH = parseFloat(rectCs.height);
+      const rectRadius = parseFloat(rectCs.borderRadius);
+      const rectLeftPx = RECT_CENTER_X - rectW / 2;
+      const rectTopPx = RECT_CENTER_Y - rectH / 2;
+      const logoTextMask = document.getElementById('logo-text-mask');
+      logoTextMask.style.clipPath = `inset(${rectTopPx}px ${1920 - rectLeftPx - rectW}px ${1080 - rectTopPx - rectH}px ${rectLeftPx}px round ${rectRadius}px)`;
+
+      const txtAnim = txt.animate([
+        { transform: 'scale(1) translateX(-400px)', opacity: 0 },
+        { transform: 'scale(1) translateX(0px)', opacity: GRAY_OPACITY }
+      ], opts);
+      txtAnim.finished.then(() => {
+        // same reasoning as playContactTransition's own commitAndCancel use
+        // - shares a CSS transition on this same `transform` property
+        commitAndCancel(txt, txtAnim);
+        logoTextMask.style.clipPath = '';
+      });
+
+      // #bg-video's own reveal (and the loadHeavyVideos() fetch/decode it
+      // needs first - see that function's own comment) waits for the
+      // `pagereveal` event instead of starting here alongside the text:
+      // it's already sitting at its own collapsed scale(0) look (set
+      // synchronously in enterFromContact, inline - beats
+      // #bg-video.visible's own CSS transition outright, so there's
+      // nothing to animate while it waits), so this defer is invisible on
+      // its own. pagereveal fires for every navigation, so this still
+      // runs immediately wherever there's no cross-document view
+      // transition to wait for (plain loads, or browsers without one at
+      // all).
+      let videoRevealed = false; // guards against pagereveal AND the safety-net timeout below both firing
+      function revealVideo() {
+        if (videoRevealed) return;
+        videoRevealed = true;
+        loadHeavyVideos();
+        showBgVideo(); // (re)starts playback - the animation below drives its actual transform
+        // born from its own center, scale(0) -> scale(1), no translateX -
+        // unlike playContactTransition's own exit slide (leaving index for
+        // contact), which this doesn't touch
+        const videoAnim = video.animate([
+          { transform: 'scale(0)' },
+          { transform: 'scale(1)' }
+        ], opts);
+        videoAnim.finished.then(() => commitAndCancel(video, videoAnim));
+      }
+      if ('onpagereveal' in window) {
+        window.addEventListener('pagereveal', (e) => {
+          if (e.viewTransition) e.viewTransition.ready.then(revealVideo, revealVideo);
+          else revealVideo();
+        }, { once: true });
+        // safety net: if pagereveal never fires for some reason, don't
+        // leave the globe hidden forever
+        setTimeout(revealVideo, 1500);
+      } else {
+        revealVideo();
+      }
+    }
+
+    document.getElementById('contact-button').addEventListener('click', (e) => {
+      e.preventDefault();
+      if (contactTransitioning || step !== 1) return;
+      contactTransitioning = true;
+      playContactTransition(false).then(() => {
+        // #rect2-black is the one actually left visible now, matching
+        // contact.html's own (always-black) #rect2 - #rect2 (celeste) may
+        // still be holding this name from a previous arrival (see
+        // enterFromContact/playHomeTransition), and two elements can't
+        // carry the same view-transition-name at once
+        document.getElementById('rect2').style.viewTransitionName = 'none';
+        document.getElementById('rect2-black').style.viewTransitionName = 'byn-rect2';
+        window.location.href = 'contact.html';
+      });
+    });
+
+    // arriving via contact.html's "Home" link: jumps straight to this same
+    // square-instance hold - skipping the password gate and the whole
+    // press/grow intro entirely, NOT resetting to it - and lands DIRECTLY
+    // on the page's actual resting state (celeste #rect2, the globe,
+    // "Diego Tavella"), no animation at all. The black->celeste swap
+    // itself now plays out on contact.html's own "Home" click (see
+    // playHomeTransition there) while that page is already fully loaded/
+    // interactive, instead of replaying it here on this page's very
+    // first paint - which is what used to make #rect2-black's own exit
+    // look wrong (a WAAPI animation started that early doesn't reliably
+    // run to completion). By the time this function runs, contact.html
+    // has already done the only animating there is to do.
+    function enterFromContact() {
+      passwordUnlocked = true;
+      rectInteractionReady = true;
+      passwordInput.blur();
+      passwordInput.disabled = true;
+      document.getElementById('password-gate').style.display = 'none';
+      document.getElementById('text-diego-half').style.display = 'none';
+      document.getElementById('text-tavella-half').style.display = 'none';
+
+      const { widths, heights, radii } = overshootValues();
+      const width = widths[3];
+      const height = heights[3]; // ===width outside portrait - see overshootValues()
+      const rectEl = document.getElementById('rect');
+      // .rect's own CSS declares `transition: background-color 0.2s ease,
+      // border-color 0.2s ease` (for the ordinary hover/press interactions
+      // once the page is actually running) - without disabling it here,
+      // this arrival's border-color jump from whatever the cold-start
+      // default is to #000 plays THAT transition instead of landing
+      // instantly, fading the border in over 0.2s exactly when contact.html
+      // was already showing it solid - this is what read as the outline
+      // "fundiendo"/cutting oddly right at the navigation seam. Disabled
+      // for just this synchronous batch of instant assignments, then
+      // restored (via a forced reflow in between) so the CSS transition
+      // is back for any later real interaction on this same element.
+      rectEl.style.transition = 'none';
+      rectEl.style.width = width + 'px';
+      rectEl.style.height = height + 'px';
+      rectEl.style.borderRadius = radii[3] + 'px';
+      rectEl.style.background = 'transparent';
+      rectEl.style.borderColor = '#000';
+      rectEl.style.borderWidth = (window.innerWidth < window.innerHeight ? RECT_BORDER_WIDTH_PORTRAIT : 2) + 'px';
+      rectEl.offsetHeight; // force the above to paint with transitions off before re-enabling them below
+      rectEl.style.transition = '';
+
+      const overshootLeft = RECT_CENTER_X - width / 2;
+      const overshootTop = RECT_CENTER_Y - height / 2;
+      const rectBottom = RECT_CENTER_Y + height / 2;
+      const bracketEndX0 = overshootLeft + EDGE_MARGIN_X;
+      const brLeft = 1920 - bracketEndX0 - BRACKET_RIGHT_WIDTH;
+
+      const bl = document.getElementById('bracket-left');
+      const br = document.getElementById('bracket-right');
+      bl.classList.remove('bracket-offstage');
+      br.classList.remove('bracket-offstage');
+      // tall pair only in portrait - see syncLogoToRect's own comment on
+      // why it never replaces the originals in landscape. #bracket-left-
+      // tall/#bracket-right-tall default to opacity:0 in their own CSS,
+      // so the landscape branch just never touches them, same as always
+      const isPortrait = window.innerWidth < window.innerHeight;
+      if (isPortrait) {
+        bl.style.opacity = '0';
+        br.style.opacity = '0';
+        const blTall = document.getElementById('bracket-left-tall');
+        const brTall = document.getElementById('bracket-right-tall');
+        blTall.style.left = (bracketEndX0 - 4) + 'px';
+        brTall.style.left = brLeft + 'px';
+        blTall.style.transform = 'scale(1)';
+        brTall.style.transform = 'scale(1)';
+        blTall.style.opacity = '1';
+        brTall.style.opacity = '1';
+        blTall.style.filter = 'none';
+        brTall.style.filter = 'none';
+      } else {
+        bl.style.left = (bracketEndX0 - 4) + 'px';
+        br.style.left = brLeft + 'px';
+        bl.style.transform = 'scale(1)';
+        br.style.transform = 'scale(1)';
+        bl.style.filter = 'none';
+        br.style.filter = 'none';
+      }
+
+      // "Diego Tavella" starts at its exit look (see txtForward's own end
+      // keyframe in playContactTransition) - playArrivalReveal below
+      // animates it in from here, same as it always used to slide out
+      // going the other way
+      const txt = document.getElementById('logo-text');
+      txt.classList.add('revealed');
+      txt.style.left = bracketEndX0 + 'px';
+      txt.style.top = (overshootTop + EDGE_MARGIN_Y - 4) + 'px';
+      txt.style.width = (TEXT_BASE_WIDTH * TEXT_END_SCALE) + 'px';
+      txt.style.height = (TEXT_BASE_HEIGHT * TEXT_END_SCALE) + 'px';
+      txt.style.filter = 'none';
+      txt.style.transform = 'scale(1) translateX(-400px)';
+      txt.style.opacity = '0';
+
+      // #rect2 (celeste) at its own resting size/position - #rect2-black
+      // is left untouched (default, not .visible): the swap that used to
+      // happen here on arrival now happens on contact.html instead, so
+      // this page only ever needs to show the already-settled celeste look.
+      // byn-rect2 is now #rect2's own CSS default (not #rect2-black's) for
+      // exactly this reason - relying on this assignment running early
+      // enough to beat index.html's first paint used to be the cause of a
+      // black flash on arrival (the browser would briefly try to continue
+      // INTO #rect2-black - hidden, no box - instead of the celeste rect
+      // actually on screen). These two lines are now just a redundant
+      // safety net matching what the CSS already guarantees.
+      const rect2 = document.getElementById('rect2');
+      document.getElementById('rect2-black').style.viewTransitionName = 'none';
+      rect2.style.viewTransitionName = 'byn-rect2';
+      const RECT2_SCALE = 0.97; // matches press.finished's own value
+      // one shared margin applied to both axes, not each keeping its own
+      // 3% - see press.finished's own matching comment for why
+      const rect2Margin = (width * (1 - RECT2_SCALE)) / 2;
+      const rect2Width = width - rect2Margin * 2;
+      const rect2Height = height - rect2Margin * 2;
+      const rect2Radius = Math.max(0, radii[3] - rect2Margin);
+      rect2.style.width = rect2Width + 'px';
+      rect2.style.height = rect2Height + 'px';
+      rect2.style.borderRadius = rect2Radius + 'px';
+      rect2.style.transform = 'translate(-50%, -50%) translateY(0px)';
+      rect2.classList.add('visible');
+      // seeded synchronously here too (see playContactTransition's own
+      // comment on why) - syncRectMasks takes over from the next
+      // animation frame on
+      const rectFrame = document.getElementById('rect-frame');
+      rectFrame.style.width = rect2Width + 'px';
+      rectFrame.style.height = rect2Height + 'px';
+      rectFrame.style.borderRadius = rect2Radius + 'px';
+      rectFrame.style.boxShadow = '0 0 0 3000px #fff';
+
+      const sqTop = rectBottom - EDGE_MARGIN_Y - BRACKET_WIDTH;
+      const sq = document.getElementById('blink-square');
+      const hz = document.getElementById('blink-square-hover-zone');
+      sq.classList.remove('triangle', 'back');
+      sq.style.width = BRACKET_WIDTH + 'px';
+      sq.style.height = BRACKET_WIDTH + 'px';
+      sq.style.left = brLeft + 'px';
+      sq.style.top = sqTop + 'px';
+      sq.classList.add('visible');
+      hz.style.width = (BRACKET_WIDTH + BLINK_HIT_PADDING * 2) + 'px';
+      hz.style.height = (BRACKET_WIDTH + BLINK_HIT_PADDING * 2) + 'px';
+      hz.style.left = (brLeft - BLINK_HIT_PADDING) + 'px';
+      hz.style.top = (sqTop - BLINK_HIT_PADDING) + 'px';
+      hz.classList.add('visible');
+
+      const contactBtn = document.getElementById('contact-button');
+      contactBtn.style.left = bracketEndX0 + 'px';
+      contactBtn.style.top = (sqTop + BRACKET_WIDTH / 2) + 'px';
+      contactBtn.classList.add('visible');
+
+      // globe starts collapsed at its own center - born from there via
+      // playArrivalReveal below (scale(0) -> scale(1), called once
+      // everything else here is set), not sliding in from off-screen
+      const video = document.getElementById('bg-video');
+      video.classList.add('visible');
+      video.style.transform = 'scale(0)';
+
+      // "Video Editor"/"motion graphics" land at their own resting look
+      // POR CORTE (see playCenterTagline's own instant-mode comment) -
+      // #rect2 is already settled too (see above), so only the globe and
+      // "Diego Tavella" actually have anything left to animate in
+      playCenterTagline(true);
+      playArrivalReveal();
+
+      step = 1;
+    }
+
+    if (location.hash === '#from-contact') {
+      history.replaceState(null, '', location.pathname + location.search);
+      enterFromContact();
+    }
+
+    // keeps #rect-frame's own "paint white everywhere outside this box"
+    // occlusion (see its own CSS comment) matched to whichever of #rect2/
+    // #rect2-black is actually visible right now, on every single frame -
+    // not just at the handful of spots (playContactTransition,
+    // enterFromContact) that already seed it synchronously for the exact
+    // instant a document boundary is crossed. rect2's own box changes in
+    // plenty of OTHER places too (hover preview, the grow-to-overshoot
+    // animation, the widened/later-step instance) and this is what keeps
+    // the white "calle" around it honest in all of those too, instead of
+    // only right at the two navigation seams. ALSO keeps #bg-video-mask
+    // matched to #rect's own live box, for the same reason - bg-video
+    // used to get this for free as #rect's own child (see #bg-video-
+    // mask's own CSS comment for why it isn't anymore) - #rect's box
+    // changes constantly across the intro's WAAPI-driven grow animation,
+    // hover preview, widen/reverse, so a few fixed checkpoints wouldn't
+    // be enough here the way they mostly are for rect2. Runs forever once
+    // started; a getComputedStyle + a few style writes per frame is
+    // cheap enough not to matter.
+    function syncRectMasks() {
+      const rectEl = document.getElementById('rect');
+      const rectCs = getComputedStyle(rectEl);
+      const bgVideoMask = document.getElementById('bg-video-mask');
+      bgVideoMask.style.width = rectCs.width;
+      bgVideoMask.style.height = rectCs.height;
+      bgVideoMask.style.borderRadius = rectCs.borderRadius;
+      // deliberately keeps masking whatever's outside its own box even
+      // while rect2/rect2-black are mid-slide (playContactTransition only
+      // ever animates `transform` on them, never top/width/height/
+      // borderRadius, so this box doesn't actually move during that -
+      // it stays put, still covering the calle/corners the whole time
+      // instead of opening up to let the slide travel through unmasked)
+      const rect2El = document.getElementById('rect2');
+      const rect2BlackEl = document.getElementById('rect2-black');
+      const active = rect2BlackEl.classList.contains('visible') ? rect2BlackEl
+        : (rect2El.classList.contains('visible') ? rect2El : null);
+      const frame = document.getElementById('rect-frame');
+      if (active) {
+        const cs = getComputedStyle(active);
+        // mirrors active's own real box exactly - width/height/
+        // borderRadius AND top. That last one is the one that actually
+        // matters here: #rect-frame's CSS hardcodes top:539.5px (rect's
+        // own fixed center), which is only correct while rect2 is ALSO
+        // centered there - the widened instance's rect2 moves its own
+        // `top` down (header eats into it from above, bottom edge fixed,
+        // so the center shifts), and without following that same shift
+        // here, the frame stays centered on the OLD point while rect2
+        // itself is centered lower - same width/height but wrong position
+        // reads exactly as "top gap gone, bottom gap doubled". Mirroring
+        // active's box verbatim (this box already IS correctly gapped on
+        // every side by design - see advanceFromOvershoot's own
+        // rect2Gap) is enough once the position itself is right; no
+        // separate margin math needed.
+        frame.style.top = cs.top;
+        frame.style.width = cs.width;
+        frame.style.height = cs.height;
+        frame.style.borderRadius = cs.borderRadius;
+        frame.style.boxShadow = '0 0 0 3000px #fff';
+      } else {
+        // rect2/rect2-black don't exist yet (still on the idle button/
+        // password-gate look) - stay off so the initial button isn't
+        // whitewashed
+        frame.style.boxShadow = 'none';
+      }
+      requestAnimationFrame(syncRectMasks);
+    }
+    requestAnimationFrame(syncRectMasks);
 
     // TEMP/provisional - see the HTML comment above #ruler-top. Real
     // viewport px (clientX/clientY), not canvas space - these are for

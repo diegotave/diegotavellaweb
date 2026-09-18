@@ -1,143 +1,511 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diego Tavella — Contact</title>
-  <link rel="stylesheet" href="index.css?v=4">
-  <style>
-    #contact-wrap {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      gap: 40px;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact</title>
+<style>
+  /* pairs with index.html's own @view-transition rule + matching
+     view-transition-name declarations below - lets the browser carry
+     #rect/#rect2/#blink-square across the navigation as one continuous
+     element instead of cutting, in browsers that support cross-document
+     view transitions (Chromium; Safari/Firefox just fall back to a plain
+     navigation) */
+  @view-transition {
+    navigation: auto;
+  }
+  /* mirrors index.html's own rule of the same name - see its comment.
+     Needed on both sides: whichever document is "driving" the transition
+     pseudo-tree at a given moment is the one whose stylesheet applies. */
+  ::view-transition-image-pair(root) {
+    isolation: auto;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  /* #rect is named (byn-rect, below) - see index.html's own comment on
+     this same block for the full back-and-forth: named, then unnamed
+     (folded into root) once naming exposed it to the same cross-document
+     pixel mismatch #rect2 has and read as the border thickening for a
+     frame, then named again once that turned out to be the smaller
+     problem - root wound up waiting on index.html's own (much heavier)
+     readiness instead, which blinked #rect's border out entirely for a
+     beat instead of just thickening it. #rect-frame is named too
+     (byn-rect-frame) for the same reason - its white mask has no crisp
+     edge of its own to visibly thicken, so it never had #rect's reason
+     to stay unnamed in the first place. */
+  ::view-transition-group(byn-rect),
+  ::view-transition-group(byn-rect2),
+  ::view-transition-group(byn-rect-frame),
+  ::view-transition-group(byn-blink-square) {
+    animation: none;
+  }
+  ::view-transition-old(byn-rect),
+  ::view-transition-new(byn-rect),
+  ::view-transition-old(byn-rect2),
+  ::view-transition-new(byn-rect2),
+  ::view-transition-old(byn-rect-frame),
+  ::view-transition-new(byn-rect-frame),
+  ::view-transition-old(byn-blink-square),
+  ::view-transition-new(byn-blink-square) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
 
-    #contact-email {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: clamp(22px, 4vw, 56px);
-      font-weight: 200;
-      letter-spacing: 0.04em;
-      color: #000;
-      text-decoration: none;
-      line-height: 1;
-      transition: opacity 120ms ease, font-size 180ms ease;
-    }
-    #contact-email:hover { opacity: 0.55; }
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-    body.dark #contact-email { color: #fff; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+  }
 
-    #contact-links {
-      display: flex;
-      gap: 28px;
-      list-style: none;
-    }
-    #contact-links li a {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #000;
-      text-decoration: none;
-      opacity: 0.35;
-      transition: opacity 120ms ease;
-    }
-    #contact-links li a:hover { opacity: 0.75; }
-    body.dark #contact-links li a { color: #fff; }
+  /* same fixed 1920x1080 comp + uniform-scale-to-fit approach as
+     index.html's .viewport/.canvas (see fitCanvas below) - lets every
+     element here reuse index.html's own canvas-space (1920x1080) numbers
+     for the square overshoot instance directly, with no unit conversion */
+  .viewport {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
-    #contact-video {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      z-index: 1;
-    }
+  .canvas {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    flex: none;
+    will-change: transform;
+  }
 
-    #contact-label {
-      position: fixed;
-      left: 16px;
-      bottom: 16px;
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 10px;
-      font-weight: 400;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #000;
-      opacity: 0.25;
-    }
-    body.dark #contact-label { color: #fff; }
-  </style>
+  /* plain, permanent, solid white backdrop - see index.html's own CSS
+     comment for the full reasoning (same element there). Deliberately
+     the FIRST thing in .canvas, no view-transition-name, never touched
+     by the cross-document transition - a worst-case fallback so any
+     old/new timing gap reads as white instead of black. */
+  #canvas-backdrop {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    background: #fff;
+    pointer-events: none;
+  }
+
+  /* black rect2: same 0.97 concentric inset off the outline rect as
+     index.html's own #rect2 (celeste) / #rect2-black - see layout()
+     below, which mirrors press.finished's own rect2 sizing math verbatim.
+     Black rather than celeste to match #rect2-black, the one index.html
+     actually leaves showing once "Contact" is clicked - see
+     playContactTransition there. */
+  #rect2 {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: #000;
+    view-transition-name: byn-rect2;
+  }
+
+  /* celeste counterpart to #rect2 above - matches index.html's own
+     #rect2 color (#80dfff). Hidden until "Home" is clicked: playHomeTransition
+     (see the script below) slides this into place from below while the
+     black #rect2 slides out upward, the exact reverse of index.html's own
+     "Contact" swap but staged here instead of on arrival at index.html -
+     this page is already fully loaded/interactive by the time someone
+     clicks "Home", so the swap plays out on solid ground instead of
+     racing index.html's very first paint the way animating it there on
+     arrival used to. Starts with no view-transition-name of its own -
+     playHomeTransition moves #rect2's own name over to this element right
+     before navigating, once this is the one actually left visible (two
+     elements can't carry the same view-transition-name at once). */
+  #rect2-celeste {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: #80dfff;
+    display: none;
+  }
+
+  /* the outline rect: index.html's #rect at rest in its square overshoot
+     hold - transparent fill, 2px solid black stroke, no video/hover/press
+     behavior since this page is static */
+  #rect {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    border: 2px solid #000;
+    view-transition-name: byn-rect;
+  }
+
+  /* mirrors index.html's own #rect-frame (see its CSS comment there for
+     the box-shadow-as-mask technique), but scoped down to just the
+     "calle" gap between #rect2 and #rect's own inner edge instead of
+     covering all the way out to 3000px - see layout() below, which sets
+     its box-shadow spread to exactly rect2Margin (the calle's own
+     thickness) rather than hardcoding it here. Nothing further out is
+     this element's job on this page anymore: that's #rect-reveal's own
+     area now (below), sitting UNDER this in the DOM specifically so this
+     mask's white can still sit on top of it within the calle - #rect2's
+     own hole means neither of them ever paints over #rect2 itself. */
+  #rect-frame {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    pointer-events: none;
+    view-transition-name: byn-rect-frame;
+  }
+
+  /* arrival reveal: a solid cyan box, grown via width/height (not a
+     box-shadow spread, see playArrivalReveal's own comment for why) from
+     #rect's own live size up to revealEndSize(). Sits BEHIND #rect2/
+     #rect2-celeste/#rect-frame in the DOM (first, right after the plain
+     backdrop) specifically so growing bigger than #rect2's own box never
+     covers it or the calle gap around it - those three paint on top of
+     this regardless of how big it gets. Its own growth is only ever
+     visible in the real exterior, past where #rect-frame's own (now
+     calle-sized only) mask reaches - see that element's own comment. */
+  #rect-reveal {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: #80dfff;
+    pointer-events: none;
+    display: none;
+  }
+
+  /* same small blinking black square as index.html's #blink-square,
+     same flash keyframes/timing, pinned the same EDGE_MARGIN_X/Y margin
+     inside the rect's own bottom-right corner - see layout() below */
+  #blink-square {
+    position: absolute;
+    background: #000;
+    animation: blink-square-flash 0.6s steps(1, end) infinite;
+    view-transition-name: byn-blink-square;
+  }
+  @keyframes blink-square-flash {
+    0%, 100% { opacity: 0.75; }
+    50% { opacity: 0; }
+  }
+
+  /* "Home": where index.html's "Contact" link sits at the same instance -
+     same look (white Helvetica Neue Thin, no chrome), same shared
+     vertical center (blink square) / horizontal position (the left edge
+     "Diego Tavella" would sit on) - see layout() below */
+  #home-button {
+    position: absolute;
+    transform: translateY(-50%);
+    color: #fff;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 100;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+  }
+</style>
 </head>
-<body class="orange"><script>(function(){var t=localStorage.getItem("theme")||"orange";document.body.className=t==="dark"?"dark":t==="light"?"light":t==="red"?"red":"orange";})()</script>
-
-  <div id="stage">
-    <video id="contact-video" muted autoplay playsinline loop>
-      <source src="assets/videos/contact.webm" type='video/webm; codecs="vp9"'>
-    </video>
-  </div>
-
-  <div id="contact-wrap">
-    <a id="contact-email" href="mailto:diegotavella@gmail.com">diegotavella@gmail.com</a>
-    <ul id="contact-links">
-      <li><a href="https://www.instagram.com/diegotavella" target="_blank" rel="noopener">instagram</a></li>
-      <li><a href="https://vimeo.com/diegotavella" target="_blank" rel="noopener">vimeo</a></li>
-      <li><a href="https://www.linkedin.com/in/diegotavella" target="_blank" rel="noopener">linkedin</a></li>
-    </ul>
-  </div>
-
-  <div id="contact-label">diego tavella</div>
-
-  <div id="blend-panel">
-    <ul id="blend-list">
-      <li id="nav-home">home</li>
-      <li id="nav-alt4">home alternativo</li>
-      <li id="nav-works">works</li>
-      <li data-theme="orange">orange<br>version</li>
-      <li data-theme="red">red<br>version</li>
-      <li data-theme="dark">dark<br>version</li>
-      <li data-theme="white">white<br>version</li>
-    </ul>
+<body>
+  <div class="viewport">
+    <div class="canvas">
+      <div id="canvas-backdrop"></div>
+      <div id="rect-reveal"></div>
+      <div id="rect2"></div>
+      <div id="rect2-celeste"></div>
+      <div id="rect-frame"></div>
+      <div id="rect"></div>
+      <div id="blink-square"></div>
+      <a id="home-button" href="index.html#from-contact">Home</a>
+    </div>
   </div>
 
   <script>
-    document.getElementById("nav-home").addEventListener("click", () => {
-      window.location.href = "hom3dtv.html";
-    });
-    document.getElementById("nav-alt4").addEventListener("click", () => {
-      window.location.href = "hom4dtv.html";
-    });
-    document.getElementById("nav-works").addEventListener("click", () => {
-      window.location.href = "workka.html";
+    // back/forward navigation between this page and index.html restores
+    // the page from the browser's bfcache instead of actually reloading
+    // it - the whole script (this arrival reveal, the pagereveal defer,
+    // all of it) never runs again, so the page just pops back in frozen
+    // however it happened to look the instant it was navigated away from
+    // (mid-animation, cyan already retracted, etc.) instead of its real
+    // resting state. Forcing an actual reload on the persisted pageshow
+    // (fired specifically for a bfcache restore) is what makes back/
+    // forward behave like a normal visit again.
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) location.reload();
     });
 
-    const vid = document.getElementById("contact-video");
+    // constants below are copied straight from index.html's own square
+    // overshoot geometry (BASE_WIDTHS[2]/[3], BASE_RADII[2]/[3],
+    // overshootValues(), press.finished's rect2 sizing, and
+    // syncLogoToRect's EDGE_MARGIN_X/Y + blink-square placement) so this
+    // page reproduces that exact frame, at any viewport, without needing
+    // any of index.html's actual animation/interaction code.
+    const RECT_CENTER_X = 960;
+    const RECT_CENTER_Y = 539.5;
+    const BASE_SIDE = 1108.30055123673; // BASE_WIDTHS[2]===BASE_HEIGHTS[2] (narrowed to be a true square - see index.html)
+    const BASE_RADIUS = 31; // BASE_RADII[2]/[3]
+    const TOP_MARGIN_VH = 5;
+    const BOTTOM_MARGIN_VH = 5;
+    const RECT2_SCALE = 0.97;
+    // portrait ("vertical version"): the rect stops being a square here -
+    // 3:4 (width:height), narrower than tall instead of matching whatever
+    // the viewport's own aspect happens to be. Sizing it the SQUARE way
+    // (side = 90vh worth of canvas-space, i.e. a HEIGHT-driven formula)
+    // on a narrow/tall viewport produces a "square" thousands of
+    // canvas-space px on a side, since canvasScale itself is pinned to
+    // the (much smaller) WIDTH ratio there - so oversized it overshoots
+    // every edge of the screen and all you see is solid black/celeste
+    // fill with no corners or border in view anywhere. Sized by WIDTH
+    // instead (mirroring TOP/BOTTOM_MARGIN_VH's role with
+    // SIDE_MARGIN_VW), capped by the same height budget the square
+    // version uses, so it can't overshoot vertically either on an
+    // unusually short "portrait" window (e.g. a tablet closer to
+    // square). #bg-video (the globe, index.html only) is NOT part of
+    // this - it keeps its own square/circular treatment regardless.
+    const PORTRAIT_RATIO = 0.75;
+    const SIDE_MARGIN_VW = 8;
+    const EDGE_MARGIN_X = 59.7;
+    const EDGE_MARGIN_Y = 59.7;
+    const BRACKET_WIDTH = 19;
+    const BRACKET_RIGHT_WIDTH = 18;
 
-    function applyThemeBlend() {
-      const isOrange = document.body.classList.contains("orange");
-      const isRed    = document.body.classList.contains("red");
-      const isDark   = document.body.classList.contains("dark");
-      vid.style.mixBlendMode = (isOrange || isRed) ? "multiply" : "normal";
-      vid.style.filter = isDark ? "invert(1)" : "";
+    const canvas = document.querySelector('.canvas');
+    const rect = document.getElementById('rect');
+    const rect2 = document.getElementById('rect2');
+    const rect2Celeste = document.getElementById('rect2-celeste');
+    const rectFrame = document.getElementById('rect-frame');
+    const rectReveal = document.getElementById('rect-reveal');
+    const sq = document.getElementById('blink-square');
+    const homeBtn = document.getElementById('home-button');
+
+    function fitCanvas() {
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      canvas.style.transform = `scale(${scale})`;
     }
-    applyThemeBlend();
 
-    document.querySelectorAll("#blend-list li[data-theme]").forEach(li => {
-      li.addEventListener("click", () => {
-        document.body.classList.remove("dark", "orange", "red", "light");
-        if      (li.dataset.theme === "orange") { document.body.classList.add("orange"); localStorage.setItem("theme","orange"); }
-        else if (li.dataset.theme === "red")    { document.body.classList.add("red");    localStorage.setItem("theme","red"); }
-        else if (li.dataset.theme === "dark")   { document.body.classList.add("dark");   localStorage.setItem("theme","dark"); }
-        else                                    { localStorage.setItem("theme","light"); }
-        applyThemeBlend();
+    function layout() {
+      // same "pin the overshoot to (100 - top - bottom)vh tall" recompute
+      // as index.html's overshootValues() - except in portrait, where the
+      // rect is sized by WIDTH instead (see PORTRAIT_RATIO's own comment)
+      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const isPortrait = window.innerWidth < window.innerHeight;
+      const maxHeight = (window.innerHeight * (1 - (TOP_MARGIN_VH + BOTTOM_MARGIN_VH) / 100)) / canvasScale;
+      let width, height;
+      if (isPortrait) {
+        const desiredRealWidthPx = window.innerWidth * (1 - (SIDE_MARGIN_VW * 2) / 100);
+        width = desiredRealWidthPx / canvasScale;
+        height = width / PORTRAIT_RATIO;
+        if (height > maxHeight) {
+          // an unusually short "portrait" window (closer to square) -
+          // fall back to the height budget so it still can't overshoot
+          // vertically, same as the square version never could
+          height = maxHeight;
+          width = height * PORTRAIT_RATIO;
+        }
+      } else {
+        height = maxHeight;
+        width = height;
+      }
+      const s = Math.min(width, height) / BASE_SIDE;
+      const radius = BASE_RADIUS * s;
+
+      rect.style.width = width + 'px';
+      rect.style.height = height + 'px';
+      rect.style.borderRadius = radius + 'px';
+
+      // matches #rect's own box exactly (not rect2's smaller one, unlike
+      // #rect-frame above) - its resting/collapsed size whenever it isn't
+      // actively grown out by playArrivalReveal/playHomeTransition below -
+      // see #rect-reveal's own CSS comment for why
+      rectReveal.style.width = width + 'px';
+      rectReveal.style.height = height + 'px';
+      rectReveal.style.borderRadius = radius + 'px';
+
+      // a single absolute margin (not a per-axis percentage, which would
+      // need two different values once width!==height) so #rect-frame's
+      // own single box-shadow spread below still applies evenly on every
+      // side regardless of the rect's own aspect ratio
+      const rect2Margin = Math.min(width, height) * (1 - RECT2_SCALE) / 2;
+      const rect2Width = width - rect2Margin * 2;
+      const rect2Height = height - rect2Margin * 2;
+      const rect2Radius = Math.max(0, radius - rect2Margin);
+      rect2.style.width = rect2Width + 'px';
+      rect2.style.height = rect2Height + 'px';
+      rect2.style.borderRadius = rect2Radius + 'px';
+
+      // #rect-frame's hole matches rect2's own (smaller) box, not #rect's
+      // - see index.html's own syncRect2Occlusion comment for why. Its
+      // spread is set to exactly rect2Margin - the calle's own thickness
+      // - so its white stops right at #rect's own edge instead of
+      // reaching all the way out (see its own CSS comment for why that
+      // changed and what's below it now)
+      rectFrame.style.width = rect2Width + 'px';
+      rectFrame.style.height = rect2Height + 'px';
+      rectFrame.style.borderRadius = rect2Radius + 'px';
+      rectFrame.style.boxShadow = `0 0 0 ${rect2Margin}px #fff`;
+
+      const overshootLeft = RECT_CENTER_X - width / 2;
+      const rectBottom = RECT_CENTER_Y + height / 2;
+      const bracketEndX0 = overshootLeft + EDGE_MARGIN_X;
+      const brLeft = 1920 - bracketEndX0 - BRACKET_RIGHT_WIDTH;
+      const sqTop = rectBottom - EDGE_MARGIN_Y - BRACKET_WIDTH;
+
+      sq.style.width = BRACKET_WIDTH + 'px';
+      sq.style.height = BRACKET_WIDTH + 'px';
+      sq.style.left = brLeft + 'px';
+      sq.style.top = sqTop + 'px';
+
+      homeBtn.style.left = bracketEndX0 + 'px';
+      homeBtn.style.top = (sqTop + BRACKET_WIDTH / 2) + 'px';
+    }
+
+    fitCanvas();
+    layout();
+    window.addEventListener('resize', () => {
+      fitCanvas();
+      layout();
+    });
+
+    // how big #rect-reveal has to grow to clear the real viewport on
+    // every side, in the same canvas-space units its width/height/left/
+    // top already live in (RECT_CENTER_X/Y sit at the exact center of
+    // both the canvas AND, since .viewport centers the canvas via flex,
+    // the real viewport too) - MARGIN is a small safety buffer past the
+    // true edge, not a wasted-range hack like the old box-shadow overkill
+    // value (see #rect-reveal's own CSS comment): every px animated here
+    // is visually meaningful.
+    const REVEAL_MARGIN = 100;
+    function revealEndSize() {
+      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      return {
+        width: window.innerWidth / canvasScale + REVEAL_MARGIN,
+        height: window.innerHeight / canvasScale + REVEAL_MARGIN
+      };
+    }
+
+    // arrival reveal: plays once, right on load - #rect-reveal starts at
+    // #rect's own live width/height (flush with the outline, see
+    // layout()'s own sync of its resting size) and grows to
+    // revealEndSize(), cyan the whole time so only the size animates,
+    // never the color/opacity - "expands by size, no fade".
+    const REVEAL_MS = 450; // faster than index.html's CONTACT_TRANSITION_MS/HOME_TRANSITION_MS - this one no longer needs to match those, since it's not sharing a moment with any of their own animations
+    function playArrivalReveal() {
+      const startWidth = rectReveal.style.width;
+      const startHeight = rectReveal.style.height;
+      const end = revealEndSize();
+      rectReveal.style.display = 'block';
+      rectReveal.animate([
+        { width: startWidth, height: startHeight },
+        { width: end.width + 'px', height: end.height + 'px' }
+      ], { duration: REVEAL_MS, easing: 'linear', fill: 'forwards' });
+    }
+    // deferred to `pagereveal` (same technique/reasoning as index.html's
+    // own playArrivalReveal, see its comment there): started synchronously
+    // here instead, this WAAPI animation runs on its own clock the moment
+    // the script executes, with no regard for whether the cross-document
+    // view transition arriving from index.html's "Contact" link has
+    // actually swapped the page into view yet - if that swap lags behind
+    // (root readiness, same class of issue fixed on the other direction),
+    // the viewer's first actual look at this page can land mid-grow or
+    // later instead of at its own starting size, i.e. the cyan never
+    // reads as growing at all. Waiting for pagereveal (or its
+    // viewTransition.ready when there is one) means the very first frame
+    // anyone actually sees is still the collapsed starting size, whatever
+    // happened on the clock before that.
+    let arrivalRevealed = false;
+    function revealOnce() {
+      if (arrivalRevealed) return;
+      arrivalRevealed = true;
+      playArrivalReveal();
+    }
+    if ('onpagereveal' in window) {
+      window.addEventListener('pagereveal', (e) => {
+        if (e.viewTransition) e.viewTransition.ready.then(revealOnce, revealOnce);
+        else revealOnce();
+      }, { once: true });
+      setTimeout(revealOnce, 1500); // safety net in case pagereveal never fires
+    } else {
+      revealOnce();
+    }
+
+    // "Home", now two phases instead of one slide:
+    //   1) the cyan exterior fill retracts - the exact reverse of
+    //      playArrivalReveal above (#rect-reveal's own width/height
+    //      shrink from revealEndSize() back to #rect's own live box),
+    //      same duration/easing.
+    //   2) once that's fully done, black #rect2 -> celeste #rect2-celeste
+    //      by CUT, not slide - no travel, no cross-fade, just an instant
+    //      display swap at the shared resting box.
+    // Neither phase ever touches #rect itself (no display/opacity/
+    // transform, no view-transition-name - see its own CSS comment on why
+    // not the latter): its outline stays drawn, unbroken and singular,
+    // through both phases and across the navigation itself.
+    const HOME_TRANSITION_MS = REVEAL_MS; // stays mirrored to playArrivalReveal's own duration
+    let homeTransitioning = false;
+
+    function playHomeTransition() {
+      const startCs = getComputedStyle(rectReveal);
+      const rectCs = getComputedStyle(rect);
+      const retract = rectReveal.animate([
+        { width: startCs.width, height: startCs.height },
+        { width: rectCs.width, height: rectCs.height }
+      ], { duration: HOME_TRANSITION_MS, easing: 'linear', fill: 'forwards' });
+
+      return retract.finished.then(() => {
+        retract.commitStyles();
+        retract.cancel();
+        rectReveal.style.display = 'none'; // back to its at-rest state - see its own CSS comment on why this can't just sit at #rect's own box permanently
+
+        const cs = getComputedStyle(rect2);
+        rect2Celeste.style.width = cs.width;
+        rect2Celeste.style.height = cs.height;
+        rect2Celeste.style.borderRadius = cs.borderRadius;
+
+        // the cut itself: black off, celeste on, both at the same
+        // untransformed resting box (CSS default translate(-50%, -50%) -
+        // see #rect2-celeste's own CSS) - one frame it's rect2's hole,
+        // the next it's rect2-celeste's, nothing in between
+        rect2.style.display = 'none';
+        rect2Celeste.style.display = 'block';
+        // celeste is now the one actually left visible, so it - not black
+        // - is the element the browser should carry across into
+        // index.html's own #rect2 as one continuous view transition (two
+        // elements can't share the same view-transition-name at once)
+        rect2.style.viewTransitionName = 'none';
+        rect2Celeste.style.viewTransitionName = 'byn-rect2';
+
+        // let the cut actually paint before the cross-document view
+        // transition snapshots this page as "old" - navigating in the
+        // very same tick risks carrying the stale black frame across
+        // instead
+        return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
+    }
+
+    homeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (homeTransitioning) return;
+      homeTransitioning = true;
+      playHomeTransition().then(() => {
+        window.location.href = 'index.html#from-contact';
       });
     });
   </script>
-
 </body>
 </html>
