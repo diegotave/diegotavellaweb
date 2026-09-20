@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -75,6 +76,56 @@
   ::view-transition-new(byn-blink-square) {
     animation: none;
     mix-blend-mode: normal;
+  }
+  /* portrait ("vertical version") only: swiping up from step 1 to
+     menu-portrait.html PUSHES the whole screen up and off, instead of
+     the plain single-frame swap above (that default stays exactly as it
+     is - still what the Contact/Home flow uses, completely unaffected,
+     since it never sets this class). Scoped to html.push-up-transition,
+     added by the swipe-up handler right before navigating there
+     specifically, so it can never bleed into any other navigation out of
+     this page. menu-portrait.html deliberately doesn't reuse byn-rect/
+     byn-rect2/byn-rect-frame/byn-blink-square at all (see its own CSS
+     comment) - from THIS page's side, once there's no same-named partner
+     in the new document, each becomes its own independent "exiting"
+     image instead of morphing into a match. Pushing all four (root
+     included) with the exact same duration/easing/keyframes is what
+     reads as the whole rect/hueco/calle/blink-square sliding away as one
+     block instead of four separately-timed layers. */
+  html.push-up-transition ::view-transition-old(root),
+  html.push-up-transition ::view-transition-old(byn-rect),
+  html.push-up-transition ::view-transition-old(byn-rect2),
+  html.push-up-transition ::view-transition-old(byn-rect-frame),
+  html.push-up-transition ::view-transition-old(byn-blink-square) {
+    animation: push-root-out 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+    mix-blend-mode: normal;
+  }
+  @keyframes push-root-out {
+    to { transform: translateY(-100%); }
+  }
+  /* the reverse trip: menu-portrait.html's own swipe-down navigates back
+     here with #from-menu-portrait, which the early <script> right after
+     this stylesheet (before <body>) turns into this same
+     html.push-down-transition class, set on THIS document before the
+     browser ever needs to style the incoming half of the transition (see
+     that script's own comment for why it has to be that early). #rect/
+     #rect2/#rect-frame/#blink-square are all "entering-only" for this
+     specific transition too, same reasoning as the up-push above but
+     mirrored: menu-portrait.html doesn't carry byn-rect/byn-rect2/
+     byn-rect-frame on its own elements (see its CSS), so there's no
+     same-named partner in the OLD document for any of these four to
+     match against - they just enter from above as root's own
+     (arriving) block. */
+  html.push-down-transition ::view-transition-new(root),
+  html.push-down-transition ::view-transition-new(byn-rect),
+  html.push-down-transition ::view-transition-new(byn-rect2),
+  html.push-down-transition ::view-transition-new(byn-rect-frame),
+  html.push-down-transition ::view-transition-new(byn-blink-square) {
+    animation: push-root-in-down 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+    mix-blend-mode: normal;
+  }
+  @keyframes push-root-in-down {
+    from { transform: translateY(-100%); }
   }
 
   /* multipliers for the password gate and the initial "logo desarme"
@@ -1488,12 +1539,59 @@
   // PASSWORD_PORTRAIT_SCALE are declared here (not `const`, so the main
   // script can read the same globals later) precisely so both places
   // share one number instead of two copies drifting apart.
+  // single source of truth for "which layout is this viewport": every
+  // portrait/landscape decision in the file goes through here, so the
+  // rule lives in one place instead of ~25 copies of the same comparison.
+  // Portrait only exists on touch devices (phones/tablets) that LOAD the
+  // page held taller than wide; a desktop browser (mouse/trackpad) is
+  // always landscape however narrow the window gets - nobody needs a
+  // phone-shaped window on a computer. Decided ONCE, at load, and then
+  // locked for the whole session: whichever layout the page loaded in
+  // stays, resizing/rotating afterwards only rescales that same stage
+  // (white around it) and never flips the layout mid-session.
+  var PORTRAIT_LOCKED = null;
+  function isPortraitViewport() {
+    if (PORTRAIT_LOCKED === null) {
+      PORTRAIT_LOCKED = window.matchMedia('(pointer: coarse)').matches &&
+        window.innerWidth < window.innerHeight;
+    }
+    return PORTRAIT_LOCKED;
+  }
+
+  // the "stage": the fixed-proportion block the whole design lives in.
+  // Every layout number (rect margins, header, tagline offsets...) is
+  // measured against THIS box, never against the raw window, so the
+  // result is identical for any window size of the same orientation -
+  // resizing only changes `scale`, nothing ever goes stale. The stage is
+  // centered in the window (white around it), shrinks proportionally
+  // when the window is smaller, and never grows past maxScale.
+  //   landscape: 16:9, 1920x1080 local units, max 1:1 pixels
+  //   portrait: 9:19.5 (the phone it was calibrated on), 1920x4160 local
+  //   units, capped at 1080 real px tall
+  var STAGE_LANDSCAPE = { w: 1920, h: 1080, maxScale: 1 };
+  var STAGE_PORTRAIT = { w: 1920, h: 4160, maxScale: 1080 / 4160 };
+  function stageBox() {
+    var s = isPortraitViewport() ? STAGE_PORTRAIT : STAGE_LANDSCAPE;
+    var scale = Math.min(window.innerWidth / s.w, window.innerHeight / s.h, s.maxScale);
+    return { scale: scale, localW: s.w, localH: s.h, realW: s.w * scale, realH: s.h * scale };
+  }
   var LOGO_PORTRAIT_SCALE = 2.5;
   var PASSWORD_PORTRAIT_SCALE = 2.5;
   (function () {
-    var portrait = window.innerWidth < window.innerHeight;
+    var portrait = isPortraitViewport();
     document.documentElement.style.setProperty('--logo-scale', portrait ? LOGO_PORTRAIT_SCALE : 1);
     document.documentElement.style.setProperty('--password-scale', portrait ? PASSWORD_PORTRAIT_SCALE : 1);
+    // arriving back from menu-portrait.html's own swipe-down: scopes the
+    // html.push-down-transition CSS below (::view-transition-new(root)/
+    // byn-rect/byn-rect2/byn-rect-frame/byn-blink-square, pushed IN from
+    // above) - has to be set THIS early, same reasoning as --logo-scale
+    // just above, so it's already on <html> well before the browser
+    // needs it to style the incoming half of the cross-document
+    // transition, not raced against the rest of this page's own (much
+    // heavier) load.
+    if (location.hash === '#from-menu-portrait') {
+      document.documentElement.classList.add('push-down-transition');
+    }
   })();
 </script>
 </head>
@@ -1645,6 +1743,46 @@
     const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
     const MOTION_SCALE = isCoarsePointer ? 0.15 : 1;
 
+    // portrait-only globe size: #bg-video's OWN square box (see
+    // syncRectMasks), as a multiple of #rect's own live width - NOT
+    // #bg-video-mask's box, which just stays #rect's plain full size (see
+    // that function's own comment on why coupling the globe's size to the
+    // container's shape was the actual bug, twice). 1 would be the box
+    // exactly as wide as #rect - the globe itself (ffprobe: only ~440px
+    // across inside the source's full 1920x1080 frame, dead center,
+    // everything else transparent padding) reads at roughly 41% of that
+    // box's own width there via object-fit:cover, same fraction
+    // landscape's own near-square rect already shows. 1.39 (confirmed by
+    // the user on-device, via the now-removed DEBUG slider - see
+    // readme.txt point 8) grows the box past that baseline.
+    const GLOBE_PORTRAIT_SCALE = 1.39;
+    // portrait-only globe rotation, degrees - trailing term in #bg-video's
+    // own transform (see syncRectMasks), same convention #bg-video's own
+    // CSS comment already documents for landscape's fixed rotate(30deg):
+    // always last/rightmost/innermost, so the translate() term below
+    // still composes in plain screen space instead of getting bent
+    // diagonal by an ancestor-style rotation. -10 confirmed by the user
+    // on-device (see readme.txt point 8).
+    const GLOBE_PORTRAIT_ROTATE = -10;
+    // portrait-only globe horizontal offset, canvas-local px (same
+    // 1920x1080 coordinate space #rect/RECT_CENTER_X etc. all live in -
+    // NOT real screen px). Folded into the FIRST/leftmost translate()
+    // term in #bg-video's own transform (see syncRectMasks), not a
+    // separate trailing translateX - staying before rotate() in the list
+    // keeps this moving in plain screen space, unaffected by
+    // GLOBE_PORTRAIT_ROTATE (same reasoning as that constant's own
+    // comment on term order). Positive moves right, negative left. 3
+    // confirmed by the user on-device (see readme.txt point 8).
+    const GLOBE_PORTRAIT_OFFSET_X = 3;
+    // starts invisible in portrait - syncRectMasks sizes/positions
+    // #bg-video from the very first frame regardless of app state (idle
+    // button, password gate, mid-growth...), so without this it would
+    // read as fully opaque (CSS default) from page load on, well before
+    // showBgVideo() ever means to reveal it.
+    if (isPortraitViewport()) {
+      document.getElementById('bg-video').style.opacity = '0';
+    }
+
     // #bg-video (fdo_invloop.webm, ~3.4MB) and #onda-video no longer carry
     // a `src` in the markup (see their own tags) - on a normal cold visit
     // there's a whole password gate + intro to get through before either
@@ -1665,10 +1803,14 @@
     function loadHeavyVideos() {
       if (heavyVideosLoaded) return;
       heavyVideosLoaded = true;
+      // portrait now also uses #bg-video (see syncLogoToRect's own
+      // isPortrait branch, which plays and scales it in), so its src is
+      // set unconditionally same as landscape - no orientation guard here
+      // anymore.
       document.getElementById('bg-video').src = 'assets/videos/fdo_invloop.webm';
       document.getElementById('onda-video').src = 'assets/videos/ondablanca.webm';
     }
-    if (location.hash !== '#from-contact') {
+    if (location.hash !== '#from-contact' && location.hash !== '#from-menu-portrait') {
       loadHeavyVideos();
     }
 
@@ -1728,9 +1870,9 @@
     // bracket-left/right/logo-text to a literal scale(1) inline style,
     // overriding these vars entirely.
     function fitCanvas() {
-      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const scale = stageBox().scale;
       canvas.style.transform = `scale(${scale})`;
-      const portrait = window.innerWidth < window.innerHeight;
+      const portrait = isPortraitViewport();
       document.documentElement.style.setProperty('--logo-scale', portrait ? LOGO_PORTRAIT_SCALE : 1);
       document.documentElement.style.setProperty('--password-scale', portrait ? PASSWORD_PORTRAIT_SCALE : 1);
     }
@@ -1867,7 +2009,7 @@
     function slideInBrackets() {
       const bl = document.getElementById('bracket-left');
       const br = document.getElementById('bracket-right');
-      const isPortrait = window.innerWidth < window.innerHeight;
+      const isPortrait = isPortraitViewport();
       const restScale = 1.1 * (isPortrait ? LOGO_PORTRAIT_SCALE : 1);
       const opts = { duration: BRACKET_SLIDE_MS, easing: 'ease-in', fill: 'forwards' };
       const blAnim = bl.animate([{ transform: getComputedStyle(bl).transform }, { transform: `scale(${restScale})` }], opts);
@@ -2117,6 +2259,23 @@
       };
     }
 
+    // portrait: fits the overshoot to its own side margin (tightened by
+    // PORTRAIT_MARGIN_SCALE, same as the top/bottom margins in the
+    // caller), independent of height - it's meant to read as a tall
+    // portrait rect, not a scaled-up copy of the landscape square.
+    // landscape: keeps the AE export's own square aspect instead, width
+    // simply following whatever height desiredLocalHeightPx already
+    // settled on.
+    function computeOvershootWidth(isPortrait, canvasScale, desiredLocalHeightPx) {
+      if (isPortrait) {
+        const sideMarginVW = SIDE_MARGIN_VW * PORTRAIT_MARGIN_SCALE;
+        const desiredRealWidthPx = stageBox().realW * (1 - (sideMarginVW * 2) / 100);
+        return desiredRealWidthPx / canvasScale;
+      }
+      const s = desiredLocalHeightPx / BASE_HEIGHTS[2];
+      return BASE_WIDTHS[2] * s;
+    }
+
     // recomputes the overshoot (index 2/3) so it renders at exactly
     // (100 - TOP_MARGIN_VH - BOTTOM_MARGIN_VH)vh tall on the real
     // screen, undoing the canvas's own scale() first since sizes here
@@ -2124,29 +2283,21 @@
     // scaled by the same factor as height so the overshoot's shape
     // never distorts, only grows/shrinks as a whole.
     function overshootValues() {
-      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const isPortrait = window.innerWidth < window.innerHeight;
+      const canvasScale = stageBox().scale;
+      const isPortrait = isPortraitViewport();
       // landscape uses TOP_MARGIN_VH/BOTTOM_MARGIN_VH/SIDE_MARGIN_VW
       // untouched - portrait gets all three tightened by
       // PORTRAIT_MARGIN_SCALE (see its own comment)
       const topMarginVH = isPortrait ? TOP_MARGIN_VH * PORTRAIT_MARGIN_SCALE : TOP_MARGIN_VH;
       const bottomMarginVH = isPortrait ? BOTTOM_MARGIN_VH * PORTRAIT_MARGIN_SCALE : BOTTOM_MARGIN_VH;
-      const desiredRealHeightPx = window.innerHeight * (1 - (topMarginVH + bottomMarginVH) / 100);
+      const desiredRealHeightPx = stageBox().realH * (1 - (topMarginVH + bottomMarginVH) / 100);
       const desiredLocalHeightPx = desiredRealHeightPx / canvasScale;
 
       const widths = BASE_WIDTHS.slice();
       const heights = BASE_HEIGHTS.slice();
       const radii = BASE_RADII.slice();
 
-      let desiredLocalWidthPx;
-      if (isPortrait) {
-        const sideMarginVW = SIDE_MARGIN_VW * PORTRAIT_MARGIN_SCALE;
-        const desiredRealWidthPx = window.innerWidth * (1 - (sideMarginVW * 2) / 100);
-        desiredLocalWidthPx = desiredRealWidthPx / canvasScale;
-      } else {
-        const s = desiredLocalHeightPx / BASE_HEIGHTS[2];
-        desiredLocalWidthPx = BASE_WIDTHS[2] * s;
-      }
+      const desiredLocalWidthPx = computeOvershootWidth(isPortrait, canvasScale, desiredLocalHeightPx);
       // radius still scales by ONE factor shared by both axes (the
       // smaller of the two, same reasoning as contact.html's own rect2
       // margin) so it stays circular instead of stretching into an
@@ -2194,6 +2345,49 @@
       el.style.transition = prevTransition;
     }
 
+    // portrait ("vertical version") only: bakes the remaining --logo-scale
+    // multiplier into #rect/#rect2's own literal width/height/borderRadius
+    // (removing their transform entirely) and matches buildStage's own
+    // first keyframe (widths[1]/heights[1]/radii[1]) to it, instead of
+    // animating the scale away in parallel with the growth stage that
+    // follows this. Tried the parallel-animation version first: WAAPI
+    // resolves a percentage transform like translate(-50%,-50%) against
+    // whatever width/height the element had when that animation was
+    // CREATED, not live per-frame, so it drifted further off-center every
+    // frame the width/height kept changing underneath it via the SEPARATE
+    // growth animation - confirmed as "se escapa de los limites, no viaja
+    // recto" once actually looked at. Baking the multiplier into the width
+    // instead means translate(-50%,-50%) is never WAAPI-animated at all -
+    // it stays the plain, live-recalculating CSS value it always was
+    // pre-portrait, so the growth stage (which only touches width/height/
+    // borderRadius) keeps everything centered for free, every frame,
+    // automatically. Called from onRectClick's own press.finished handler.
+    function bakePortraitPressScale(el, rect2El, restTransform, widths, heights, radii) {
+      [el, rect2El].forEach((sizeEl) => {
+        const w = parseFloat(sizeEl.style.width) * LOGO_PORTRAIT_SCALE;
+        const h = parseFloat(sizeEl.style.height) * LOGO_PORTRAIT_SCALE;
+        const r = parseFloat(getComputedStyle(sizeEl).borderRadius) * LOGO_PORTRAIT_SCALE;
+        sizeEl.style.width = w + 'px';
+        sizeEl.style.height = h + 'px';
+        sizeEl.style.borderRadius = r + 'px';
+        sizeEl.style.transform = restTransform;
+      });
+      // #rect-frame never has its own width/height - syncRectMasks
+      // (script) mirrors rect2's onto it every frame regardless, so it
+      // only needs its transform dropped here, once, same as
+      // #rect-hover-zone (also never separately sized) back in the caller.
+      document.getElementById('rect-frame').style.transform = restTransform;
+      // stage1Duration's own growth (buildStage, called right after this
+      // in onRectClick) starts at index 1 - matching that index to
+      // #rect's own just-baked bigger width/height/radius above keeps
+      // that animation's first keyframe from jumping away from what's
+      // actually on screen. Indices 2/3 (the overshoot) stay untouched:
+      // growth ends at the normal, unscaled size same as landscape.
+      widths[1] *= LOGO_PORTRAIT_SCALE;
+      heights[1] *= LOGO_PORTRAIT_SCALE;
+      radii[1] *= LOGO_PORTRAIT_SCALE;
+    }
+
     function onRectClick() {
       if (!passwordUnlocked || !rectInteractionReady || rectAnimating) return;
       const el = document.getElementById('rect');
@@ -2201,7 +2395,7 @@
       if (step === 0) {
         rectAnimating = true; // block a second click during the press itself too, not just once the grow stage starts
         const logoInk = [document.getElementById('bracket-left'), document.getElementById('bracket-right'), document.getElementById('logo-text')];
-        const isPortraitClick = window.innerWidth < window.innerHeight;
+        const isPortraitClick = isPortraitViewport();
         // logo shrinks from its own 1.1x-on-top-of-idle scale down to
         // just the idle multiplier itself (1 in landscape, where "idle"
         // means no extra multiplier at all; LOGO_PORTRAIT_SCALE in
@@ -2240,56 +2434,20 @@
           el.style.background = 'transparent';
           logoInk.forEach((e) => { e.style.filter = 'none'; });
 
-          // bakes the remaining portrait --logo-scale multiplier into a
-          // bigger literal width/height/borderRadius for #rect/#rect2
-          // (removing their transform entirely) instead of animating the
-          // scale away in parallel with the growth below. Tried the
-          // parallel-animation version first: WAAPI resolves a percentage
-          // transform like translate(-50%,-50%) against whatever width/
-          // height the element had when that animation was CREATED, not
-          // live per-frame, so it drifted further from center every frame
-          // the width/height kept changing underneath it via the
-          // SEPARATE growth animation - confirmed as "se escapa de los
-          // limites, no viaja recto" once actually looked at. Baking the
-          // multiplier into the width instead means translate(-50%,-50%)
-          // is never WAAPI-animated at all - it stays the plain, live-
-          // recalculating CSS value it always was pre-portrait, so the
-          // growth below (which only touches width/height/borderRadius)
-          // keeps it centered for free, every frame, automatically.
-          // No-op in landscape.
+          // bakes the remaining portrait --logo-scale multiplier into
+          // #rect/#rect2's own width/height/radius (and matches
+          // buildStage's own first keyframe to it) instead of animating
+          // the scale away in parallel with the growth below - see
+          // bakePortraitPressScale's own comment for why. No-op in
+          // landscape.
           const rect2El = document.getElementById('rect2');
+          const { widths, heights, radii } = overshootValues();
           if (isPortraitClick) {
-            [el, rect2El].forEach((sizeEl) => {
-              const w = parseFloat(sizeEl.style.width) * LOGO_PORTRAIT_SCALE;
-              const h = parseFloat(sizeEl.style.height) * LOGO_PORTRAIT_SCALE;
-              const r = parseFloat(getComputedStyle(sizeEl).borderRadius) * LOGO_PORTRAIT_SCALE;
-              sizeEl.style.width = w + 'px';
-              sizeEl.style.height = h + 'px';
-              sizeEl.style.borderRadius = r + 'px';
-              sizeEl.style.transform = restTransform;
-            });
-            // #rect-frame never has its own width/height - syncRectMasks
-            // (script) mirrors rect2's onto it every frame regardless, so
-            // it only needs its transform dropped here, once, same as
-            // #rect-hover-zone below (also never separately sized).
-            document.getElementById('rect-frame').style.transform = restTransform;
+            bakePortraitPressScale(el, rect2El, restTransform, widths, heights, radii);
           } else {
             el.style.transform = restTransform;
           }
           document.getElementById('rect-hover-zone').style.transform = restTransform;
-
-          const { widths, heights, radii } = overshootValues();
-          if (isPortraitClick) {
-            // stage1Duration's own growth (buildStage below) starts at
-            // index 1 - matching that index to #rect's own just-baked
-            // bigger width/height/radius above keeps this animation's
-            // first keyframe from jumping away from what's actually on
-            // screen. Indices 2/3 (the overshoot) stay untouched: growth
-            // ends at the normal, unscaled size same as landscape.
-            widths[1] *= LOGO_PORTRAIT_SCALE;
-            heights[1] *= LOGO_PORTRAIT_SCALE;
-            radii[1] *= LOGO_PORTRAIT_SCALE;
-          }
           // reaches its own final size at this same point in the timeline
           // (index 3, the overshoot) - see stage1Duration's other use
           // below - so the border grow/darken is timed to land on 2px
@@ -2403,7 +2561,7 @@
             borderGrow.commitStyles();
             borderGrow.cancel();
             el.style.boxShadow = '';
-            el.style.borderWidth = (window.innerWidth < window.innerHeight ? RECT_BORDER_WIDTH_PORTRAIT : 2) + 'px';
+            el.style.borderWidth = (isPortraitViewport() ? RECT_BORDER_WIDTH_PORTRAIT : 2) + 'px';
             el.style.borderColor = swapColor;
             const borderDarken = el.animate([{ borderColor: swapColor }, { borderColor: '#000' }], { duration: phase2Duration, easing: 'ease', fill: 'forwards' });
             borderDarken.finished.then(() => {
@@ -2499,7 +2657,7 @@
       // resize) into a harmless no-op, so this single override is enough
       // to keep rect1 and its derivatives untouched without duplicating
       // the rest of this function.
-      const isPortrait = window.innerWidth < window.innerHeight;
+      const isPortrait = isPortraitViewport();
       heights[4] = heights[3];
       widths[4] = isPortrait ? widths[3] : heights[3] * 16 / 9;
       radii[4] = radii[3];
@@ -2578,26 +2736,22 @@
       // landscape-equivalent height instead - see its own comment.
       const textHeight = parseFloat(txt.style.height);
       const lineStartTop = rectTop + RECT_BORDER_WIDTH;
-      // portrait ("vertical version"): header grows HEADER_PORTRAIT_HEIGHT_SCALE
-      // taller than its landscape height (shared constant - see
-      // syncLogoToRect, which sizes "Diego Tavella" for this same taller
-      // header up front), the extra reach added downward only (top edge
-      // stays lineStartTop, unchanged) - rect2's own target top edge
-      // below reads lineEndTop directly (rect2TargetTopEdgeY), so this
-      // one change is enough to push rect2/the botonera row down with it
-      // instead of needing a second, separate adjustment there.
-      // lineEndTopBase uses the LANDSCAPE-equivalent text bottom
-      // (TEXT_BASE_HEIGHT*TEXT_END_SCALE), not txt's actual current
-      // height - txt is already grown to its portrait-final size by this
-      // point (syncLogoToRect, first click), and feeding that bigger
-      // height back into this formula would compound the very growth
-      // it's supposed to be a reference point for, inflating the header
-      // past its intended HEADER_PORTRAIT_HEIGHT_SCALE. Mirrors
-      // syncLogoToRect's own lineEndTopBase exactly, so both land on the
-      // same header height.
+      // portrait ("vertical version"): header grows taller (see
+      // computePortraitLineEndTop) - rect2's own target top edge below
+      // reads lineEndTop directly (rect2TargetTopEdgeY), so routing it
+      // through there is enough to push rect2/the botonera row down with
+      // it too, no separate adjustment needed. lineEndTopBase uses the
+      // LANDSCAPE-equivalent text bottom (TEXT_BASE_HEIGHT*TEXT_END_SCALE),
+      // not txt's actual current height - txt is already grown to its
+      // portrait-final size by this point (syncLogoToRect, first click),
+      // and feeding that bigger height back into this formula would
+      // compound the very growth it's supposed to be a reference point
+      // for. computePortraitLineEndTop is the same function
+      // syncLogoToRect calls with this same lineEndTopBase, so both
+      // always land on the same header height.
       const lineEndTopBase = (textTop + TEXT_BASE_HEIGHT * TEXT_END_SCALE) + EDGE_MARGIN_Y;
       const lineEndTop = isPortrait
-        ? lineStartTop + (lineEndTopBase - lineStartTop) * HEADER_PORTRAIT_HEIGHT_SCALE
+        ? computePortraitLineEndTop(lineStartTop, lineEndTopBase)
         : lineEndTopBase;
       const widthInsetStart = widths[3] - RECT_BORDER_WIDTH * 2;
       const widthInsetEnd = widths[4] - RECT_BORDER_WIDTH * 2;
@@ -2769,17 +2923,22 @@
       // percentage.
       const video = document.getElementById('bg-video');
       const GLOBE_REVEAL_EXTRA_VH = 10;
-      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const globeExtraPx = (window.innerHeight * (GLOBE_REVEAL_EXTRA_VH / 100)) / canvasScaleNow;
+      const canvasScaleNow = stageBox().scale;
+      const globeExtraPx = (stageBox().realH * (GLOBE_REVEAL_EXTRA_VH / 100)) / canvasScaleNow;
       const globeRevealEnd = isPortrait ? `calc(50% + ${globeExtraPx}px)` : '50%';
       // same duration as everything else in this stage (so it still lands
       // exactly when the rest does), but its own ease-out curve instead of
       // followOpts' shared easing - starts fast and settles into place
       // rather than tracking the linear-ish pace the rest of the stage uses
       const videoRevealOpts = { duration: stageDuration, easing: 'ease-out', fill: 'forwards' };
+      // portrait ("vertical version"): no rotation at all on #bg-video (see
+      // showBgVideo's own comment) - this trailing rotate(30deg) term is
+      // landscape-only, same reasoning as globeRevealEnd's own isPortrait
+      // branch just above
+      const globeRotate = isPortrait ? '' : ' rotate(30deg)';
       const videoAnim = video.animate([
-        { transform: 'scale(1) translateY(0%) rotate(30deg)' },
-        { transform: `scale(1) translateY(${globeRevealEnd}) rotate(30deg)` }
+        { transform: `scale(1) translateY(0%)${globeRotate}` },
+        { transform: `scale(1) translateY(${globeRevealEnd})${globeRotate}` }
       ], videoRevealOpts);
       videoAnim.finished.then(() => {
         commitAndCancel(video, videoAnim);
@@ -2922,11 +3081,15 @@
 
       // globe video slides back up to centered, mirroring
       // advanceFromOvershoot - width/rounding still track rect
-      // automatically (see its own CSS), only the reveal shift reverses
+      // automatically (see its own CSS), only the reveal shift reverses.
+      // portrait ("vertical version"): no rotation at all on #bg-video
+      // (see showBgVideo's own comment) - mirrors advanceFromOvershoot's
+      // own globeRotate branch.
       const video = document.getElementById('bg-video');
+      const globeRotate = isPortraitViewport() ? '' : ' rotate(30deg)';
       const videoAnim = video.animate([
-        { transform: 'scale(1) translateY(50%) rotate(30deg)' },
-        { transform: 'scale(1) translateY(0%) rotate(30deg)' }
+        { transform: `scale(1) translateY(50%)${globeRotate}` },
+        { transform: `scale(1) translateY(0%)${globeRotate}` }
       ], opts);
 
       Promise.allSettled([anim.finished, sqAnim.finished, hzAnim.finished, txtAnim.finished, lineAnim.finished, fillAnim.finished, txtWhiteAnim.finished, videoAnim.finished, rect2Anim.finished]).then(() => {
@@ -2975,6 +3138,62 @@
       const ondaVideo = document.getElementById('onda-video');
       ondaVideo.classList.remove('visible');
       ondaVideo.pause();
+    });
+
+    // portrait ("vertical version") only: the second-click advance to
+    // step 2 doesn't go through #blink-square-hover-zone at all here (no
+    // button - that whole triangle/blink-square affordance is landscape-
+    // only) - a swipe up does the same job instead, navigating straight
+    // to menu-portrait.html. No in-page "+"-to-bars build animation to
+    // write here (that's multiplyPlusIntoBars' job for landscape, step
+    // 1->2 in place) - the cross-document View Transition API handles
+    // visual continuity across the navigation on its own (a PUSH here,
+    // not the plain single-frame swap the Contact/Home flow uses - see
+    // the html.push-up-transition-scoped CSS above).
+    const SWIPE_UP_THRESHOLD_PX = 60;
+    function finishSwipe(startY, endY) {
+      if (!isPortraitViewport() || step !== 1) return;
+      if (startY - endY >= SWIPE_UP_THRESHOLD_PX) {
+        // scoped class, not a plain unconditional rule - see the CSS
+        // comment on why: this must never affect the Contact button's
+        // own navigation, which doesn't set it
+        document.documentElement.classList.add('push-up-transition');
+        window.location.href = 'menu-portrait.html';
+      }
+    }
+    let swipeStartY = null;
+    document.addEventListener('touchstart', (e) => {
+      if (!isPortraitViewport() || step !== 1 || e.touches.length !== 1) {
+        swipeStartY = null;
+        return;
+      }
+      swipeStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (swipeStartY === null) return;
+      const startY = swipeStartY;
+      swipeStartY = null;
+      finishSwipe(startY, e.changedTouches[0].clientY);
+    }, { passive: true });
+    // mouse fallback - desktop Chrome has no touch events at all outside
+    // DevTools' own device-mode emulation, so a plain mouse drag
+    // wouldn't otherwise trigger any of this, making it untestable
+    // without a real phone or that emulator open. Same threshold/target,
+    // just sourced from mousedown/mouseup's clientY instead of a Touch
+    // object's.
+    let mouseSwipeStartY = null;
+    document.addEventListener('mousedown', (e) => {
+      if (!isPortraitViewport() || step !== 1) {
+        mouseSwipeStartY = null;
+        return;
+      }
+      mouseSwipeStartY = e.clientY;
+    });
+    document.addEventListener('mouseup', (e) => {
+      if (mouseSwipeStartY === null) return;
+      const startY = mouseSwipeStartY;
+      mouseSwipeStartY = null;
+      finishSwipe(startY, e.clientY);
     });
 
     document.getElementById('rect').addEventListener('click', onRectClick);
@@ -3066,12 +3285,24 @@
     const TEXT_BASE_WIDTH = 131;
     const TEXT_BASE_HEIGHT = 72;
     const TEXT_END_SCALE = 1.4; // 20% + another 20 points on top, not compounded
-    // portrait: header grows this much taller than its landscape height
-    // (advanceFromOvershoot), extra reach added downward only - shared up
-    // here (not local to that function) since syncLogoToRect below needs
-    // the exact same number to size "Diego Tavella" for that taller
-    // header in one growth instead of two.
+    // portrait: header grows this much taller than its landscape height,
+    // extra reach added downward only - shared up here (not local to
+    // advanceFromOvershoot, which positions the header itself) since
+    // syncLogoToRect below needs the exact same number to size "Diego
+    // Tavella" for that taller header in one growth instead of two.
     const HEADER_PORTRAIT_HEIGHT_SCALE = 1.3;
+    // the one place that number actually gets applied - both
+    // advanceFromOvershoot (the header itself) and syncLogoToRect
+    // ("Diego Tavella", sized for the header before it even exists) call
+    // this with their own lineStartTop/lineEndTopBase, so there's no
+    // second copy of the formula to keep in sync by hand. (There was,
+    // briefly - moving "Diego Tavella"'s growth into a single stage
+    // meant advanceFromOvershoot's own copy started reading the ALREADY-
+    // grown text height instead of the landscape-equivalent one, quietly
+    // inflating the header past 1.3x - this is what closed that gap.)
+    function computePortraitLineEndTop(lineStartTop, lineEndTopBase) {
+      return lineStartTop + (lineEndTopBase - lineStartTop) * HEADER_PORTRAIT_HEIGHT_SCALE;
+    }
 
     // end targets sit a fixed margin inside the rect's overshoot edge
     // rather than at a fixed canvas position, so they land in the same
@@ -3134,6 +3365,59 @@
     const TALL_BRACKET_START_SCALE_Y = (113 * BRACKET_REST_SCALE) / TALL_BRACKET_HEIGHT; // matches the originals' own rendered height at p=0
     const BRACKET_CROSSFADE_END = 0.35; // fraction of the overall growth the cross-fade finishes by
 
+    // portrait ("vertical version") only: called from syncLogoToRect's own
+    // tick() once per frame. Crossfades the original bracket-left/right
+    // (grown past BRACKET_REST_SCALE while fading out) into their taller
+    // portrait replacements (bracket-left/right-tall, fading in) - see the
+    // block comment above TALL_BRACKET_HEIGHT for why an overlapping
+    // crossfade instead of a hard swap - and rides logo-text's own
+    // leftover LOGO_PORTRAIT_SCALE multiplier down to a plain 1 over the
+    // same p range tick() already tracks (not just this crossfade's own
+    // shorter BRACKET_CROSSFADE_END window), so it lands unscaled by the
+    // time TEXT_END_SCALE-driven width/height growth (tick()'s own,
+    // outside this function) takes over sizing it.
+    function applyPortraitBracketCrossfade(p, blLeft, brLeft, bl, br, blTall, brTall, txt, isPortraitScaleMult) {
+      const lerp = (a, b) => a + p * (b - a);
+      const lerpAt = (a, b, t) => a + t * (b - a);
+      // originals: grow past their usual rest size while fading out.
+      // Starts from BRACKET_REST_SCALE * isPortraitScaleMult, not just
+      // BRACKET_REST_SCALE - onRectClick's press left these at exactly
+      // that bigger scale (see LOGO_PORTRAIT_SCALE there), and this
+      // crossfade is what brings it back down to the normal
+      // BRACKET_ENLARGE_SCALE by crossfadeP=1, same as it always brought
+      // scale(1.1) down to scale(1.3) in landscape - the portrait
+      // multiplier just rides along as a bigger start point for the
+      // exact same interpolation.
+      const crossfadeP = Math.min(1, p / BRACKET_CROSSFADE_END);
+      const originalScale = lerpAt(BRACKET_REST_SCALE * isPortraitScaleMult, BRACKET_ENLARGE_SCALE, crossfadeP);
+      bl.style.transform = `scale(${originalScale})`;
+      br.style.transform = `scale(${originalScale})`;
+      bl.style.opacity = 1 - crossfadeP;
+      br.style.opacity = 1 - crossfadeP;
+      // tall pair: same live left as the originals (so the two stay
+      // aligned through the whole cross-fade overlap), non-uniform scale
+      // so its OWN first frame matches the originals' rendered height
+      // without touching its already-correct width, growing to a
+      // uniform BRACKET_REST_SCALE by p=1 same as everything else
+      blTall.style.left = blLeft + 'px';
+      brTall.style.left = brLeft + 'px';
+      const tallScaleY = lerp(TALL_BRACKET_START_SCALE_Y, BRACKET_REST_SCALE);
+      blTall.style.transform = `scale(${BRACKET_REST_SCALE}, ${tallScaleY})`;
+      brTall.style.transform = `scale(${BRACKET_REST_SCALE}, ${tallScaleY})`;
+      blTall.style.opacity = crossfadeP;
+      brTall.style.opacity = crossfadeP;
+      // logo-text's own remaining portrait scale (also left at
+      // LOGO_PORTRAIT_SCALE by onRectClick's press) rides straight down
+      // to 1 over the whole stage (not just the brackets' own shorter
+      // BRACKET_CROSSFADE_END window) - its WIDTH/HEIGHT (set separately,
+      // outside this function) already carry TEXT_END_SCALE's growth on
+      // top of whatever this leaves the transform at, so by p=1 this
+      // must be fully back to a plain, unscaled 1 or the two would
+      // compound into a wordmark far bigger than TEXT_END_SCALE ever
+      // intends.
+      txt.style.transform = `scale(${lerp(isPortraitScaleMult, 1)})`;
+    }
+
     function syncLogoToRect(overshootWidth, overshootHeight) {
       const rectEl = document.getElementById('rect');
       const bl = document.getElementById('bracket-left');
@@ -3156,7 +3440,7 @@
       // #bracket-right just keep doing exactly what they did before any
       // of this - plain scale(1.1), no cross-fade, no per-frame transform
       // writes at all (so no need to touch their `transition` either)
-      const isPortrait = window.innerWidth < window.innerHeight;
+      const isPortrait = isPortraitViewport();
       if (isPortrait) {
         // #bracket-left/right's own CSS transition on `transform` (see
         // that rule) would otherwise fight/lag every one of tick()'s
@@ -3190,8 +3474,8 @@
       };
 
       // portrait: "Diego Tavella" grows straight to the size it'll need
-      // once the header is factored in (HEADER_PORTRAIT_HEIGHT_SCALE
-      // taller than landscape, added downward - see advanceFromOvershoot)
+      // once the header is factored in (computePortraitLineEndTop, same
+      // function advanceFromOvershoot calls to size the header itself)
       // instead of settling at the plain TEXT_END_SCALE here and growing
       // a SECOND time once that later stage runs - anchored on the D's
       // own outer top-left vertex (top/left never move, only width/
@@ -3207,7 +3491,7 @@
         const lineStartTop = overshootTop + RECT_BORDER_WIDTH;
         const topGap = textEnd.top - lineStartTop;
         const lineEndTopBase = (textEnd.top + TEXT_BASE_HEIGHT * TEXT_END_SCALE) + EDGE_MARGIN_Y;
-        const lineEndTopPortrait = lineStartTop + (lineEndTopBase - lineStartTop) * HEADER_PORTRAIT_HEIGHT_SCALE;
+        const lineEndTopPortrait = computePortraitLineEndTop(lineStartTop, lineEndTopBase);
         textEndScale = (lineEndTopPortrait - textEnd.top - topGap) / TEXT_BASE_HEIGHT;
       }
 
@@ -3230,44 +3514,7 @@
         const brLeft = lerp(bracketRightLeft(BRACKET_START_X0), bracketRightLeft(bracketEndX0));
         br.style.left = brLeft + 'px';
         if (isPortrait) {
-          // originals: grow past their usual rest size while fading out -
-          // see this function's own header comment on why. Starts from
-          // BRACKET_REST_SCALE * isPortraitScaleMult, not just
-          // BRACKET_REST_SCALE - onRectClick's press left these at
-          // exactly that bigger scale (see LOGO_PORTRAIT_SCALE there),
-          // and this crossfade is what brings it back down to the normal
-          // BRACKET_ENLARGE_SCALE by crossfadeP=1, same as it always
-          // brought scale(1.1) down to scale(1.3) in landscape - the
-          // portrait multiplier just rides along as a bigger start point
-          // for the exact same interpolation.
-          const crossfadeP = Math.min(1, p / BRACKET_CROSSFADE_END);
-          const originalScale = lerpAt(BRACKET_REST_SCALE * isPortraitScaleMult, BRACKET_ENLARGE_SCALE, crossfadeP);
-          bl.style.transform = `scale(${originalScale})`;
-          br.style.transform = `scale(${originalScale})`;
-          bl.style.opacity = 1 - crossfadeP;
-          br.style.opacity = 1 - crossfadeP;
-          // tall pair: same live left as the originals (so the two stay
-          // aligned through the whole cross-fade overlap), non-uniform
-          // scale so its OWN first frame matches the originals' rendered
-          // height without touching its already-correct width, growing to
-          // a uniform BRACKET_REST_SCALE by p=1 same as everything else
-          blTall.style.left = blLeft + 'px';
-          brTall.style.left = brLeft + 'px';
-          const tallScaleY = lerp(TALL_BRACKET_START_SCALE_Y, BRACKET_REST_SCALE);
-          blTall.style.transform = `scale(${BRACKET_REST_SCALE}, ${tallScaleY})`;
-          brTall.style.transform = `scale(${BRACKET_REST_SCALE}, ${tallScaleY})`;
-          blTall.style.opacity = crossfadeP;
-          brTall.style.opacity = crossfadeP;
-          // logo-text's own remaining portrait scale (also left at
-          // LOGO_PORTRAIT_SCALE by onRectClick's press) rides straight
-          // down to 1 over the whole stage (not just the brackets' own
-          // shorter BRACKET_CROSSFADE_END window) - its WIDTH/HEIGHT
-          // below already carry TEXT_END_SCALE's growth on top of
-          // whatever this leaves the transform at, so by p=1 this must
-          // be fully back to a plain, unscaled 1 or the two would
-          // compound into a wordmark far bigger than TEXT_END_SCALE ever
-          // intends.
-          txt.style.transform = `scale(${lerp(isPortraitScaleMult, 1)})`;
+          applyPortraitBracketCrossfade(p, blLeft, brLeft, bl, br, blTall, brTall, txt, isPortraitScaleMult);
         }
         txt.style.left = lerp(TEXT_START.left, textEnd.left) + 'px';
         txt.style.top = (lerp(TEXT_START.top, textEnd.top) - 4) + 'px';
@@ -3367,6 +3614,133 @@
     // does the spread above
     let armVWidthPreThin = null;
 
+    // portrait ("vertical version") only: fits each tagline block to the
+    // live gap between the "+" and its own bracket, with its own
+    // PORTRAIT_BRACKET_GAP rather than the much wider landscape
+    // BRACKET_GAP, then places it flush against that same gap - pulled
+    // wider than an original 20px (which read as glued to the brackets)
+    // while PORTRAIT_PLUS_GAP (in the caller) was pulled in, so both
+    // blocks sit further from their bracket and closer to the "+"
+    // overall. A completely different, much simpler algorithm than
+    // computeTaglineLandscapeAnchors below - NOT that one's small-
+    // adjustment pipeline (growAroundOwnCenter/scaleTowardAnchor/gap-
+    // equalization) run with portrait's own numbers: that pipeline
+    // exists for a few-px fine-tune at landscape's own scale, and at 3x
+    // portrait scale it visibly pulled "Video Editor" and "motion
+    // graphics" into each other (confirmed by direct measurement - the
+    // two blocks' rendered boxes overlapped by ~150 canvas-space px).
+    // Fitting directly to the live gap and placing flush against it
+    // sidesteps that entirely instead of trying to cancel it out with
+    // compensating factors.
+    function computeTaglinePortraitAnchors(left, right, plusHalfWidth, PLUS_GAP, baseSize, bracketLeftInnerX, bracketRightInnerX) {
+      const PORTRAIT_BRACKET_GAP = 70;
+      left.style.fontSize = (baseSize * (((960 - plusHalfWidth - PLUS_GAP) - (bracketLeftInnerX + PORTRAIT_BRACKET_GAP)) / left.offsetWidth)) + 'px';
+      right.style.fontSize = (baseSize * 0.85 * ((bracketRightInnerX - PORTRAIT_BRACKET_GAP - (960 + plusHalfWidth + PLUS_GAP)) / right.offsetWidth)) + 'px';
+      return {
+        leftFinalLeft: bracketLeftInnerX + PORTRAIT_BRACKET_GAP,
+        rightFinalLeft: bracketRightInnerX - PORTRAIT_BRACKET_GAP - right.offsetWidth
+      };
+    }
+
+    // landscape only: both blocks anchor off the "+" by the same gap, so
+    // the visible distance from the plus is identical on both sides.
+    // Bracket clearance is a soft cap, not a second anchor: a block only
+    // shrinks (font-size, not tracking) if it would otherwise sit closer
+    // than BRACKET_GAP to its bracket. Checked against a frozen reference
+    // position (168.7/148.3 margin, the values in place when this
+    // tagline was last tuned), not the brackets' live position - without
+    // the check the tagline overlapped them outright once the brackets
+    // moved 10vh further out; reading it live would instead silently
+    // resize the tagline on every future bracket-only tweak, which is
+    // exactly what wasn't wanted here.
+    function computeTaglineLandscapeAnchors(left, right, plusHalfWidth, PLUS_GAP, baseSize, bracketLeftInnerX, bracketRightInnerX) {
+      const FROZEN_BRACKET_LEFT_INNER_X = 528.715;
+      const FROZEN_BRACKET_RIGHT_INNER_X = 1392.285;
+      const BRACKET_GAP = 90;
+
+      const leftAvailable = (960 - plusHalfWidth - PLUS_GAP) - (FROZEN_BRACKET_LEFT_INNER_X + BRACKET_GAP);
+      if (left.offsetWidth > leftAvailable) {
+        left.style.fontSize = (baseSize * (leftAvailable / left.offsetWidth)) + 'px';
+      }
+
+      // anchored on the "V" now, not the "+" side: measure the width at
+      // the CSS-default 3px tracking first (this fixes where the V ends
+      // up), then tighten the tracking a touch - the block shrinks
+      // toward the bracket it's already pinned to, so only its "+"-side
+      // edge recedes further from the plus, rather than the whole block
+      // sliding as one piece
+      const targetRightEdge = 960 - plusHalfWidth - PLUS_GAP;
+      const widthBeforeTightening = left.offsetWidth;
+      const vAnchorX = targetRightEdge - widthBeforeTightening;
+      left.style.letterSpacing = '1.5px';
+      const recedeDelta = widthBeforeTightening - left.offsetWidth; // offsetWidth is a pure width measurement, unaffected by position, so this doesn't need left.style.left set yet
+
+      const rightAvailable = (FROZEN_BRACKET_RIGHT_INNER_X - BRACKET_GAP) - (960 + plusHalfWidth + PLUS_GAP);
+      if (right.offsetWidth > rightAvailable) {
+        right.style.fontSize = (baseSize * 0.85 * (rightAvailable / right.offsetWidth)) + 'px';
+      }
+      // "motion graphics" moves away from the plus by the same distance
+      // "Video Editor" just receded, to keep both blocks' distance from
+      // the "+" matched
+      const rightTargetLeft = 960 + plusHalfWidth + PLUS_GAP + recedeDelta;
+
+      // final pass: grow both blocks 15%, each around its own center
+      // (not the "+" or the bracket) - applied last so it doesn't
+      // disturb the V/plus-gap anchoring above, just scales each block
+      // in place. Takes and returns a plain left value rather than
+      // reading/writing el.style.left directly - see the swap-slide
+      // comment below for why that write has to wait until everything
+      // is computed.
+      function growAroundOwnCenter(el, factor, currentLeft) {
+        const oldWidth = el.offsetWidth;
+        const centerX = currentLeft + oldWidth / 2;
+        const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
+        el.style.fontSize = newSize + 'px';
+        return centerX - el.offsetWidth / 2;
+      }
+      const GROW_FACTOR = 1.3;
+      let leftFinalLeft = growAroundOwnCenter(left, GROW_FACTOR, vAnchorX);
+      let rightFinalLeft = growAroundOwnCenter(right, GROW_FACTOR, rightTargetLeft);
+
+      // shrink both text blocks 15%, anchored on the "+"'s own center
+      // (960, its `left` in the CSS) rather than each block's own
+      // center like growAroundOwnCenter above - scaling around an
+      // external point both shrinks the block AND pulls it toward that
+      // point, unlike growAroundOwnCenter which only changes size in
+      // place. Brackets are untouched - this only resizes/repositions
+      // the tagline text.
+      const PLUS_ANCHOR_X = 960;
+      const TEXT_SHRINK_FACTOR = 0.85;
+      function scaleTowardAnchor(el, factor, anchorX, currentLeft) {
+        const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
+        el.style.fontSize = newSize + 'px';
+        return anchorX + (currentLeft - anchorX) * factor;
+      }
+      leftFinalLeft = scaleTowardAnchor(left, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, leftFinalLeft);
+      rightFinalLeft = scaleTowardAnchor(right, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, rightFinalLeft);
+
+      // equalize the left/right bracket gaps: growing each block around
+      // its OWN center (above) keeps each one balanced in isolation,
+      // but "Video Editor" and "motion graphics" don't have the same
+      // width or the same distance from the "+" to begin with, so the
+      // two gaps to their brackets land at different sizes on their
+      // own. Only shifts each block (translate, not a re-grow), split
+      // the difference so neither side eats the whole correction.
+      const leftGap = leftFinalLeft - bracketLeftInnerX;
+      const rightGap = bracketRightInnerX - (rightFinalLeft + right.offsetWidth);
+      // moves a third of the (now-equal) bracket gap over to the "+"
+      // side instead: each block shifts outward, toward its own
+      // bracket, by a proportional fraction of whatever gap it
+      // actually has - not a fixed px amount - so this keeps working
+      // regardless of actual rendered text width (font metrics/hinting
+      // can measure noticeably different across browsers).
+      const BRACKET_GAP_KEEP_FRACTION = 2 / 3;
+      const targetGap = ((leftGap + rightGap) / 2) * BRACKET_GAP_KEEP_FRACTION;
+      leftFinalLeft = bracketLeftInnerX + targetGap;
+      rightFinalLeft = bracketRightInnerX - targetGap - right.offsetWidth;
+      return { leftFinalLeft, rightFinalLeft };
+    }
+
     // instant: skips the swap-slide/fade entirely and commits the final
     // computed positions with no transition - used by enterFromContact so
     // "Video Editor"/"motion graphics" are already sitting in their resting
@@ -3396,7 +3770,7 @@
       // the blocks themselves balloon to 3x, so they collide into each
       // other right around the "+" despite each one correctly fitting
       // its own bracket on the outer side.
-      const isPortrait = window.innerWidth < window.innerHeight;
+      const isPortrait = isPortraitViewport();
       const TAGLINE_PORTRAIT_SCALE = 3;
       // portrait's own gap-to-plus, decoupled from TAGLINE_PORTRAIT_SCALE
       // (tripling it alongside the text left the blocks reading too far
@@ -3444,21 +3818,6 @@
       armV.style.marginLeft = (-armThickness / 2) + 'px';
       armV.style.marginTop = (-armSpan / 2) + 'px';
 
-      // both blocks anchor off the "+" by the same gap, so the visible
-      // distance from the plus is identical on both sides. Bracket
-      // clearance is a soft cap, not a second anchor: a block only
-      // shrinks (font-size, not tracking) if it would otherwise sit
-      // closer than BRACKET_GAP to its bracket. Checked against a frozen
-      // reference position (168.7/148.3 margin, the values in place when
-      // this tagline was last tuned), not the brackets' live position -
-      // without the check the tagline overlapped them outright once the
-      // brackets moved 10vh further out; reading it live would instead
-      // silently resize the tagline on every future bracket-only tweak,
-      // which is exactly what wasn't wanted here.
-      const FROZEN_BRACKET_LEFT_INNER_X = 528.715;
-      const FROZEN_BRACKET_RIGHT_INNER_X = 1392.285;
-      const BRACKET_GAP = 90;
-
       const plusHalfWidth = plus.offsetWidth / 2;
 
       // live bracket positions - #bracket-left-tall/#bracket-right-tall
@@ -3467,136 +3826,21 @@
       // even invisible) so an equal-gap/fit result always tracks wherever
       // the brackets actually are, same reasoning as trackWindow()'s live
       // read elsewhere in this file.
-      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasScaleNow = stageBox().scale;
       const canvasLeftPx = canvas.getBoundingClientRect().left;
       const leftBracketEl = document.getElementById(isPortrait ? 'bracket-left-tall' : 'bracket-left');
       const rightBracketEl = document.getElementById(isPortrait ? 'bracket-right-tall' : 'bracket-right');
       const bracketLeftInnerX = (leftBracketEl.getBoundingClientRect().right - canvasLeftPx) / canvasScaleNow;
       const bracketRightInnerX = (rightBracketEl.getBoundingClientRect().left - canvasLeftPx) / canvasScaleNow;
 
-      let leftFinalLeft, rightFinalLeft;
-      if (isPortrait) {
-        // portrait: fits each block to the live gap between the "+" and
-        // its own bracket, with its own PORTRAIT_BRACKET_GAP rather than
-        // the much wider landscape BRACKET_GAP, then places it flush
-        // against that same gap - pulled wider than the original 20px
-        // (which read as glued to the brackets) while PORTRAIT_PLUS_GAP
-        // above was pulled in, so both blocks sit further from their
-        // bracket and closer to the "+" overall. Skips landscape's
-        // whole V-anchor-tightening/growAroundOwnCenter/scaleTowardAnchor/
-        // gap-equalization pipeline below entirely: that exists to make
-        // SMALL fine-tuning adjustments (a few px) at landscape's own
-        // scale, and its growAroundOwnCenter step in particular grows
-        // from each block's OWN center while scaleTowardAnchor then pulls
-        // it toward the shared "+" - both fine at a few px, but at 3x
-        // portrait scale the combination visibly pulls "Video Editor" and
-        // "motion graphics" into each other (confirmed by direct
-        // measurement - the two blocks' rendered boxes overlapped by
-        // ~150 canvas-space px). Fitting directly to the live gap and
-        // placing flush against it sidesteps that entirely instead of
-        // trying to cancel it out with compensating factors.
-        const PORTRAIT_BRACKET_GAP = 70;
-        left.style.fontSize = (baseSize * (((960 - plusHalfWidth - PLUS_GAP) - (bracketLeftInnerX + PORTRAIT_BRACKET_GAP)) / left.offsetWidth)) + 'px';
-        right.style.fontSize = (baseSize * 0.85 * ((bracketRightInnerX - PORTRAIT_BRACKET_GAP - (960 + plusHalfWidth + PLUS_GAP)) / right.offsetWidth)) + 'px';
-        leftFinalLeft = bracketLeftInnerX + PORTRAIT_BRACKET_GAP;
-        rightFinalLeft = bracketRightInnerX - PORTRAIT_BRACKET_GAP - right.offsetWidth;
-      } else {
-        // both blocks anchor off the "+" by the same gap, so the visible
-        // distance from the plus is identical on both sides. Bracket
-        // clearance is a soft cap, not a second anchor: a block only
-        // shrinks (font-size, not tracking) if it would otherwise sit
-        // closer than BRACKET_GAP to its bracket. Checked against a frozen
-        // reference position (168.7/148.3 margin, the values in place when
-        // this tagline was last tuned), not the brackets' live position -
-        // without the check the tagline overlapped them outright once the
-        // brackets moved 10vh further out; reading it live would instead
-        // silently resize the tagline on every future bracket-only tweak,
-        // which is exactly what wasn't wanted here.
-        const FROZEN_BRACKET_LEFT_INNER_X = 528.715;
-        const FROZEN_BRACKET_RIGHT_INNER_X = 1392.285;
-        const BRACKET_GAP = 90;
-
-        const leftAvailable = (960 - plusHalfWidth - PLUS_GAP) - (FROZEN_BRACKET_LEFT_INNER_X + BRACKET_GAP);
-        if (left.offsetWidth > leftAvailable) {
-          left.style.fontSize = (baseSize * (leftAvailable / left.offsetWidth)) + 'px';
-        }
-
-        // anchored on the "V" now, not the "+" side: measure the width at
-        // the CSS-default 3px tracking first (this fixes where the V ends
-        // up), then tighten the tracking a touch - the block shrinks
-        // toward the bracket it's already pinned to, so only its "+"-side
-        // edge recedes further from the plus, rather than the whole block
-        // sliding as one piece
-        const targetRightEdge = 960 - plusHalfWidth - PLUS_GAP;
-        const widthBeforeTightening = left.offsetWidth;
-        const vAnchorX = targetRightEdge - widthBeforeTightening;
-        left.style.letterSpacing = '1.5px';
-        const recedeDelta = widthBeforeTightening - left.offsetWidth; // offsetWidth is a pure width measurement, unaffected by position, so this doesn't need left.style.left set yet
-
-        const rightAvailable = (FROZEN_BRACKET_RIGHT_INNER_X - BRACKET_GAP) - (960 + plusHalfWidth + PLUS_GAP);
-        if (right.offsetWidth > rightAvailable) {
-          right.style.fontSize = (baseSize * 0.85 * (rightAvailable / right.offsetWidth)) + 'px';
-        }
-        // "motion graphics" moves away from the plus by the same distance
-        // "Video Editor" just receded, to keep both blocks' distance from
-        // the "+" matched
-        const rightTargetLeft = 960 + plusHalfWidth + PLUS_GAP + recedeDelta;
-
-        // final pass: grow both blocks 15%, each around its own center
-        // (not the "+" or the bracket) - applied last so it doesn't
-        // disturb the V/plus-gap anchoring above, just scales each block
-        // in place. Takes and returns a plain left value rather than
-        // reading/writing el.style.left directly - see the swap-slide
-        // comment below for why that write has to wait until everything
-        // is computed.
-        function growAroundOwnCenter(el, factor, currentLeft) {
-          const oldWidth = el.offsetWidth;
-          const centerX = currentLeft + oldWidth / 2;
-          const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
-          el.style.fontSize = newSize + 'px';
-          return centerX - el.offsetWidth / 2;
-        }
-        const GROW_FACTOR = 1.3;
-        leftFinalLeft = growAroundOwnCenter(left, GROW_FACTOR, vAnchorX);
-        rightFinalLeft = growAroundOwnCenter(right, GROW_FACTOR, rightTargetLeft);
-
-        // shrink both text blocks 15%, anchored on the "+"'s own center
-        // (960, its `left` in the CSS) rather than each block's own
-        // center like growAroundOwnCenter above - scaling around an
-        // external point both shrinks the block AND pulls it toward that
-        // point, unlike growAroundOwnCenter which only changes size in
-        // place. Brackets are untouched - this only resizes/repositions
-        // the tagline text.
-        const PLUS_ANCHOR_X = 960;
-        const TEXT_SHRINK_FACTOR = 0.85;
-        function scaleTowardAnchor(el, factor, anchorX, currentLeft) {
-          const newSize = parseFloat(getComputedStyle(el).fontSize) * factor;
-          el.style.fontSize = newSize + 'px';
-          return anchorX + (currentLeft - anchorX) * factor;
-        }
-        leftFinalLeft = scaleTowardAnchor(left, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, leftFinalLeft);
-        rightFinalLeft = scaleTowardAnchor(right, TEXT_SHRINK_FACTOR, PLUS_ANCHOR_X, rightFinalLeft);
-
-        // equalize the left/right bracket gaps: growing each block around
-        // its OWN center (above) keeps each one balanced in isolation,
-        // but "Video Editor" and "motion graphics" don't have the same
-        // width or the same distance from the "+" to begin with, so the
-        // two gaps to their brackets land at different sizes on their
-        // own. Only shifts each block (translate, not a re-grow), split
-        // the difference so neither side eats the whole correction.
-        const leftGap = leftFinalLeft - bracketLeftInnerX;
-        const rightGap = bracketRightInnerX - (rightFinalLeft + right.offsetWidth);
-        // moves a third of the (now-equal) bracket gap over to the "+"
-        // side instead: each block shifts outward, toward its own
-        // bracket, by a proportional fraction of whatever gap it
-        // actually has - not a fixed px amount - so this keeps working
-        // regardless of actual rendered text width (font metrics/hinting
-        // can measure noticeably different across browsers).
-        const BRACKET_GAP_KEEP_FRACTION = 2 / 3;
-        const targetGap = ((leftGap + rightGap) / 2) * BRACKET_GAP_KEEP_FRACTION;
-        leftFinalLeft = bracketLeftInnerX + targetGap;
-        rightFinalLeft = bracketRightInnerX - targetGap - right.offsetWidth;
-      }
+      // portrait uses a much simpler direct-fit (computeTaglinePortraitAnchors);
+      // landscape uses a several-step fine-tuning pipeline
+      // (computeTaglineLandscapeAnchors) - see each function's own
+      // comment for why these are two genuinely different algorithms,
+      // not one algorithm with a couple of swapped-out numbers.
+      const { leftFinalLeft, rightFinalLeft } = isPortrait
+        ? computeTaglinePortraitAnchors(left, right, plusHalfWidth, PLUS_GAP, baseSize, bracketLeftInnerX, bracketRightInnerX)
+        : computeTaglineLandscapeAnchors(left, right, plusHalfWidth, PLUS_GAP, baseSize, bracketLeftInnerX, bracketRightInnerX);
       taglineLeftFinalX = leftFinalLeft;
       taglineRightFinalX = rightFinalLeft;
 
@@ -3746,8 +3990,8 @@
       // videos" in this same move - without it, the text stays at its old
       // height while everything below it drops, so it reads as stuck/
       // cropped up top instead of leaving together with the block
-      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const descendPx = (window.innerHeight * 0.03) / canvasScaleNow;
+      const canvasScaleNow = stageBox().scale;
+      const descendPx = (stageBox().realH * 0.03) / canvasScaleNow;
       const taglineTopStart = parseFloat(getComputedStyle(left).top);
       const taglineTopEnd = taglineTopStart + descendPx;
 
@@ -3845,7 +4089,7 @@
 
       const bracketLeft = document.getElementById('bracket-left');
       const bracketRight = document.getElementById('bracket-right');
-      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasScaleNow = stageBox().scale;
       const canvasLeftPx = canvas.getBoundingClientRect().left;
       const bracketLeftInnerX = (bracketLeft.getBoundingClientRect().right - canvasLeftPx) / canvasScaleNow;
       const bracketRightInnerX = (bracketRight.getBoundingClientRect().left - canvasLeftPx) / canvasScaleNow;
@@ -3854,7 +4098,7 @@
       // viewport-relative units, converted through the canvas's own
       // current scale like everything else in this file that's measured
       // off the actual screen rather than the 1920x1080 comp space
-      const spreadPx = (window.innerHeight * 0.08) / canvasScaleNow;
+      const spreadPx = (stageBox().realH * 0.08) / canvasScaleNow;
       const bracketLeftStart = parseFloat(bracketLeft.style.left);
       const bracketRightStart = parseFloat(bracketRight.style.left);
       bracketLeftPreSpread = bracketLeftStart;
@@ -4061,7 +4305,7 @@
       const inkHeight = txtHeight - cropPadding * 2;
 
       const triangleEl = document.getElementById('blink-square');
-      const canvasScaleForHeader = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasScaleForHeader = stageBox().scale;
       const canvasLeftForHeader = canvas.getBoundingClientRect().left;
       const triangleRightX = (triangleEl.getBoundingClientRect().right - canvasLeftForHeader) / canvasScaleForHeader;
       headerInfoEl.style.top = (inkTop + inkHeight / 2) + 'px';
@@ -4181,7 +4425,7 @@
       const armH = plus.querySelector('.plus-arm-h');
       const armV = plus.querySelector('.plus-arm-v');
 
-      const canvasScaleNow = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasScaleNow = stageBox().scale;
       const canvasLeftPx = canvas.getBoundingClientRect().left;
       const bracketLeft = document.getElementById('bracket-left');
       const bracketRight = document.getElementById('bracket-right');
@@ -4289,7 +4533,7 @@
       const right = document.getElementById('tagline-right');
       const swapOpts = { duration: 500 * MOTION_SCALE, easing: 'ease', fill: 'forwards' };
       left.style.right = 'auto';
-      const taglineDescendPx = (window.innerHeight * 0.03) / canvasScaleNow;
+      const taglineDescendPx = (stageBox().realH * 0.03) / canvasScaleNow;
       const taglineTopDescended = parseFloat(getComputedStyle(left).top);
       const taglineTopRest = taglineTopDescended - taglineDescendPx;
       const leftAnim = lightAnimate(left, [
@@ -4323,6 +4567,18 @@
       const video = document.getElementById('bg-video');
       video.currentTime = 0;
       video.play();
+      // portrait ("vertical version"): appears POR CORTE - no rotation,
+      // no scale/size animation. Size/position are already owned by
+      // syncRectMasks's own continuous per-frame sync (so they track
+      // #rect's live growth and the DEBUG slider automatically) - this
+      // only has to flip visibility, via opacity (no CSS transition
+      // declared on that property, so it's instant on its own, no
+      // transition:none bracket needed the way #bg-video's own transform
+      // writes elsewhere in this file need one).
+      if (isPortraitViewport()) {
+        video.style.opacity = '1';
+        return;
+      }
       video.classList.add('visible');
     }
 
@@ -4331,6 +4587,15 @@
       video.classList.remove('visible');
       video.pause();
       video.currentTime = 0;
+      // portrait ("vertical version"): opacity is what showBgVideo()
+      // itself toggles there (see its own comment) - transform stays
+      // owned by syncRectMasks's continuous sync either way, so no need
+      // to touch it here for that case (the reset below would just get
+      // overwritten on the very next frame regardless).
+      if (isPortraitViewport()) {
+        video.style.opacity = '0';
+        return;
+      }
       // clears the reveal shift advanceFromOvershoot may have left in
       // place (reached via clicking the rect itself in step 2, bypassing
       // reverseFromWidened's own undo of that same transform) - falls
@@ -4876,9 +5141,13 @@
       const rect2Anim = rect2.animate(reverse ? rect2Forward.slice().reverse() : rect2Forward, opts);
       const rect2BlackAnim = rect2Black.animate(reverse ? rect2BlackForward.slice().reverse() : rect2BlackForward, opts);
 
+      // portrait ("vertical version"): no rotation at all on #bg-video
+      // (see showBgVideo's own comment) - mirrors advanceFromOvershoot's
+      // own globeRotate branch.
+      const globeRotate = isPortraitViewport() ? '' : ' rotate(30deg)';
       const videoForward = [
-        { transform: 'scale(1) translateX(0%) rotate(30deg)' },
-        { transform: 'scale(1) translateX(120%) rotate(30deg)' }
+        { transform: `scale(1) translateX(0%)${globeRotate}` },
+        { transform: `scale(1) translateX(120%)${globeRotate}` }
       ];
       if (reverse) showBgVideo(); // (re)starts playback - the animation below drives its actual transform
       const videoAnim = video.animate(reverse ? videoForward.slice().reverse() : videoForward, opts);
@@ -4975,6 +5244,17 @@
         if (videoRevealed) return;
         videoRevealed = true;
         loadHeavyVideos();
+        // portrait ("vertical version"): showBgVideo() above already lands
+        // #bg-video at its correct final look (POR CORTE, scale(1), no
+        // rotation - see that function) - no separate WAAPI animation on
+        // top of it here, unlike landscape below, which still needs its
+        // own scale(0)->scale(1) rotate(30deg) grow (showBgVideo()'s own
+        // instant .visible swap would otherwise pop straight to the end
+        // state instead of animating).
+        if (isPortraitViewport()) {
+          showBgVideo();
+          return;
+        }
         showBgVideo(); // (re)starts playback - the animation below drives its actual transform
         // born from its own center, scale(0) -> scale(1), no translateX -
         // unlike playContactTransition's own exit slide (leaving index for
@@ -5026,6 +5306,37 @@
     // look wrong (a WAAPI animation started that early doesn't reliably
     // run to completion). By the time this function runs, contact.html
     // has already done the only animating there is to do.
+    // portrait shows bracket-left/right-tall (fixed at scale(1), fully
+    // opaque) instead of the plain originals (kept invisible, opacity:0) -
+    // the same swap syncLogoToRect's own crossfade settles into by the
+    // end of its growth in the forward flow, just set directly here
+    // since this is an arrival, not something that needs to animate.
+    // Landscape never touches the tall pair at all - they default to
+    // opacity:0 in their own CSS. Called from enterFromContact.
+    function resetArrivalBrackets(isPortrait, bracketEndX0, brLeft, bl, br) {
+      if (isPortrait) {
+        bl.style.opacity = '0';
+        br.style.opacity = '0';
+        const blTall = document.getElementById('bracket-left-tall');
+        const brTall = document.getElementById('bracket-right-tall');
+        blTall.style.left = (bracketEndX0 - 4) + 'px';
+        brTall.style.left = brLeft + 'px';
+        blTall.style.transform = 'scale(1)';
+        brTall.style.transform = 'scale(1)';
+        blTall.style.opacity = '1';
+        brTall.style.opacity = '1';
+        blTall.style.filter = 'none';
+        brTall.style.filter = 'none';
+      } else {
+        bl.style.left = (bracketEndX0 - 4) + 'px';
+        br.style.left = brLeft + 'px';
+        bl.style.transform = 'scale(1)';
+        br.style.transform = 'scale(1)';
+        bl.style.filter = 'none';
+        br.style.filter = 'none';
+      }
+    }
+
     function enterFromContact() {
       passwordUnlocked = true;
       rectInteractionReady = true;
@@ -5034,6 +5345,31 @@
       document.getElementById('password-gate').style.display = 'none';
       document.getElementById('text-diego-half').style.display = 'none';
       document.getElementById('text-tavella-half').style.display = 'none';
+      // portrait ("vertical version") only: --logo-scale starts at
+      // LOGO_PORTRAIT_SCALE (2.5, set in the early <script> before <body>)
+      // and normally only ever comes back down to 1 as a side effect of
+      // the real click-driven growth path (onRectClick's press.finished ->
+      // bakePortraitPressScale bakes the multiplier into #rect/#rect2's
+      // own width/height directly, then hands #rect a plain scale-less
+      // literal transform - see that function). This arrival skips that
+      // whole path entirely, so without resetting it here too, every
+      // element below still styled via CSS's own `scale(var(--logo-scale))`
+      // (#rect/#rect2/#rect-hover-zone/#rect-frame/the brackets/logo-text -
+      // see the stylesheet) renders 2.5x too big, growing around its own
+      // center - the width/height set explicitly just below are already
+      // the correct FINAL size on their own, so this second multiplier is
+      // pure double-counting. Confirmed on-device: #rect ballooned to
+      // ~2.5x real size, its border pushed off past the actual viewport
+      // edges while the fill (no size dependency) still read as plain
+      // celeste with no visible outline - exactly what "no tiene el
+      // outline" turned out to be. Landscape's own --logo-scale is
+      // already 1 always, so this was always a latent gap here - nothing
+      // ever exercised enterFromContact() in portrait until the
+      // swipe-down flow (see menu-portrait.html) started reaching it.
+      if (isPortraitViewport()) {
+        document.documentElement.style.setProperty('--logo-scale', '1');
+        document.documentElement.style.setProperty('--password-scale', '1');
+      }
 
       const { widths, heights, radii } = overshootValues();
       const width = widths[3];
@@ -5056,7 +5392,7 @@
       rectEl.style.borderRadius = radii[3] + 'px';
       rectEl.style.background = 'transparent';
       rectEl.style.borderColor = '#000';
-      rectEl.style.borderWidth = (window.innerWidth < window.innerHeight ? RECT_BORDER_WIDTH_PORTRAIT : 2) + 'px';
+      rectEl.style.borderWidth = (isPortraitViewport() ? RECT_BORDER_WIDTH_PORTRAIT : 2) + 'px';
       rectEl.offsetHeight; // force the above to paint with transitions off before re-enabling them below
       rectEl.style.transition = '';
 
@@ -5071,31 +5407,9 @@
       bl.classList.remove('bracket-offstage');
       br.classList.remove('bracket-offstage');
       // tall pair only in portrait - see syncLogoToRect's own comment on
-      // why it never replaces the originals in landscape. #bracket-left-
-      // tall/#bracket-right-tall default to opacity:0 in their own CSS,
-      // so the landscape branch just never touches them, same as always
-      const isPortrait = window.innerWidth < window.innerHeight;
-      if (isPortrait) {
-        bl.style.opacity = '0';
-        br.style.opacity = '0';
-        const blTall = document.getElementById('bracket-left-tall');
-        const brTall = document.getElementById('bracket-right-tall');
-        blTall.style.left = (bracketEndX0 - 4) + 'px';
-        brTall.style.left = brLeft + 'px';
-        blTall.style.transform = 'scale(1)';
-        brTall.style.transform = 'scale(1)';
-        blTall.style.opacity = '1';
-        brTall.style.opacity = '1';
-        blTall.style.filter = 'none';
-        brTall.style.filter = 'none';
-      } else {
-        bl.style.left = (bracketEndX0 - 4) + 'px';
-        br.style.left = brLeft + 'px';
-        bl.style.transform = 'scale(1)';
-        br.style.transform = 'scale(1)';
-        bl.style.filter = 'none';
-        br.style.filter = 'none';
-      }
+      // why it never replaces the originals in landscape.
+      const isPortrait = isPortraitViewport();
+      resetArrivalBrackets(isPortrait, bracketEndX0, brLeft, bl, br);
 
       // "Diego Tavella" starts at its exit look (see txtForward's own end
       // keyframe in playContactTransition) - playArrivalReveal below
@@ -5183,7 +5497,15 @@
       step = 1;
     }
 
-    if (location.hash === '#from-contact') {
+    // #from-menu-portrait: menu-portrait.html's own swipe-down "back" -
+    // lands on the exact same settled step-1 state #from-contact does
+    // (enterFromContact already does everything this needs: skip the
+    // password gate/intro, arrive built - "no vuelve al logo"), just via
+    // a different visual transition (push down instead of Contact's
+    // plain continuous-element swap - see the html.push-down-transition
+    // CSS above and the early <script>'s own comment on why the class
+    // for it gets set before this point ever runs).
+    if (location.hash === '#from-contact' || location.hash === '#from-menu-portrait') {
       history.replaceState(null, '', location.pathname + location.search);
       enterFromContact();
     }
@@ -5210,15 +5532,61 @@
       const rectEl = document.getElementById('rect');
       const rectCs = getComputedStyle(rectEl);
       const bgVideoMask = document.getElementById('bg-video-mask');
+      // #bg-video-mask always matches #rect's own full box, both
+      // orientations alike - it's just the outer clip boundary (nothing
+      // ever visually spills past #rect's own silhouette), not what
+      // shapes the globe itself. An earlier portrait-only attempt made
+      // this a small square window instead (trying to get object-fit:
+      // cover to crop sensibly) - that just moved the problem: cover's
+      // own crop math is driven by the CONTAINER's shape, so a tall
+      // #bg-video-mask still forced a brutal zoom (see git history/
+      // readme.txt point 8 if this needs revisiting), and a square one
+      // clipped the globe against ITS OWN edges at any real zoom level
+      // (top/bottom cropped well before reaching #rect's actual top/
+      // bottom edge). See #bg-video's own portrait sizing below instead -
+      // that's the box object-fit:cover actually operates against now,
+      // sized independently of this mask entirely.
       bgVideoMask.style.width = rectCs.width;
       bgVideoMask.style.height = rectCs.height;
       bgVideoMask.style.borderRadius = rectCs.borderRadius;
-      // deliberately keeps masking whatever's outside its own box even
-      // while rect2/rect2-black are mid-slide (playContactTransition only
-      // ever animates `transform` on them, never top/width/height/
-      // borderRadius, so this box doesn't actually move during that -
-      // it stays put, still covering the calle/corners the whole time
-      // instead of opening up to let the slide travel through unmasked)
+      const isPortrait = isPortraitViewport();
+      const video = document.getElementById('bg-video');
+      if (isPortrait) {
+        // portrait ("vertical version") only: #bg-video gets its OWN
+        // square box (GLOBE_PORTRAIT_SCALE * #rect's own live width),
+        // absolutely positioned/centered on the same canvas point (960,
+        // 539.5) the tagline sits on - independent of #bg-video-mask's
+        // own (now tall) shape, so object-fit:cover's crop math is
+        // always driven by this fixed square aspect, never by the tall
+        // container. #bg-video-mask's overflow:hidden only ever actually
+        // clips this box once it's zoomed past #rect's own real edges
+        // (top/bottom AND left/right), not before - see
+        // GLOBE_PORTRAIT_SCALE's own comment.
+        const rectWidthPx = parseFloat(rectCs.width);
+        const boxPx = rectWidthPx * GLOBE_PORTRAIT_SCALE;
+        video.style.left = '50%';
+        video.style.top = '50%';
+        video.style.right = 'auto';
+        video.style.bottom = 'auto';
+        video.style.width = boxPx + 'px';
+        video.style.height = boxPx + 'px';
+        video.style.transform = `translate(calc(-50% + ${GLOBE_PORTRAIT_OFFSET_X}px), -50%) rotate(${GLOBE_PORTRAIT_ROTATE}deg)`;
+      } else {
+        // landscape - clear any leftover portrait inline overrides (in
+        // case a resize ever crossed the orientation boundary), back to
+        // the CSS defaults (inset:0, width/height:100%). Deliberately
+        // NOT touching `transform` here - landscape's own reveal
+        // (showBgVideo's .visible class, and the several .animate()
+        // calls elsewhere) already owns that property, and this function
+        // runs every single frame, so overwriting it here would fight
+        // all of them constantly.
+        video.style.left = '';
+        video.style.top = '';
+        video.style.right = '';
+        video.style.bottom = '';
+        video.style.width = '';
+        video.style.height = '';
+      }
       const rect2El = document.getElementById('rect2');
       const rect2BlackEl = document.getElementById('rect2-black');
       const active = rect2BlackEl.classList.contains('visible') ? rect2BlackEl
@@ -5226,29 +5594,12 @@
       const frame = document.getElementById('rect-frame');
       if (active) {
         const cs = getComputedStyle(active);
-        // mirrors active's own real box exactly - width/height/
-        // borderRadius AND top. That last one is the one that actually
-        // matters here: #rect-frame's CSS hardcodes top:539.5px (rect's
-        // own fixed center), which is only correct while rect2 is ALSO
-        // centered there - the widened instance's rect2 moves its own
-        // `top` down (header eats into it from above, bottom edge fixed,
-        // so the center shifts), and without following that same shift
-        // here, the frame stays centered on the OLD point while rect2
-        // itself is centered lower - same width/height but wrong position
-        // reads exactly as "top gap gone, bottom gap doubled". Mirroring
-        // active's box verbatim (this box already IS correctly gapped on
-        // every side by design - see advanceFromOvershoot's own
-        // rect2Gap) is enough once the position itself is right; no
-        // separate margin math needed.
         frame.style.top = cs.top;
         frame.style.width = cs.width;
         frame.style.height = cs.height;
         frame.style.borderRadius = cs.borderRadius;
         frame.style.boxShadow = '0 0 0 3000px #fff';
       } else {
-        // rect2/rect2-black don't exist yet (still on the idle button/
-        // password-gate look) - stay off so the initial button isn't
-        // whitewashed
         frame.style.boxShadow = 'none';
       }
       requestAnimationFrame(syncRectMasks);
@@ -5331,6 +5682,7 @@
         if (e.key === 'Escape') guidesLayer.querySelectorAll('.ruler-guide').forEach((g) => g.remove());
       });
     })();
+
   </script>
 </body>
 </html>

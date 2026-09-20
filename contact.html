@@ -294,8 +294,28 @@
     const sq = document.getElementById('blink-square');
     const homeBtn = document.getElementById('home-button');
 
+    // the "stage": fixed-proportion block the whole design lives in - same
+    // idea and numbers as index.html's own stageBox() (see its comment):
+    // every layout number is measured against THIS box, never the raw
+    // window, so resizing only changes `scale`. Centered, white around it.
+    //   landscape: 16:9, 1920x1080 local units, max 1:1 pixels
+    //   portrait: 9:19.5, 1920x4160 local units, capped at 1080 real px tall
+    const STAGE_LANDSCAPE = { w: 1920, h: 1080, maxScale: 1 };
+    const STAGE_PORTRAIT = { w: 1920, h: 4160, maxScale: 1080 / 4160 };
+    // portrait only exists on touch devices that LOAD the page taller than
+    // wide (a desktop browser is always landscape, however narrow); decided
+    // once per page load and then locked - same rule as index.html
+    const PORTRAIT_LOCKED = window.matchMedia('(pointer: coarse)').matches &&
+      window.innerWidth < window.innerHeight;
+    function isPortraitViewport() { return PORTRAIT_LOCKED; }
+    function stageBox() {
+      const s = isPortraitViewport() ? STAGE_PORTRAIT : STAGE_LANDSCAPE;
+      const scale = Math.min(window.innerWidth / s.w, window.innerHeight / s.h, s.maxScale);
+      return { scale, localW: s.w, localH: s.h, realW: s.w * scale, realH: s.h * scale };
+    }
+
     function fitCanvas() {
-      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const scale = stageBox().scale;
       canvas.style.transform = `scale(${scale})`;
     }
 
@@ -303,12 +323,12 @@
       // same "pin the overshoot to (100 - top - bottom)vh tall" recompute
       // as index.html's overshootValues() - except in portrait, where the
       // rect is sized by WIDTH instead (see PORTRAIT_RATIO's own comment)
-      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      const isPortrait = window.innerWidth < window.innerHeight;
-      const maxHeight = (window.innerHeight * (1 - (TOP_MARGIN_VH + BOTTOM_MARGIN_VH) / 100)) / canvasScale;
+      const canvasScale = stageBox().scale;
+      const isPortrait = isPortraitViewport();
+      const maxHeight = (stageBox().realH * (1 - (TOP_MARGIN_VH + BOTTOM_MARGIN_VH) / 100)) / canvasScale;
       let width, height;
       if (isPortrait) {
-        const desiredRealWidthPx = window.innerWidth * (1 - (SIDE_MARGIN_VW * 2) / 100);
+        const desiredRealWidthPx = stageBox().realW * (1 - (SIDE_MARGIN_VW * 2) / 100);
         width = desiredRealWidthPx / canvasScale;
         height = width / PORTRAIT_RATIO;
         if (height > maxHeight) {
@@ -392,7 +412,7 @@
     // is visually meaningful.
     const REVEAL_MARGIN = 100;
     function revealEndSize() {
-      const canvasScale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const canvasScale = stageBox().scale;
       return {
         width: window.innerWidth / canvasScale + REVEAL_MARGIN,
         height: window.innerHeight / canvasScale + REVEAL_MARGIN

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menu</title>
+<style>
+  /* PUSH transition (not the "continuous element" approach index.html/
+     contact.html use for their own Contact<->Home navigation - explicit
+     user request: index.html's whole screen should slide up and off
+     while this page slides up and in from below, and the reverse coming
+     back). byn-rect/byn-rect2/byn-rect-frame ARE still reused here,
+     matching index.html's own names (see #rect/#rect2/#rect-frame
+     below) - an earlier version of this file deliberately left them
+     unnamed, reasoning that shared names only make sense for a
+     perfectly-still element. That broke on-device: with #rect
+     unmatched, arriving back from a swipe-down had NO "old" image to
+     fall back on if the cross-document snapshot got captured a beat
+     before enterFromContact() (index.html's own JS) finished setting
+     #rect's border color/width - it read as the outline just not being
+     there. Keeping the names restores that fallback (the OLD image is
+     whichever page is departing, already correctly styled by its own
+     plain static CSS, no JS race) - and custom keyframes on
+     ::view-transition-old/new still apply on top of a shared name just
+     fine, since those animate the captured IMAGE, not the automatic
+     old-box->new-box interpolation the GROUP pseudo-element separately
+     handles (which is a no-op here regardless, since both pages render
+     #rect at the identical size - see layout() below). So the push and
+     the "hold still if needed" fallback aren't actually in tension - the
+     first version of this file assumed they were. */
+  @view-transition {
+    navigation: auto;
+  }
+  /* mirrors index.html's/contact.html's own rule of the same name - see
+     either's comment. Needed here too: whichever document is "driving"
+     the transition pseudo-tree at a given moment is the one whose
+     stylesheet applies. */
+  ::view-transition-image-pair(root) {
+    isolation: auto;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(byn-rect),
+  ::view-transition-group(byn-rect2),
+  ::view-transition-group(byn-rect-frame) {
+    animation: none;
+  }
+  ::view-transition-old(byn-rect),
+  ::view-transition-new(byn-rect),
+  ::view-transition-old(byn-rect2),
+  ::view-transition-new(byn-rect2),
+  ::view-transition-old(byn-rect-frame),
+  ::view-transition-new(byn-rect-frame) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  /* mirrors index.html's own html.push-up-transition-scoped old-* rules
+     (see there) - defined here too, unconditionally (this page only ever
+     ARRIVES via that one swipe-up flow, no other entry point to guard
+     against), so control handing off from index.html's stylesheet to
+     this one mid-transition doesn't jump to a different definition. This
+     overrides the plain animation:none default just above for exactly
+     these four - same specificity trick as the scoped rules further
+     down, just unconditional here since arrival only ever happens this
+     one way.
+     IMPORTANT, found the hard way on-device: a named transition group
+     does NOT automatically inherit root's own motion just because its
+     old/new geometry happens to match exactly - each of root/byn-rect/
+     byn-rect2/byn-rect-frame is its own independently-composited layer,
+     so every one of them needs its OWN explicit push-in keyframes below,
+     or it just sits motionless at its final position from frame one
+     while root (mostly just the thin margin/backdrop around it) is still
+     visibly sliding up underneath/behind it - which is what read as the
+     celeste hueco only filling half the rect for a moment (the STATIC,
+     already-full-size rect2 sitting on top of a root/#rect-safety layer
+     that hadn't slid into place yet). */
+  ::view-transition-old(root),
+  ::view-transition-old(byn-rect),
+  ::view-transition-old(byn-rect2),
+  ::view-transition-old(byn-rect-frame) {
+    animation: push-root-out 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-new(root),
+  ::view-transition-new(byn-rect),
+  ::view-transition-new(byn-rect2),
+  ::view-transition-new(byn-rect-frame) {
+    animation: push-root-in 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+    mix-blend-mode: normal;
+  }
+  @keyframes push-root-out {
+    to { transform: translateY(-100%); }
+  }
+  @keyframes push-root-in {
+    from { transform: translateY(100%); }
+  }
+  /* the reverse trip: swiping down (see the script below) navigates back
+     to index.html#from-menu-portrait - a SEPARATE, later cross-document
+     transition where THIS page is the one leaving, so root/byn-rect/
+     byn-rect2/byn-rect-frame's own OLD image has to push DOWN this time,
+     not repeat the UP push above (that's a different, already-finished
+     transition's own hand-off continuity - see its own comment - and
+     would otherwise still apply here too by default, since these
+     pseudo-elements aren't tied to any one transition instance). Scoped
+     under html.push-down-transition (added by the swipe-down handler
+     right before navigating) purely for the extra specificity to win
+     over the bare rules above - the class itself never gets removed, and
+     doesn't need to be: this page is about to unload either way. */
+  html.push-down-transition ::view-transition-old(root),
+  html.push-down-transition ::view-transition-old(byn-rect),
+  html.push-down-transition ::view-transition-old(byn-rect2),
+  html.push-down-transition ::view-transition-old(byn-rect-frame) {
+    animation: push-root-out-down 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  @keyframes push-root-out-down {
+    to { transform: translateY(100%); }
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  /* same fixed 1920x1080 comp + uniform-scale-to-fit approach as
+     index.html's/contact.html's own .viewport/.canvas (see fitCanvas
+     below) - lets every element here reuse index.html's own canvas-space
+     (1920x1080) numbers directly, no unit conversion */
+  .viewport {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .canvas {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    flex: none;
+    will-change: transform;
+  }
+
+  /* plain, permanent, solid white backdrop - see index.html's own CSS
+     comment for the full reasoning (same element there). Deliberately
+     the FIRST thing in .canvas, no view-transition-name, never touched
+     by the cross-document transition - a worst-case fallback so any
+     old/new timing gap reads as white instead of black. */
+  #canvas-backdrop {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    background: #fff;
+    pointer-events: none;
+  }
+
+  /* safety backing, NOT the "hueco" itself - a plain celeste box matching
+     #rect's own full size (bigger than #rect2's smaller inset box below
+     by exactly the calle margin), sitting BEHIND #rect2/#rect-frame/#rect
+     in the DOM. Without this, any single-frame mismatch between
+     #rect-frame's own white mask and #rect2's real edges (a real risk
+     mid cross-document transition, where two independently-animating
+     elements can land a pixel apart for a frame) would flash bare white
+     canvas-backdrop through instead of celeste - reads as a stray "hole"
+     right at the rect's own edge. Celeste painted first, everything else
+     layered on top, means that gap (if it ever happens) shows celeste
+     bleeding through instead of a hole - unnoticeable, since it's the
+     same color #rect2 already is. */
+  #rect-safety {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: #80dfff;
+    pointer-events: none;
+  }
+
+  /* the "hueco": matches index.html's own #rect2 (celeste) at step 1 -
+     see layout() below, which mirrors index.html's own press.finished/
+     onRectClick rect2 sizing math (RECT2_SCALE) verbatim. Named
+     byn-rect2, matching index.html - see this file's own top-of-style
+     comment on why (the push and the shared name aren't in tension; the
+     name is what gives the transition a same-color fallback image to
+     fall back on if timing ever races JS on either side). */
+  #rect2 {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: #80dfff;
+    view-transition-name: byn-rect2;
+  }
+
+  /* mirrors index.html's own #rect-frame / contact.html's own #rect-frame
+     (see either's CSS comment for the box-shadow-as-mask technique) -
+     the "calle" gap between #rect2 and #rect's own inner edge. Its own
+     box-shadow spread is set to exactly rect2Margin (the calle's own
+     thickness) in layout() below, not hardcoded here. Sits ABOVE
+     #rect-safety/#rect2 in the DOM so its white can still paint over the
+     calle gap between them. Named byn-rect-frame - see #rect2's own
+     comment just above. */
+  #rect-frame {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    pointer-events: none;
+    view-transition-name: byn-rect-frame;
+  }
+
+  /* the outline rect: index.html's own #rect at rest in its portrait
+     overshoot hold - transparent fill, solid black stroke (thickness set
+     in layout() below, matching index.html's own RECT_BORDER_WIDTH_PORTRAIT),
+     no video/hover/press behavior since this page is static (for now).
+     Named byn-rect - see #rect2's own comment just above (this is the
+     one whose missing-border bug on arrival is what motivated restoring
+     all three names in the first place). */
+  #rect {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    background: transparent;
+    border: 3px solid #000;
+    view-transition-name: byn-rect;
+  }
+</style>
+</head>
+<body>
+  <div class="viewport">
+    <div class="canvas">
+      <div id="canvas-backdrop"></div>
+      <div id="rect-safety"></div>
+      <div id="rect2"></div>
+      <div id="rect-frame"></div>
+      <div id="rect"></div>
+    </div>
+  </div>
+
+  <script>
+    // back/forward navigation between this page and index.html restores
+    // the page from the browser's bfcache instead of actually reloading
+    // it - see contact.html's own identical comment/listener for why this
+    // matters (this page has no real animation yet, but layout() below
+    // still needs to re-run against the CURRENT viewport, not whatever it
+    // happened to be mid-navigation).
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) location.reload();
+    });
+
+    // every constant below is copied straight from index.html's own
+    // portrait overshoot geometry (BASE_HEIGHTS[2], BASE_RADII[2],
+    // TOP_MARGIN_VH/BOTTOM_MARGIN_VH/SIDE_MARGIN_VW/PORTRAIT_MARGIN_SCALE,
+    // computeOvershootWidth's own isPortrait branch, overshootValues(),
+    // onRectClick's own RECT2_SCALE, RECT_BORDER_WIDTH_PORTRAIT) so this
+    // page's #rect renders at EXACTLY the same size/position index.html's
+    // own step-1 rect is already holding at the instant the swipe-up
+    // navigates here - the cross-document view transition is morphing
+    // between two independently-computed boxes, not one shared value, so
+    // they have to agree on paper or the transition visibly snaps/resizes
+    // partway through instead of reading as one continuous box.
+    const RECT_CENTER_X = 960;
+    const RECT_CENTER_Y = 539.5;
+    const BASE_HEIGHT_2 = 1108.30055123673; // BASE_HEIGHTS[2]===BASE_WIDTHS[2] in index.html (true square before portrait/landscape reshape it)
+    const BASE_RADIUS_2 = 31; // BASE_RADII[2]
+    const TOP_MARGIN_VH = 5;
+    const BOTTOM_MARGIN_VH = 5;
+    const SIDE_MARGIN_VW = 8;
+    const PORTRAIT_MARGIN_SCALE = 0.35; // 65% reduction from the base margins above - portrait only, see index.html's own comment
+    const RECT_BORDER_WIDTH_PORTRAIT = 3;
+    const RECT2_SCALE = 0.97;
+
+    const canvas = document.querySelector('.canvas');
+    const rect = document.getElementById('rect');
+    const rect2 = document.getElementById('rect2');
+    const rectFrame = document.getElementById('rect-frame');
+    const rectSafety = document.getElementById('rect-safety');
+
+    // the "stage": fixed-proportion block the whole design lives in - same
+    // numbers as index.html's own stageBox() (see its comment). This page
+    // only ever exists in portrait, so it always uses the portrait stage:
+    // 9:19.5, 1920x4160 local units, capped at 1080 real px tall. Every
+    // layout number is measured against it, never the raw window, so
+    // resizing only changes `scale`. Centered, white around it.
+    const STAGE_PORTRAIT = { w: 1920, h: 4160, maxScale: 1080 / 4160 };
+    function stageBox() {
+      const s = STAGE_PORTRAIT;
+      const scale = Math.min(window.innerWidth / s.w, window.innerHeight / s.h, s.maxScale);
+      return { scale, localW: s.w, localH: s.h, realW: s.w * scale, realH: s.h * scale };
+    }
+
+    function fitCanvas() {
+      const scale = stageBox().scale;
+      canvas.style.transform = `scale(${scale})`;
+    }
+
+    function layout() {
+      // same math as index.html's own overshootValues()/
+      // computeOvershootWidth, portrait branch only (see this file's own
+      // top-of-script comment)
+      const canvasScale = stageBox().scale;
+      const topMarginVH = TOP_MARGIN_VH * PORTRAIT_MARGIN_SCALE;
+      const bottomMarginVH = BOTTOM_MARGIN_VH * PORTRAIT_MARGIN_SCALE;
+      const desiredRealHeightPx = stageBox().realH * (1 - (topMarginVH + bottomMarginVH) / 100);
+      const height = desiredRealHeightPx / canvasScale;
+
+      const sideMarginVW = SIDE_MARGIN_VW * PORTRAIT_MARGIN_SCALE;
+      const desiredRealWidthPx = stageBox().realW * (1 - (sideMarginVW * 2) / 100);
+      const width = desiredRealWidthPx / canvasScale;
+
+      // radius scales off the smaller of the two axes (same reasoning as
+      // index.html's own radiusScale) so it stays a true rounded corner
+      // instead of stretching into an ellipse once width!==height
+      const radius = BASE_RADIUS_2 * (Math.min(width, height) / BASE_HEIGHT_2);
+
+      rect.style.width = width + 'px';
+      rect.style.height = height + 'px';
+      rect.style.borderRadius = radius + 'px';
+      rect.style.borderWidth = RECT_BORDER_WIDTH_PORTRAIT + 'px';
+
+      // matches #rect's own box exactly - see #rect-safety's own CSS
+      // comment for why (bigger than #rect2's smaller inset hole by
+      // exactly the calle margin, on purpose)
+      rectSafety.style.width = width + 'px';
+      rectSafety.style.height = height + 'px';
+      rectSafety.style.borderRadius = radius + 'px';
+
+      // one shared margin (not a per-axis percentage) so #rect-frame's
+      // own single box-shadow spread below applies evenly on every side
+      // regardless of the rect's own aspect ratio - same reasoning as
+      // index.html's/contact.html's own rect2Margin
+      const rect2Margin = Math.min(width, height) * (1 - RECT2_SCALE) / 2;
+      const rect2Width = width - rect2Margin * 2;
+      const rect2Height = height - rect2Margin * 2;
+      const rect2Radius = Math.max(0, radius - rect2Margin);
+      rect2.style.width = rect2Width + 'px';
+      rect2.style.height = rect2Height + 'px';
+      rect2.style.borderRadius = rect2Radius + 'px';
+
+      rectFrame.style.width = rect2Width + 'px';
+      rectFrame.style.height = rect2Height + 'px';
+      rectFrame.style.borderRadius = rect2Radius + 'px';
+      rectFrame.style.boxShadow = `0 0 0 ${rect2Margin}px #fff`;
+    }
+
+    fitCanvas();
+    layout();
+    window.addEventListener('resize', () => {
+      fitCanvas();
+      layout();
+    });
+
+    // swipe down navigates back to index.html, landing on its own
+    // already-built step-1 state (enterFromContact there - see its own
+    // comment: "no vuelve al logo", same as the Contact page's own Home
+    // link) - same touchstart/touchend + mousedown/mouseup pair as
+    // index.html's own swipe-up handler (see its comment for why the
+    // mouse fallback exists - untestable on desktop Chrome otherwise
+    // without DevTools' device-mode touch emulation), same 60px
+    // threshold, just the opposite direction and destination.
+    const SWIPE_DOWN_THRESHOLD_PX = 60;
+    let backTransitioning = false;
+    function finishSwipe(startY, endY) {
+      if (backTransitioning) return;
+      if (endY - startY >= SWIPE_DOWN_THRESHOLD_PX) {
+        backTransitioning = true;
+        // scoped class, not a plain unconditional rule - see the CSS
+        // comment on why: this transition needs to push DOWN, not repeat
+        // the up-push this page's own arrival already used
+        document.documentElement.classList.add('push-down-transition');
+        window.location.href = 'index.html#from-menu-portrait';
+      }
+    }
+    let touchStartY = null;
+    document.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches.length === 1 ? e.touches[0].clientY : null;
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (touchStartY === null) return;
+      const startY = touchStartY;
+      touchStartY = null;
+      finishSwipe(startY, e.changedTouches[0].clientY);
+    }, { passive: true });
+    let mouseStartY = null;
+    document.addEventListener('mousedown', (e) => {
+      mouseStartY = e.clientY;
+    });
+    document.addEventListener('mouseup', (e) => {
+      if (mouseStartY === null) return;
+      const startY = mouseStartY;
+      mouseStartY = null;
+      finishSwipe(startY, e.clientY);
+    });
+  </script>
+</body>
+</html>
