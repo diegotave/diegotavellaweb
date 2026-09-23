@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Landing</title>
-<style>
+<style>s
   /* opts this document into cross-document view transitions (Chromium
      only, as of this writing - Safari/Firefox just fall back to a plain
      navigation, no code needed for that). Paired with the matching
@@ -313,10 +313,9 @@
   /* #rect2: experimental second rect, solid cyan-ish fill (#80dfff), no
      stroke - sits BEHIND #rect (first in the DOM, before even
      #rect-hover-zone). Shows through rect's own now-transparent fill
-     (see press.finished). #onda-video is a child of THIS element (see
-     below) - onda-video's own bounds/crop/rounding track rect2's live
-     box, not rect's, so overflow:hidden here does for it what #bg-video-
-     mask's own overflow:hidden does for bg-video. "Born" on the very
+     (see press.finished). #onda-video USED TO BE a child of THIS element -
+     see its own CSS comment for why it moved out to a standalone,
+     independently-sized/positioned element instead. "Born" on the very
      first hover over the
      un-pressed button (see setButtonHover) sized a fixed few px past
      rect's own (tiny, idle) edges at that moment, sticking out all
@@ -1254,25 +1253,91 @@
     clip-path: polygon(965px 0, 1920px 0, 1920px 1080px, 965px 1080px);
   }
 
-  /* ondablanca.webm: hover-only preview on the blink-square/triangle hit
-     zone (see its mouseenter/mouseleave listeners in the script) - the
-     second-click target that only exists after the first click, once the
-     rect is sitting at its overshoot size. A child of #rect2 (the celeste
-     rect), not #rect - width/height:100% plus rect2's own overflow:hidden
-     (see #rect2) is what tracks rect2's live size/rounded corners
-     automatically, no JS sizing needed, same technique #bg-video already
-     uses off its own #bg-video-mask. object-fit:cover keeps the footage
-     itself from
-     ever stretching even as rect2's own aspect ratio changes (square ->
-     16:9). Full opacity - the webm's own alpha channel already handles
-     transparency, so .visible just needs to reveal it, no extra dimming
-     on top. */
+  /* ondablanca.webm: USED TO BE the back-triangle/blink-square hit zone's
+     own hover-only preview - that role now belongs to #separator-video
+     (separador_atletas.webm) instead. Now a standalone accent instead, no
+     hover tie-in at all: plays immediately once the tagline text block
+     finishes assembling, then again every 8s after that - see
+     startOndaAccentLoop.
+     USED TO BE a child of #rect2, sized 100%/100% + object-fit:cover off
+     rect2's own (much smaller/near-square) box - moved to its own
+     #onda-video-mask (still BEHIND #bg-video in the DOM/z-order, same as
+     it always was - confirmed by the user directly on their own device
+     that this stays correct in both steps, despite #bg-video's own
+     rotated-square-in-an-unrotated-mask shape leaving 4 small triangular
+     gaps where whatever's behind it shows through instead - see #bg-
+     video's own CSS comment) once the footage itself was redone taller
+     (its content now meant to reach the white "calle"/header). #onda-
+     video-mask itself is sized/positioned in JS every frame (see
+     syncRectMasks), in one of two ways depending on whether #header-line
+     is showing yet:
+       - step 1 (#rect square, no header carve-out yet): #rect's own full
+         box, edge to edge - the vertical calles and both top/bottom.
+       - step 2 (botonera, #rect widened to 16:9 - header carved into its
+         own top): left/right still reach #rect's (rect1's) own live
+         edges (same reference as step 1 - NOT #rect2/the hueco, which is
+         narrower and left this short of the actual vertical calles); top
+         is #header-line's own live bottom edge (its "base"); and the box
+         is built SYMMETRIC around #bg-video's own live real center,
+         rather than stopping at the hueco's own raw bottom edge - so
+         #onda-video's default-centered object-fit:cover (see below)
+         lands its own reserved "hole" exactly on the globe wherever it
+         currently is, at rest or mid-slide, instead of at some midpoint
+         that may not be where the globe actually sits.
+     Both branches read every relevant box via getComputedStyle, never
+     `.style` directly - #header-line is mid-WAAPI-animation during the
+     very transition this all needs to track, and `.style` only reflects
+     wherever such an animation STARTED (unchanged for its whole run
+     until commitStyles() at the very end), not its live value.
+     No left:960px/top:539.5px/translate(-50%,-50%) centering shorthand
+     here on purpose (unlike #bg-video-mask/#separator-video-mask) - that
+     formula assumes a box symmetric around the shared (960, 539.5)
+     center, which stops being true once the top gets clipped
+     independently of the bottom; syncRectMasks sets top/left/width/
+     height directly instead, off the live math above.
+     #onda-video ITSELF is NOT object-fit:cover off that box (tried first,
+     reverted) - the dot-burst footage is a CIRCLE that only reaches out
+     to 540px from its own center (measured directly off the raw source
+     frames, pixel-scanning the brightest ring at full expansion), well
+     short of the 1920x1080 frame's own 960px half-width - cover fills
+     the BOX correctly, but the burst itself still stops at whatever
+     fraction of the box that 540/960 ratio works out to, well before
+     reaching the box's own left/right edges - a real content limit of
+     the footage, not a box-sizing bug (confirmed by the user watching
+     the clip through to its own last frame, right before it disappears,
+     and still seeing the same gap both sides). A flat CSS transform:
+     scale() on top of cover was tried next and overshot badly - cover's
+     own scale is ALREADY zooming variably depending on the box's live
+     aspect (a lot, once the box is tall - see the step 2 case above), so
+     a second fixed multiplier on top of that moving target way over-
+     zoomed the whole frame margin-and-all, pushing the burst itself
+     (and the globe's own reserved hole) entirely outside the visible
+     crop. Fixed properly instead by setting #onda-video's own WIDTH
+     directly in JS (see syncRectMasks) to the box's own width times
+     ONDA_BURST_REACH_SCALE (960/540, i.e. exactly the ratio that
+     stretches the burst's own 540px reach out to the full 960px half-
+     width) - height left as `auto` (intrinsic 16:9) rather than any
+     object-fit, so it can never deform. No cover-driven scale factor is
+     ever part of this - the whole render is sized directly off the
+     footage's own known reach ratio, so it's correct regardless of the
+     mask's own live aspect (confirmed this stays a good fit in both
+     states: works out to an exact height match in step 1's square box,
+     and a generous vertical overflow - cropped cleanly by the mask,
+     never a gap - in step 2's taller one). Full opacity - the webm's own
+     alpha channel already handles transparency, so .visible just needs
+     to reveal it, no extra dimming on top. */
+  #onda-video-mask {
+    position: absolute;
+    overflow: hidden;
+    pointer-events: none;
+    contain: layout paint;
+  }
   #onda-video {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    height: auto; /* width set live in JS (syncRectMasks) - height stays intrinsic (16:9) so it can never deform */
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
@@ -1300,6 +1365,55 @@
   #bg-video-rotate {
     position: absolute;
     inset: 0;
+  }
+
+  /* separador_atletas.webm: the back-triangle's own hover preview
+     (#blink-square-hover-zone's mouseenter/mouseleave, step 1 only) - see
+     those handlers in the script. Used to be a pre-transition beat played
+     on CLICK instead (hence the mask/sync plumbing below being more
+     elaborate than a hover preview strictly needs) - scrapped in favor of
+     this simpler hover role, #onda-video's old one (see its own comment
+     for where THAT moved to). Sits BETWEEN #bg-video-mask and #rect-frame
+     in the DOM/z-order on purpose: in front of the globe (#bg-video) but
+     behind #rect-frame/#rect (the white "calle" + black outline), same as
+     the block comment there describes - unlike #onda-video's own hover
+     preview (a child of #rect2, BEHIND the globe), this one actually
+     reads clearly against it. Same fixed (960, 539.5) center +
+     overflow:hidden technique as #bg-video-mask/#rect2, except this one
+     tracks #rect2's own live box (the HUECO), not #rect's - see
+     syncRectMasks. display:none whenever nothing's playing (matching
+     #rect2/#rect2-black's own pattern) EXCEPT while actually playing,
+     when opacity (not display, which can't animate) is what shows/hides
+     it - appears instantly (opacity jumps straight to 1, no fade in) but
+     fades out over its own LAST 15 (native) frames, opacity ramping
+     100->0 in lockstep with #bg-video's own dim ramping back up 35->100 -
+     see the mouseenter/'ended' handlers and trackSeparatorFade in the
+     script, which drive both opacity values directly per rendered video
+     frame (not a CSS transition - there's no fixed duration to hang one
+     on, since it has to line up with the video's own remaining frames
+     however long a given hover actually holds it). Leaving early
+     (mouseleave, before that fade window is ever reached) still cuts
+     instantly - no fade to interrupt there. */
+  #separator-video-mask {
+    position: absolute;
+    left: 960px;
+    top: 539.5px;
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    pointer-events: none;
+    contain: layout paint;
+    display: none;
+  }
+  /* width/height:100% + the mask's own overflow:hidden (tracked to
+     #rect2's live box) is what "occupies the hueco's height" - object-
+     fit:cover then scales the 16:9 source to fill that box without
+     stretching it, cropping the sides since the hueco is much closer to
+     square than 16:9 (same reasoning as #onda-video/#bg-video's own
+     object-fit:cover off their own masks). */
+  #separator-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   /* fdo_invloop.webm: revealed the moment "Video Editor"/"motion graphics"
@@ -1335,8 +1449,15 @@
     height: 100%;
     object-fit: cover;
     transform: scale(0) rotate(30deg);
+    opacity: 1;
     pointer-events: none;
-    transition: transform 0.75s ease;
+    /* opacity's own transition is deliberately much shorter than
+       transform's - see #blink-square-hover-zone's mouseenter/mouseleave
+       (the back-triangle hover dims this to 25% while separador_atletas
+       plays over it): "in and out in two frames" - 2/60s, not a plain cut
+       (opacity: 1/0.25 toggled with no transition at all) and not a slow
+       fade either. */
+    transition: transform 0.75s ease, opacity 0.0333s linear;
   }
   #bg-video.visible {
     transform: scale(1) rotate(30deg);
@@ -1601,15 +1722,20 @@
       <div id="canvas-backdrop"></div>
       <div id="rect2-mask">
         <div id="rect2">
-          <video id="onda-video" muted playsinline></video>
           <video id="botonera-preview-video" muted loop playsinline></video>
         </div>
         <div id="rect2-black"></div>
+      </div>
+      <div id="onda-video-mask">
+        <video id="onda-video" muted playsinline></video>
       </div>
       <div id="bg-video-mask">
         <div id="bg-video-rotate">
           <video id="bg-video" muted loop playsinline></video>
         </div>
+      </div>
+      <div id="separator-video-mask">
+        <video id="separator-video" muted playsinline></video>
       </div>
       <div id="rect-frame"></div>
       <div id="rect-hover-zone"></div>
@@ -1809,6 +1935,7 @@
       // anymore.
       document.getElementById('bg-video').src = 'assets/videos/fdo_invloop.webm';
       document.getElementById('onda-video').src = 'assets/videos/ondablanca.webm';
+      document.getElementById('separator-video').src = 'assets/videos/separador_atletas.webm';
     }
     if (location.hash !== '#from-contact' && location.hash !== '#from-menu-portrait') {
       loadHeavyVideos();
@@ -3114,8 +3241,18 @@
       });
     }
     document.getElementById('blink-square-hover-zone').addEventListener('click', () => {
-      if (step === 1) advanceFromOvershoot();
-      else if (step === 2) reverseFromWidened();
+      if (step === 1) {
+        // clicking through cuts the hover preview short wherever it
+        // happens to be in its own playback (mid-clip, mid its own
+        // natural-end fade, whatever) - a fast 3-frame fade instead of
+        // either of the other two exits (instant on early mouseleave, the
+        // slower 15-frame one at the video's own natural end), and NOT
+        // gated on that fade finishing first - the actual transition
+        // starts right away, in parallel. See
+        // fastFadeOutSeparatorAndRestoreGlobe.
+        fastFadeOutSeparatorAndRestoreGlobe();
+        advanceFromOvershoot();
+      } else if (step === 2) reverseFromWidened();
     });
     // hovering the second-click hit zone morphs the red square into a
     // right-pointing triangle 50% bigger - see #blink-square.triangle.
@@ -3124,20 +3261,166 @@
     // right-pointing preview. The hover-zone itself is only display:block
     // (and thus only able to receive these events at all) while the blink
     // square is actually shown, so no separate visibility check is needed.
+    // separador_atletas.webm (see #separator-video-mask's own CSS comment)
+    // is this hover's own preview now - reuses the mask/video already
+    // built for the (now scrapped) pre-transition beat, which already
+    // sits in front of the globe and tracks the hueco's own live box, so
+    // no separate sizing work needed here. #onda-video used to be this
+    // hover's preview instead - it's now a standalone 8s-interval accent
+    // (see startOndaAccentLoop) with no hover tie-in at all. The globe
+    // itself dims to 35% opacity for the duration so the hover preview
+    // actually reads clearly against it instead of competing with it.
+    const SEPARATOR_NATIVE_FPS = 30; // separador_atletas.webm's own fps - confirmed via ffprobe
+    const SEPARATOR_FADE_FRAMES = 15;
+    const BG_VIDEO_HOVER_DIM_OPACITY = 0.35;
+
+    // drives the crossfade over the video's own LAST 15 (native) frames:
+    // #separator-video-mask ramps opacity 100->0 while #bg-video ramps its
+    // own dim back up 35->100, in lockstep, landing exactly on their resting
+    // values (0 / 100) the instant the video actually ends - not a fixed-
+    // duration CSS transition, since there's no fixed duration to give one:
+    // it has to line up with however many (real) frames are actually left,
+    // which only the video's own playback position can say. Prefers
+    // requestVideoFrameCallback (reports the real presented frame's own
+    // media time) over 'timeupdate' (throttled, too coarse for a 15-frame
+    // window) wherever it's available, falling back to the latter only on
+    // the rare browser without it.
+    let separatorFadeHandle = null;
+    let separatorFadeUsesRvfc = false;
+    // #bg-video's own CSS transition on opacity (2 frames - see its own
+    // rule) is right for the plain one-shot dim mouseenter sets below, but
+    // fights every one of the per-frame writes both ramps here make: each
+    // write would kick off its OWN 2-frame tween toward that write's
+    // target, compounding into a laggy blur trailing behind the mask
+    // instead of moving in lockstep with it. Suppressed for the duration
+    // of either ramp, restored once whichever one finishes.
+    let separatorFadeWindowEntered = false;
+    function applySeparatorFadeForTime(mediaTime, duration) {
+      const framesLeft = (duration - mediaTime) * SEPARATOR_NATIVE_FPS;
+      if (!isFinite(framesLeft) || framesLeft > SEPARATOR_FADE_FRAMES) return;
+      const bgVideo = document.getElementById('bg-video');
+      if (!separatorFadeWindowEntered) {
+        separatorFadeWindowEntered = true;
+        bgVideo.style.transition = 'none';
+      }
+      const t = Math.max(0, framesLeft) / SEPARATOR_FADE_FRAMES; // 1 at the window's start -> 0 right as the video ends
+      document.getElementById('separator-video-mask').style.opacity = t;
+      bgVideo.style.opacity = 1 - t * (1 - BG_VIDEO_HOVER_DIM_OPACITY);
+    }
+    function startSeparatorFadeTracking() {
+      separatorFadeWindowEntered = false;
+      const video = document.getElementById('separator-video');
+      if (typeof video.requestVideoFrameCallback === 'function') {
+        separatorFadeUsesRvfc = true;
+        const onFrame = (now, metadata) => {
+          if (video.paused || video.ended) return;
+          applySeparatorFadeForTime(metadata.mediaTime, video.duration);
+          separatorFadeHandle = video.requestVideoFrameCallback(onFrame);
+        };
+        separatorFadeHandle = video.requestVideoFrameCallback(onFrame);
+      } else {
+        separatorFadeUsesRvfc = false;
+        separatorFadeHandle = () => applySeparatorFadeForTime(video.currentTime, video.duration);
+        video.addEventListener('timeupdate', separatorFadeHandle);
+      }
+    }
+    function stopSeparatorFadeTracking() {
+      const video = document.getElementById('separator-video');
+      if (separatorFadeHandle === null) return;
+      if (separatorFadeUsesRvfc) {
+        if (typeof video.cancelVideoFrameCallback === 'function') video.cancelVideoFrameCallback(separatorFadeHandle);
+      } else {
+        video.removeEventListener('timeupdate', separatorFadeHandle);
+      }
+      separatorFadeHandle = null;
+    }
+    // click-through exit (see the click handler above) - a fast, wall-
+    // clock-timed fade (3 frames @60fps, NOT the video's own native fps -
+    // this one has no "frames remaining in the clip" to line up with,
+    // since a click can land at any arbitrary point in the playback) from
+    // whichever opacity values the crossfade above already left things at,
+    // down/up to their resting values (mask 0, globe 100). Time-based
+    // (performance.now() elapsed, not a literal 3-callback count) so it
+    // holds steady across different display refresh rates - same
+    // reasoning as the readme's own note on 60Hz vs. ProMotion timing.
+    const CLICK_EXIT_FADE_MS = (3 / 60) * 1000;
+    function fastFadeOutSeparatorAndRestoreGlobe() {
+      stopSeparatorFadeTracking();
+      const mask = document.getElementById('separator-video-mask');
+      const bgVideo = document.getElementById('bg-video');
+      const video = document.getElementById('separator-video');
+      video.pause();
+      const startMaskOpacity = parseFloat(mask.style.opacity) || 0;
+      const startBgOpacity = parseFloat(bgVideo.style.opacity) || 1;
+      // already at rest (never hovered this round, or the natural-end fade
+      // already finished) - nothing to animate
+      if (startMaskOpacity === 0 && startBgOpacity === 1) return;
+      bgVideo.style.transition = 'none'; // see applySeparatorFadeForTime's own comment on why - same conflict, same fix
+      const startTime = performance.now();
+      function tick(now) {
+        const t = Math.min(1, (now - startTime) / CLICK_EXIT_FADE_MS);
+        mask.style.opacity = startMaskOpacity * (1 - t);
+        bgVideo.style.opacity = startBgOpacity + (1 - startBgOpacity) * t;
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          mask.style.opacity = '0';
+          mask.style.display = 'none';
+          bgVideo.style.opacity = '';
+          // forces the jump above to actually commit while transition is
+          // still 'none', BEFORE restoring it below - setting opacity and
+          // transition back-to-back with no flush between them risks the
+          // browser coalescing the two and animating this jump through
+          // the just-restored transition instead of snapping it
+          void bgVideo.offsetHeight;
+          bgVideo.style.transition = ''; // back to the CSS default, ready for the next mouseenter's own dim
+        }
+      }
+      requestAnimationFrame(tick);
+    }
     document.getElementById('blink-square-hover-zone').addEventListener('mouseenter', () => {
       if (step !== 1) return;
       document.getElementById('blink-square').classList.add('triangle');
-      const ondaVideo = document.getElementById('onda-video');
-      ondaVideo.currentTime = 0;
-      ondaVideo.play();
-      ondaVideo.classList.add('visible');
+      const video = document.getElementById('separator-video');
+      const mask = document.getElementById('separator-video-mask');
+      video.currentTime = 0;
+      video.playbackRate = 1; // normal speed - the 2x rate belonged to the (now scrapped) click-driven pre-transition beat, never reset since
+      mask.style.display = 'block';
+      mask.style.opacity = '1'; // appears instantly - only the exit fades
+      document.getElementById('bg-video').style.opacity = String(BG_VIDEO_HOVER_DIM_OPACITY);
+      video.play();
+      startSeparatorFadeTracking();
     });
     document.getElementById('blink-square-hover-zone').addEventListener('mouseleave', () => {
       if (step !== 1) return;
       document.getElementById('blink-square').classList.remove('triangle');
-      const ondaVideo = document.getElementById('onda-video');
-      ondaVideo.classList.remove('visible');
-      ondaVideo.pause();
+      // leaving BEFORE the video's own last-15-frames window cuts
+      // instantly - nothing to interrupt smoothly, there's no fade
+      // playing yet at that point
+      stopSeparatorFadeTracking();
+      const mask = document.getElementById('separator-video-mask');
+      mask.style.opacity = '0';
+      mask.style.display = 'none';
+      document.getElementById('separator-video').pause();
+      const bgVideo = document.getElementById('bg-video');
+      bgVideo.style.opacity = ''; // back to the CSS default (1)
+      void bgVideo.offsetHeight; // see fastFadeOutSeparatorAndRestoreGlobe's own comment on this flush
+      bgVideo.style.transition = ''; // in case the fade window was already entered - restore its normal (2-frame) transition for the next mouseenter's own dim
+    });
+    // plays through ONCE per hover, no loop, no freeze-on-last-frame: by
+    // the time this fires the crossfade above has already ramped both
+    // opacities to their resting values (mask 0, globe 100) - this just
+    // settles them exactly and returns the mask to display:none, ready
+    // for a fresh mouseenter to restart it from currentTime 0.
+    document.getElementById('separator-video').addEventListener('ended', () => {
+      stopSeparatorFadeTracking();
+      const mask = document.getElementById('separator-video-mask');
+      mask.style.opacity = '0';
+      mask.style.display = 'none';
+      const bgVideo = document.getElementById('bg-video');
+      bgVideo.style.opacity = '';
+      void bgVideo.offsetHeight; // see fastFadeOutSeparatorAndRestoreGlobe's own comment on this flush
+      bgVideo.style.transition = ''; // restore the normal (2-frame) transition for the next mouseenter's own dim
     });
 
     // portrait ("vertical version") only: the second-click advance to
@@ -3888,6 +4171,7 @@
         left.style.transition = prevLeftTransition;
         right.style.transition = prevRightTransition;
         plus.style.transition = prevPlusTransition;
+        startOndaAccentLoop(); // text is already fully "armed" here - no swap animation to wait on in this branch
       } else {
         const swapAnimOpts = { duration: TAGLINE_SWAP_MS, easing: 'ease', fill: 'forwards' };
         leftSwapAnim = left.animate([{ left: rightFinalLeft + 'px' }, { left: leftFinalLeft + 'px' }], swapAnimOpts);
@@ -3927,6 +4211,10 @@
           if (rightSwapAnim && rightSwapAnim.playState !== 'idle') commitAndCancel(right, rightSwapAnim);
           leftSwapAnim = null;
           rightSwapAnim = null;
+          // text block just finished assembling ("Video Editor"/"motion
+          // graphics" landed in their final resting spot) - see
+          // startOndaAccentLoop's own comment for why this is its trigger.
+          startOndaAccentLoop();
         });
         left.classList.add('visible');
         right.classList.add('visible');
@@ -4276,6 +4564,22 @@
       });
     }
 
+    // off-DOM canvas used only to read font metrics (fontBoundingBoxAscent/
+    // Descent) for the baseline-alignment math further down - never
+    // rendered, just a cheap way to ask the browser "where does THIS font,
+    // at THIS size/weight, actually put its baseline", so that math keeps
+    // working under whatever font is really installed (Helvetica Neue on
+    // the user's own machine, a fallback anywhere it isn't) instead of a
+    // guessed pixel offset.
+    const headerBaselineCtx = document.createElement('canvas').getContext('2d');
+    // fontBoundingBoxAscent/Descent are content-independent (font/weight/
+    // size only) - the string measured here doesn't matter.
+    function baselineFromBoxTop(fontPx, weight) {
+      headerBaselineCtx.font = `${weight} ${fontPx}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
+      const m = headerBaselineCtx.measureText('Hg0');
+      return (fontPx + m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2;
+    }
+
     // header readout's own geometry: vertical center matches "Diego
     // Tavella"'s (#logo-text's live top/height, committed by
     // advanceFromOvershoot), number sized to that same height, right edge
@@ -4349,8 +4653,30 @@
       // tag line 10% smaller (2 * 0.9 = 1.8) - same anchors as before
       editionEl.style.transform = 'scale(1.6)';
       editionEl.style.transformOrigin = 'top right';
-      tagEl.style.transform = 'scale(1.8)';
+      const TAG_SCALE = 1.8;
+      tagEl.style.transform = `scale(${TAG_SCALE})`;
       tagEl.style.transformOrigin = 'bottom right';
+      // BASELINE-ALIGN the tag (bottom) line with the big number's own
+      // baseline. Centering the LINES BLOCK's box against the number's box
+      // (both done above) isn't the same thing as lining up their actual
+      // glyph baselines: the number is bold, the tag is regular, and bold
+      // vs regular Helvetica Neue don't share the same ascent/descent-to-
+      // em ratio - centering the BOXES leaves the tag's baseline sitting
+      // a few px above the number's, reading as "floating" instead of
+      // resting on the same base. Fixed by nudging the whole 3-line block
+      // (not just the tag) down/up by the measured gap between the two
+      // baselines, so EDITION/title/tag keep their own relative spacing
+      // and only the block's overall vertical position changes.
+      const numberFontSize = inkHeight / NUMBER_CAP_HEIGHT_RATIO;
+      const numberBoxTop = (inkTop + inkHeight / 2) - numberFontSize / 2; // see the block comment above: align-items:center + the number being the tallest flex child puts its own box flush to the container's top
+      const numberBaselineY = numberBoxTop + baselineFromBoxTop(numberFontSize, 700);
+      const containerHeight = numberFontSize;
+      const linesTop = numberBoxTop + (containerHeight - inkHeight) / 2;
+      const linesBottom = linesTop + inkHeight; // == the tag's own pre-transform box bottom (its transform-origin, fixed under scale)
+      const tagFontSize = inkHeight * 0.17;
+      const tagDistanceBaselineToBottom = tagFontSize - baselineFromBoxTop(tagFontSize, 400);
+      const tagBaselineY = linesBottom - tagDistanceBaselineToBottom * TAG_SCALE;
+      linesEl.style.transform = `translateY(${numberBaselineY - tagBaselineY}px)`;
       // one named weight step up: Helvetica Neue's own UltraLight(100)
       // ->Thin(200) - 115 (a straight +15% of 100) turned out to render
       // identically to 100, since Helvetica Neue isn't a variable font
@@ -4582,6 +4908,35 @@
       video.classList.add('visible');
     }
 
+    // #onda-video (ondablanca.webm) - used to be this back-triangle
+    // hover's own preview (see the mouseenter/mouseleave handlers above);
+    // now a standalone accent instead, no hover tie-in at all: plays
+    // immediately once the tagline text block finishes assembling (see
+    // playCenterTagline's own call to startOndaAccentLoop, right where
+    // "Video Editor"/"motion graphics" land in their final resting spot),
+    // then again every ONDA_ACCENT_INTERVAL_MS after that. Runs forever
+    // once started - nothing currently ever needs to stop it.
+    const ONDA_ACCENT_INTERVAL_MS = 8000;
+    let ondaAccentLoopStarted = false;
+    function playOndaAccent() {
+      const ondaVideo = document.getElementById('onda-video');
+      ondaVideo.currentTime = 0;
+      ondaVideo.play();
+      ondaVideo.classList.add('visible');
+    }
+    function startOndaAccentLoop() {
+      if (ondaAccentLoopStarted) return;
+      ondaAccentLoopStarted = true;
+      playOndaAccent(); // first play - right away, not after waiting a full interval first
+      setInterval(playOndaAccent, ONDA_ACCENT_INTERVAL_MS);
+    }
+    // hides itself again once its own (single, non-looping) playthrough
+    // ends, ready for the next interval tick - same .visible this element
+    // already had for the old hover-driven behavior.
+    document.getElementById('onda-video').addEventListener('ended', () => {
+      document.getElementById('onda-video').classList.remove('visible');
+    });
+
     function hideBgVideo() {
       const video = document.getElementById('bg-video');
       video.classList.remove('visible');
@@ -4776,10 +5131,11 @@
       // itself still looks off. Only "01" ends in "1" among 01-08, so
       // this nudge is scoped to exactly that case rather than a general
       // formula fix - there's no honest measurement that closes a gap
-      // that's really about perceived glyph weight, not layout.
-      headerVideoInfoNumber.style.transform = index === 0
-        ? 'translateY(-2px) translateX(8px)'
-        : 'translateY(-2px)';
+      // that's really about perceived glyph weight, not layout. (No
+      // vertical nudge here anymore - that's now handled properly, for
+      // every index, by positionHeaderVideoInfo's own baseline-alignment
+      // math on .header-video-info-lines.)
+      headerVideoInfoNumber.style.transform = index === 0 ? 'translateX(8px)' : '';
       headerVideoInfo.classList.add('visible');
     }
     function hideHeaderVideoInfo() {
@@ -5586,6 +5942,71 @@
         video.style.bottom = '';
         video.style.width = '';
         video.style.height = '';
+        // #onda-video-mask - see its own CSS comment for the two states
+        // below (before/after #header-line shows). #onda-video itself is
+        // 100%/100% + object-fit:cover off THIS box in CSS, so it fills
+        // by height/crops width overflow with no further JS math needed
+        // beyond the box's own top/left/width/height, computed here.
+        //
+        // IMPORTANT: reads MUST go through getComputedStyle, not `.style`
+        // - #header-line/#rect2's own `.style.top`/`.style.width` are
+        // whatever they were set to at the START of their current WAAPI
+        // animation (el.animate() doesn't touch `.style` while it's
+        // running, only on commitStyles() at the very end) - reading
+        // `.style` directly here returned a FROZEN, stale value for the
+        // animation's entire run, which is exactly why this used to look
+        // right on the very first (already-square) frame and then never
+        // visibly move again until snapping to its final value the
+        // instant the animation actually committed. getComputedStyle
+        // always reflects the truly-live, currently-rendered value.
+        const headerLineEl = document.getElementById('header-line');
+        const ondaMask = document.getElementById('onda-video-mask');
+        const ondaVideoEl = document.getElementById('onda-video');
+        // see #onda-video's own CSS comment - stretches the dot-burst
+        // footage's own measured 540px reach (from its center, at full
+        // expansion) out to the full 960px half-width of its 1920-wide
+        // frame, so the burst itself (not just its raw 1920x1080 canvas)
+        // reaches the mask's own left/right edges.
+        const ONDA_BURST_REACH_SCALE = 960 / 540;
+        if (headerLineEl.classList.contains('visible')) {
+          // step 2 (botonera, #rect widened - header carved into its own
+          // top): left/right reach #rect's (rect1's) own live edges - the
+          // full vertical calles, same reference step 1 already uses, not
+          // the narrower hueco (#rect2) - top reaches the header's own
+          // live base (#header-line's own live bottom edge), and the box
+          // is built SYMMETRIC around the globe's (#bg-video's) own live
+          // real center - so #onda-video's default-centered object-fit:
+          // cover naturally lands its own reserved "hole" exactly on the
+          // globe, wherever the globe currently is (at rest or mid-
+          // slide), rather than at some arbitrary midpoint of the hueco
+          // that may not actually be where the globe sits. The span from
+          // the header's base down to that center is the box's own upper
+          // half - it extends the same distance again below the center
+          // (not just down to the hueco's own raw bottom edge).
+          const rectWidthLocal = parseFloat(rectCs.width);
+          const headerLineCs = getComputedStyle(headerLineEl);
+          const ondaTop = parseFloat(headerLineCs.top) + parseFloat(headerLineCs.height);
+          const canvasRectNow = canvas.getBoundingClientRect();
+          const canvasScaleNow = stageBox().scale;
+          const bgVideoRectNow = video.getBoundingClientRect();
+          const globeCenterYLocal = ((bgVideoRectNow.top + bgVideoRectNow.bottom) / 2 - canvasRectNow.top) / canvasScaleNow;
+          const ondaBottom = 2 * globeCenterYLocal - ondaTop;
+          ondaMask.style.left = (960 - rectWidthLocal / 2) + 'px';
+          ondaMask.style.width = rectWidthLocal + 'px';
+          ondaMask.style.top = ondaTop + 'px';
+          ondaMask.style.height = (ondaBottom - ondaTop) + 'px';
+          ondaVideoEl.style.width = (rectWidthLocal * ONDA_BURST_REACH_SCALE) + 'px';
+        } else {
+          // step 1 (#rect square, no header carve-out yet): #rect's own
+          // full box, edge to edge - confirmed correct as-is.
+          const rectW = parseFloat(rectCs.width);
+          const rectH = parseFloat(rectCs.height);
+          ondaMask.style.left = (960 - rectW / 2) + 'px';
+          ondaMask.style.width = rectW + 'px';
+          ondaMask.style.top = (RECT_CENTER_Y - rectH / 2) + 'px';
+          ondaMask.style.height = rectH + 'px';
+          ondaVideoEl.style.width = (rectW * ONDA_BURST_REACH_SCALE) + 'px';
+        }
       }
       const rect2El = document.getElementById('rect2');
       const rect2BlackEl = document.getElementById('rect2-black');
@@ -5599,6 +6020,16 @@
         frame.style.height = cs.height;
         frame.style.borderRadius = cs.borderRadius;
         frame.style.boxShadow = '0 0 0 3000px #fff';
+        // #separator-video-mask tracks the exact same box (the HUECO)
+        // this same `cs` already describes - see playSeparatorThenAdvance
+        // for when it's actually shown; kept in sync unconditionally here
+        // regardless, same as #bg-video-mask above, so it's never a frame
+        // late/stale when it does get shown.
+        const separatorMask = document.getElementById('separator-video-mask');
+        separatorMask.style.top = cs.top;
+        separatorMask.style.width = cs.width;
+        separatorMask.style.height = cs.height;
+        separatorMask.style.borderRadius = cs.borderRadius;
       } else {
         frame.style.boxShadow = 'none';
       }
