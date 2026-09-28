@@ -27,7 +27,7 @@
     overflow: hidden;
   }
   /* portrait: horizontal swipes are ours, not the browser's */
-  .portrait .viewport { touch-action: none; }
+  .touchnav .viewport { touch-action: none; }
 
   /* 1920x1080 design space, scaled to fit the viewport (fitStage) - same
      coordinate system as the current site, so pieces can move over */
@@ -388,7 +388,7 @@
     will-change: transform;
     pointer-events: none;
   }
-  .portrait #separator-win { overflow: hidden; }
+  .touchnav #separator-win { overflow: hidden; }
 
   /* portrait navigation bar, centered at the bottom of the hueco where
      Contact and WATCH! sit in landscape: <<< CONTACT | WORK >>>, or
@@ -410,7 +410,7 @@
     will-change: transform, opacity;
     transform-origin: 0 0; /* scaled from its own corner - see placeNav */
   }
-  .portrait #nav { display: block; }
+  .touchnav #nav { display: block; }
   #nav.visible { opacity: 1; pointer-events: auto; }
   /* (all on one baseline - CONTACT and WORK are bigger than the rest) */
   #nav > span { display: inline-block; vertical-align: baseline; transition: opacity 0.3s ease; }
@@ -420,6 +420,8 @@
   #nav-contact { font-weight: 400; }
   /* the botonera's <<< HOME (back from the dial) in black */
   #nav.m-bot #nav-home, #nav.m-bot #nav-chevs-l { color: #000; }
+  /* at the square, Work and its >>> in dark gray (Contact stays white) */
+  #nav.m-square #nav-work, #nav.m-square #nav-chevs-r { color: #333; }
   #nav .nav-word { cursor: pointer; padding: 10px; margin: -10px; }
   #nav-work { font-weight: 700; position: relative; }
   #nav-sep { margin: 0 0.5em; opacity: 0.6; }
@@ -434,7 +436,7 @@
   /* during the WORK swipe everything but WORK fades out */
   #nav.working #nav-chevs-l, #nav.working #nav-chevs-r,
   #nav.working #nav-contact, #nav.working #nav-sep { opacity: 0; }
-  /* WORK fills in dark gray as the clip plays - same trick as WATCH!'s
+  /* Work (gray) fills in white as the clip plays - same trick as WATCH!'s
      #watch-progress (a window sliding right, its copy sliding back) */
   #nav-work-fill {
     position: absolute;
@@ -447,7 +449,7 @@
   }
   #nav-work-fill > span {
     display: block;
-    color: #333;
+    color: #fff; /* (fills the gray Work in white) */
     transform: translateX(100%);
   }
 
@@ -505,8 +507,11 @@
   }
   /* portrait dial: each cell's opacity is set by renderDial, and the
      number in the window only turns bold */
-  .portrait .bot-num { opacity: 1; }
-  .portrait .bot-cell.sel .bot-num {
+  .touchnav .bot-num { opacity: 1; }
+  /* the dial lying down (touch, landscape): the other numbers a bit
+     heavier than the row's usual thin - their fade stays the same */
+  .dial-h .bot-num { font-weight: 300; }
+  .touchnav .bot-cell.sel .bot-num {
     background: none;
     color: #000;
     transform: none;
@@ -1173,7 +1178,7 @@
     </div>
     <div id="idle-hit"></div>
     <div id="contact-button">Contact</div>
-    <div id="nav" class="m-square"><span class="nav-chevs" id="nav-chevs-l"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span><span class="nav-word" id="nav-contact">CONTACT</span><span id="nav-sep">|</span><span class="nav-word" id="nav-work">WORK<span id="nav-work-fill"><span>WORK</span></span></span><span class="nav-word" id="nav-home">HOME</span><span class="nav-chevs" id="nav-chevs-r"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span></div>
+    <div id="nav" class="m-square"><span class="nav-chevs" id="nav-chevs-l"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span><span class="nav-word" id="nav-contact">Contact</span><span id="nav-sep">|</span><span class="nav-word" id="nav-work">Work<span id="nav-work-fill"><span>Work</span></span></span><span class="nav-word" id="nav-home">Home</span><span class="nav-chevs" id="nav-chevs-r"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span></div>
     <div id="watch-text-clip"><span id="watch-text">WATCH!<span id="watch-progress"><span id="watch-progress-text">WATCH!</span></span></span></div>
     <div id="watch"><div id="watch-shape"></div></div>
   </div>
@@ -1217,6 +1222,13 @@
   const STAGE_H = PORTRAIT ? Math.round(1920 * innerHeight / innerWidth) : 1080;
   const UI = PORTRAIT ? 2.2 : 1;
   if (PORTRAIT) document.documentElement.classList.add('portrait');
+  // TOUCH: no mouse (a phone, or a tablet either way up). The layout
+  // follows PORTRAIT; the way it's used follows TOUCH - the swipe nav bar,
+  // the dial botonera, tap to pick, fullscreen player, sideways pushes -
+  // so a tablet held sideways gets the touch version of the landscape
+  // layout, not the mouse one.
+  const TOUCH = PORTRAIT || !matchMedia('(hover: hover) and (pointer: fine)').matches;
+  if (TOUCH) document.documentElement.classList.add('touchnav');
   // (not while the portrait fullscreen player is up - it turns the phone
   // to landscape on purpose; closeVideo re-checks once it's closed)
   let fsVideo = false;
@@ -1285,7 +1297,11 @@
       { w, h: h - hh - gap, cy: CY + (hh + gap) / 2, r: 12 * UI, rt: 0, hh, lp: 1, lg: 1, gap, or: 29 * UI, drop: 1, bi: 18.4, bx: 417, ks: 'fit', bo: 1, bt: 0, duration: 700 },
     ];
   }
-  const STATES = PORTRAIT ? portraitStates() : LANDSCAPE_STATES;
+  // (touch, landscape: the dial's bold brackets stay on at the botonera,
+  // like portrait's)
+  const STATES = PORTRAIT ? portraitStates()
+    : TOUCH ? LANDSCAPE_STATES.map((st, n) => (n === 2 ? { ...st, bo: 1, bt: 0 } : st))
+    : LANDSCAPE_STATES;
   // portrait botonera = a dial (see renderDial): row pitch = the
   // brackets' own height, so they frame exactly one number between two
   // bars; DIAL_W is the window's width between them (content px)
@@ -1293,6 +1309,16 @@
   // the number in the window, bigger than the rest
   const DIAL_K = 1.25, DIAL_NUM_K = 1.4;
   const DIAL_ROW = 124.3 * DIAL_K, DIAL_W = 110 * DIAL_K, DIAL_FADE = 3;
+  // landscape (touch): the dial lies down - numbers in a row sliding
+  // sideways, the bars upright between them, the brackets framing one
+  // number between two bars. DIAL_PITCH: number to number, along the
+  // dial; DIAL_HALF_W: half the window between the brackets
+  const DIAL_HORIZ = !PORTRAIT;
+  if (TOUCH && DIAL_HORIZ) document.documentElement.classList.add('dial-h');
+  const DIAL_PITCH = DIAL_HORIZ ? 150 * DIAL_K : DIAL_ROW;
+  const DIAL_HALF_W = DIAL_HORIZ ? DIAL_PITCH / 2 + 18 : DIAL_W / 2;
+  // lying down, its numbers and bars 30% bigger (the brackets stay)
+  const DIAL_ITEM_K = DIAL_HORIZ ? 1.3 : 1;
 
   // --- the globe video ---
   // frame: the source video's own size; center/diameter: where the globe
@@ -1356,7 +1382,7 @@
   // portrait the gray waits on the left (CONTACT pushes in from there) and
   // the separator on the right (WORK).
   const offX = { 'cyan-shape': 0, 'gray-shape': 0, separator: 0 };
-  if (PORTRAIT) {
+  if (TOUCH) {
     shapeOffset['gray-shape'] = 0;
     offX['gray-shape'] = -1;
     offX.separator = 1;
@@ -1543,7 +1569,9 @@
   // 2.1 * e^(r / 380). It ends when the first ring has left the hueco.
   // Scaled so the original's square (its corner at 762) maps to the
   // hueco's corner.
-  const ONDA_RAYS = 69, ONDA_RING = 24.2, ONDA_MASK = 2.22;
+  // (ONDA_RING: the original's 24.2, opened up ~40% - fewer dots along each
+  // ray, more air between them)
+  const ONDA_RAYS = 69, ONDA_RING = 34, ONDA_MASK = 2.22;
   const ONDA_CORNER = 762;
   // first ring's radius at t seconds: a quick start, then ~1000px/s
   const ONDA_R0 = (t) => (t < 0.1 ? 3 + 270 * t : 30 + 1014 * (t - 0.1));
@@ -1700,14 +1728,14 @@
     contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
     const bx = state.bx ?? (L + 3);
     let lbx = bx, rbx = 1920 - bx - 24.2, bk = 1;
-    if (PORTRAIT) {
+    if (TOUCH) {
       // they close in from the sides onto the dial's window as the header
       // forms (square -> botonera)
       // (growing to DIAL_K around their own centers on the way)
       const hb0 = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
       bk = 1 + (DIAL_K - 1) * hb0;
-      lbx += ((960 - DIAL_W / 2 - 25.3 * (DIAL_K + 1) / 2) - lbx) * hb0;
-      rbx += ((960 + DIAL_W / 2 + 24.2 * (DIAL_K - 1) / 2) - rbx) * hb0;
+      lbx += ((960 - DIAL_HALF_W - 25.3 * (DIAL_K + 1) / 2) - lbx) * hb0;
+      rbx += ((960 + DIAL_HALF_W + 24.2 * (DIAL_K - 1) / 2) - rbx) * hb0;
     }
     bracketLeft.style.transform = `${t(lbx, CY - 124.3 / 2)} scale(${bk})`;
     bracketRight.style.transform = `${t(rbx, CY - 124.3 / 2)} scale(${bk})`;
@@ -1869,11 +1897,11 @@
     if (typeof updateIdle === 'function' && canHoverReady) updateIdle();
     const idle = !animating;
     // portrait: the nav bar takes over from Contact and WATCH!
-    contactButton.classList.toggle('visible', !PORTRAIT && current === SQUARE && idle);
+    contactButton.classList.toggle('visible', !TOUCH && current === SQUARE && idle);
     updateNav();
     // WATCH! at the square (only with the cyan up - not on Contact's
     // gray), the back arrow at the botonera
-    const watchOn = !PORTRAIT && idle && ((current === SQUARE && shown === 'cyan-shape') || current === BOTONERA);
+    const watchOn = !TOUCH && idle && ((current === SQUARE && shown === 'cyan-shape') || current === BOTONERA);
     watchEl.classList.toggle('visible', watchOn);
     watchEl.classList.toggle('back', current === BOTONERA);
     if (!watchOn) closeWatch();
@@ -1898,7 +1926,7 @@
       globeStarting = true;
       globe.play();
     }
-    const fakePush = PORTRAIT && current === BOTONERA && next === SQUARE;
+    const fakePush = TOUCH && current === BOTONERA && next === SQUARE;
     if (fakePush) fakePushEl.classList.add('on');
     const start = performance.now();
     (function frame(now) {
@@ -2073,12 +2101,12 @@
     cell.appendChild(num);
     botoneraEl.appendChild(cell);
     botCells.push(cell);
-    cell.addEventListener('mouseenter', () => { if (!PORTRAIT) { showHeaderInfo(i - 1); showPreview(i - 1); } });
-    cell.addEventListener('mouseleave', () => { if (!PORTRAIT) { headerInfo.classList.remove('visible'); hidePreview(); } });
+    cell.addEventListener('mouseenter', () => { if (!TOUCH) { showHeaderInfo(i - 1); showPreview(i - 1); } });
+    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); } });
     cell.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!botoneraEl.classList.contains('live')) return;
-      if (!PORTRAIT) { hidePreview(); openVideo(i - 1, num); return; }
+      if (!TOUCH) { hidePreview(); openVideo(i - 1, num); return; }
       // portrait (the dial): tapping the number in the window opens it;
       // tapping another one turns the dial to it (which selects it -
       // info + preview in the header)
@@ -2098,7 +2126,7 @@
   let dialPos = 0;   // the number in the window (0 = 01), fractional while moving
   let dialRun = 0;   // bumped to stop a running settle
   const dialBars = [];
-  if (PORTRAIT) {
+  if (TOUCH) {
     for (let k = 0; k < 7; k++) {
       const bar = document.createElement('div');
       bar.className = 'bot-bar';
@@ -2107,19 +2135,23 @@
     }
   }
   function renderDial() {
-    const half = DIAL_ROW / 2;
-    const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / (DIAL_FADE * DIAL_ROW));
+    // (along = the dial's own axis: down the column, or across the row)
+    const half = DIAL_PITCH / 2;
+    const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / (DIAL_FADE * DIAL_PITCH));
     const near = Math.round(dialPos);
     botCells.forEach((cell, n) => {
-      const y = CY + (n - dialPos) * DIAL_ROW, d = Math.abs(y - CY);
+      const along = (n - dialPos) * DIAL_PITCH, d = Math.abs(along);
       const grow = d <= half ? 1 + (DIAL_NUM_K - 1) * (1 - d / half) : 1;
-      cell.style.transform = `translate(${960 - BOT_GAP / 2}px, ${y - 23.4}px) scale(${grow})`;
+      const x = DIAL_HORIZ ? 960 + along : 960, y = DIAL_HORIZ ? CY : CY + along;
+      cell.style.transform = `translate(${x - BOT_GAP / 2}px, ${y - 23.4}px) scale(${grow * DIAL_ITEM_K})`;
       cell.style.opacity = d <= half ? 1 - 0.4 * (d / half) : outside(d);
       cell.classList.toggle('sel', n === near);
     });
     dialBars.forEach((bar, k) => {
-      const y = CY + (k + 0.5 - dialPos) * DIAL_ROW, d = Math.abs(y - CY);
-      bar.style.transform = `translate(959px, ${y - 23.4}px) rotate(90deg)`;
+      const along = (k + 0.5 - dialPos) * DIAL_PITCH, d = Math.abs(along);
+      bar.style.transform = DIAL_HORIZ
+        ? `translate(${960 + along - 1}px, ${CY - 23.4}px) scale(1, ${DIAL_ITEM_K})`
+        : `translate(959px, ${CY + along - 23.4}px) rotate(90deg)`;
       bar.style.opacity = d <= half ? 0.6 : outside(d); // never above 60%
     });
   }
@@ -2137,21 +2169,28 @@
     })(start);
   }
   let dialDrag = null, dialDraggedAt = 0;
-  if (PORTRAIT) {
-    const rowPx = () => DIAL_ROW * blockScaleFor(STATES[BOTONERA]) * stageScale(); // one row, in screen px
+  if (TOUCH) {
+    const rowPx = () => DIAL_PITCH * blockScaleFor(STATES[BOTONERA]) * stageScale(); // one step, in screen px
     viewport.addEventListener('pointerdown', (e) => {
       if (current !== BOTONERA || animating || fsVideo || !botoneraEl.classList.contains('live')) return;
+      if (DIAL_HORIZ) {
+        // lying down, it only takes drags that start on its row - a swipe
+        // anywhere else in the hueco still goes back HOME
+        const b = bracketLeft.getBoundingClientRect();
+        if (e.clientY < b.top - 30 || e.clientY > b.bottom + 30) return;
+      }
       dialDrag = { x: e.clientX, y: e.clientY, pos0: Math.round(dialPos), moved: false };
       dialRun++; // hold a settle that's still running
     });
     addEventListener('pointermove', (e) => {
       if (!dialDrag) return;
       const dx = e.clientX - dialDrag.x, dy = e.clientY - dialDrag.y;
+      const along = DIAL_HORIZ ? dx : dy, across = DIAL_HORIZ ? dy : dx;
       if (!dialDrag.moved) {
-        if (Math.abs(dy) < 8 || Math.abs(dy) < Math.abs(dx)) return; // not (yet) a vertical drag
+        if (Math.abs(along) < 8 || Math.abs(along) < Math.abs(across)) return; // not (yet) a drag along the dial
         dialDrag.moved = true;
       }
-      const r = -dy / rowPx();
+      const r = -along / rowPx();
       let disp = r / (1 + Math.abs(r)); // follows less and less, never a whole row
       const to = dialDrag.pos0 + disp;
       if (to < 0 || to > 7) disp *= 0.35; // past 01 / 08: stiffer
@@ -2202,7 +2241,7 @@
     document.getElementById('header-info-tag').textContent = info.tag;
     document.getElementById('header-info-number').textContent = String(index + 1).padStart(2, '0');
     layoutHeaderInfo();
-    if (PORTRAIT) {
+    if (TOUCH) {
       // widest it can be: from the logo's right edge (plus the texts'
       // margin) to its own right edge
       const room = infoRightX - logoRightX - (59.7 * UI - T);
@@ -2222,7 +2261,7 @@
   previewVideo.muted = true;
   previewVideo.volume = 0;
   function showPreview(index) {
-    if ((!PORTRAIT && !canHover) || !botoneraEl.classList.contains('live')) return;
+    if ((!TOUCH && !canHover) || !botoneraEl.classList.contains('live')) return;
     const st = lastState, entry = VIDEO_INFO[index];
     // exactly over the header's black (tucked under the outline like it)
     previewWin.style.width = headerBox.w + 'px';
@@ -2592,7 +2631,7 @@
   const armH = tagPlus.querySelector('.plus-arm-h');
   const armV = tagPlus.querySelector('.plus-arm-v');
   function buildBotonera() {
-    if (PORTRAIT) {
+    if (TOUCH) {
       // the plus bows out; the dial fades in on 01, which gets selected
       tagPlus.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' });
       dialRun++;
@@ -2611,14 +2650,14 @@
     // gray vertical bar
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
     // (portrait: a thin HORIZONTAL bar, the column's middle divider)
-    armH.animate([{ transform: getComputedStyle(armH).transform }, { transform: PORTRAIT ? `scale(1.5, ${2 / 7.15})` : 'scaleX(0)' }], opts);
-    armV.animate([{ transform: getComputedStyle(armV).transform }, { transform: PORTRAIT ? 'scaleY(0)' : `scale(${2 / 7.15}, 1.5)` }], opts);
+    armH.animate([{ transform: getComputedStyle(armH).transform }, { transform: TOUCH ? `scale(1.5, ${2 / 7.15})` : 'scaleX(0)' }], opts);
+    armV.animate([{ transform: getComputedStyle(armV).transform }, { transform: TOUCH ? 'scaleY(0)' : `scale(${2 / 7.15}, 1.5)` }], opts);
     tagPlus.animate([{ opacity: 1 }, { opacity: 0.6 }], opts);
     // the other six bars: on desktop they slide out from the brackets'
     // inner edges, like the current site; on touch they just fade in
     // where they end up (lighter)
     const done = botBars.map((bar) => bar.el.animate(
-      canHover && !PORTRAIT
+      canHover && !TOUCH
         ? [{ transform: barAt(bar.fromX), opacity: 1 }, { transform: barTo(bar), opacity: 0.6 }]
         : [{ transform: barTo(bar), opacity: 0 }, { transform: barTo(bar), opacity: 0.6 }],
       opts
@@ -2636,14 +2675,14 @@
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
     botCells.forEach((c) => { c.getAnimations().forEach((a) => a.cancel()); });
     clearSelection();
-    if (PORTRAIT) {
+    if (TOUCH) {
       dialRun++;
       botoneraEl.getAnimations().forEach((a) => a.cancel());
       botoneraEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' });
     }
-    if (!PORTRAIT) botBars.forEach((bar) => {
+    if (!TOUCH) botBars.forEach((bar) => {
       bar.el.getAnimations().forEach((a) => a.cancel());
-      bar.el.animate(canHover && !PORTRAIT
+      bar.el.animate(canHover && !TOUCH
         ? [{ transform: barTo(bar), opacity: 0.6 }, { transform: barAt(bar.fromX), opacity: 0 }]
         : [{ transform: barTo(bar), opacity: 0.6 }, { transform: barTo(bar), opacity: 0 }], opts);
     });
@@ -2732,7 +2771,7 @@
   const navFillText = navFill.firstElementChild;
   let navWorking = false; // keep the bar up through the WORK swipe
   function updateNav() {
-    if (!PORTRAIT) return;
+    if (!TOUCH) return;
     // the mode only changes while nothing moves (the bar is faded out
     // during every other transition, so the swap is never seen)
     if (!animating) {
@@ -2760,7 +2799,7 @@
     navCap = ref.offsetTop + 10 + (m.top + m.base) / 2;
   }
   function placeNav() {
-    if (!PORTRAIT) return;
+    if (!TOUCH) return;
     if (navAnchor === null || navCap === null) measureNavAnchor();
     navEl.style.transform = `translate(${CX}px, ${navY}px) scale(${UI}) translate(${-navAnchor}px, ${-navCap}px)`;
   }
@@ -2781,7 +2820,7 @@
   // with every onda burst the chevrons light up one by one, from the
   // words outward (white 100% while lit, 60% at rest)
   function waveChevrons() {
-    if (!PORTRAIT || !navEl.classList.contains('visible')) return;
+    if (!TOUCH || !navEl.classList.contains('visible')) return;
     const l = navEl.querySelectorAll('#nav-chevs-l > span');
     const r = navEl.querySelectorAll('#nav-chevs-r > span');
     for (let i = 0; i < 3; i++) {
@@ -2862,7 +2901,7 @@
     setTimeout(() => { ended = true; finish(); }, ((separatorEl.duration || 2.2) / WORK_RATE + 1) * 1000);
   }
   function onSwipe(dir) {
-    if (!PORTRAIT || locked || animating) return;
+    if (!TOUCH || locked || animating) return;
     if (current === SQUARE && shown === 'cyan-shape') {
       if (dir === 'left') swipeWork(); else swipeContact(true);
     } else if (current === SQUARE) {
@@ -2872,7 +2911,7 @@
     }
   }
   let swipeFrom = null, lastSwipeAt = 0;
-  if (PORTRAIT) {
+  if (TOUCH) {
     viewport.addEventListener('pointerdown', (e) => {
       swipeFrom = { x: e.clientX, y: e.clientY, t: performance.now() };
     });
@@ -2882,8 +2921,9 @@
       const dx = e.clientX - swipeFrom.x, dy = e.clientY - swipeFrom.y;
       const dt = performance.now() - swipeFrom.t;
       swipeFrom = null;
-      // a clear, quick, mostly horizontal flick
+      // a clear, quick, mostly horizontal flick - that the dial didn't take
       if (Math.abs(dx) < 40 || Math.abs(dx) < 1.5 * Math.abs(dy) || dt > 1000) return;
+      if (performance.now() - dialDraggedAt < 100) return;
       lastSwipeAt = performance.now();
       onSwipe(dx < 0 ? 'left' : 'right');
     });
@@ -3103,7 +3143,7 @@
   // compared as a SHA-256 hash, not the plain text. crypto.subtle only
   // exists on https/localhost - over the LAN preview (plain http) the
   // plain-JS fallback below does the hashing instead.
-  const GATE_HASH = 'd53315bea08cec50d2591fcaf3b32dc5d289cdc6c16b7e8bed8c8e3f7ceaa34e';
+  const GATE_HASH = '349c41201b62db851192665c504b350ff98c6b45fb62a8a2161f78b6534d8de9';
   const GATE_LEN = 2;
   let locked = true;
   function sha256HexFallback(bytes) {
