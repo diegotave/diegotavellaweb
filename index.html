@@ -388,6 +388,7 @@
     pointer-events: none;
     transition: opacity 0.3s ease;
     will-change: transform, opacity;
+    transform-origin: 0 0; /* scaled from its own corner - see placeNav */
   }
   .portrait #nav { display: block; }
   #nav.visible { opacity: 1; pointer-events: auto; }
@@ -535,8 +536,13 @@
     will-change: transform;
     pointer-events: none;
   }
-  #outline-mask-tl { background: radial-gradient(circle at 100% 100%, transparent calc(var(--or) - var(--t) - 0.5px), #fff calc(var(--or) - var(--t) + 0.5px)); }
-  #outline-mask-tr { background: radial-gradient(circle at 0% 100%, transparent calc(var(--or) - var(--t) - 0.5px), #fff calc(var(--or) - var(--t) + 0.5px)); }
+  /* the mask's edge sits in the MIDDLE of the outline's stroke (not on
+     its inner edge), so the stroke drawn over it always hides it -
+     Firefox antialiases the border arc differently from Chrome, and with
+     the edge right at the stroke's inner side a thin white crescent
+     showed between the arc and the black */
+  #outline-mask-tl { background: radial-gradient(circle at 100% 100%, transparent calc(var(--or) - var(--t) / 2 - 0.5px), #fff calc(var(--or) - var(--t) / 2 + 0.5px)); }
+  #outline-mask-tr { background: radial-gradient(circle at 0% 100%, transparent calc(var(--or) - var(--t) / 2 - 0.5px), #fff calc(var(--or) - var(--t) / 2 + 0.5px)); }
   /* "Diego Tavella": centered between the brackets at logo size, it rises
      to the top-left corner as the square forms (landing on the exact spot
      and size the header uses later), follows the rect as it widens to the
@@ -570,6 +576,61 @@
     pointer-events: none;
     will-change: transform;
   }
+  /* hovered number's video, previewed inside the header: over the black,
+     under "Diego Tavella", the video info and the outline (whose masks
+     round its top corners for free). A plain rectangular window the
+     header's size, video covering it; fades in once it's actually
+     playing (see showPreview). Desktop only. */
+  #header-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+  #header-preview.visible { opacity: 1; }
+  #header-preview video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.6; /* 40% see-through, onto the header's black */
+    /* 35% less saturated. A filter on a playing video - fine here: the
+       preview is desktop only (the tablet rule is transform/opacity) */
+    filter: saturate(0.65);
+  }
+  /* old TV, filmed: the picture seen through the screen's phosphor
+     pixels - each pixel three vertical stripes (R, G, B) with a thin dark
+     gap under every row. Multiplied over the video, so each stripe keeps
+     only its own channel, like real subpixels; --crt-opacity is how
+     strong the texture is, --crt-px one pixel's size (design px). A
+     static layer - nothing here animates. */
+  #header-crt {
+    --crt-px: 6px;
+    --crt-opacity: 0.6;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to bottom, transparent 72%, #000 72%),
+      linear-gradient(to right, #f00 0 33.34%, #0f0 33.34% 66.67%, #00f 66.67%);
+    background-size: var(--crt-px) var(--crt-px);
+    mix-blend-mode: multiply;
+    opacity: var(--crt-opacity);
+    /* a feathered oval where the texture almost clears (see CRT_WINDOW);
+       the mask image is built once per header size in updateCrtMask */
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+  /* "Diego Tavella" in the header turns white while the preview plays: a
+     white copy over the gray one, faded in with the preview itself */
+  #logo-gray-lit { opacity: 0; transition: opacity 0.2s ease; }
+  #logo-gray-lit.on { opacity: 1; }
   /* hovered video's info, right side of the header (desktop only) */
   #header-info {
     position: absolute;
@@ -584,20 +645,22 @@
     will-change: transform, opacity;
   }
   #header-info.visible { opacity: 1; }
+  /* the three lines span exactly the number's height: EDITION's capitals
+     start at the digits' top, TIPO DE VIDEO's baseline sits on theirs.
+     Placed and sized in JS from the font's real metrics (layoutHeaderInfo)
+     - line boxes carry leading, so flex spacing never lined up. */
   #header-info-lines {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 89.6px;
-    text-align: right;
+    position: relative;
+    align-self: stretch;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #fff;
     line-height: 1;
     white-space: nowrap;
   }
-  #header-info-edition { font-weight: 100; font-size: 15.2px; letter-spacing: 0.08em; }
-  #header-info-title { font-weight: 700; font-size: 35.8px; }
-  #header-info-tag { font-weight: 400; font-size: 15.2px; }
+  #header-info-lines > div { position: absolute; right: 0; top: 0; }
+  #header-info-edition { font-weight: 100; letter-spacing: 0.08em; }
+  #header-info-title { font-weight: 700; }
+  #header-info-tag { font-weight: 400; }
   #header-info-number {
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: 700;
@@ -784,6 +847,178 @@
     caret-color: transparent;
   }
 
+  /* botonera video player (landscape only - portrait gets its own
+     design later): same player as the previous site (index_v3), copied
+     as is - a fixed, viewport-sized white overlay above everything, the
+     framed player centered in it. Videos that don't fill the frame
+     recede the whole scene behind it (.viewport.receded). */
+  .viewport { transition: transform 0.4s ease, opacity 0.4s ease; }
+  .viewport.receded { transform: scale(0.82); opacity: 0; }
+  .video-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .video-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .video-overlay .player {
+    position: relative;
+    overflow: hidden;
+    border: 3px solid #000;
+    border-radius: 10px;
+    box-shadow: 10px 10px 60px rgba(0, 0, 0, 0.8);
+    background: #000;
+    container-type: inline-size;
+    transform: scale(0.92);
+    transition: transform 0.3s ease;
+  }
+  .video-overlay.visible .player {
+    transform: scale(1);
+  }
+  .video-overlay video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+
+  /* playback controls bar - copied from marco.html's .video-controls/
+     .vc-* rules verbatim (same look/behavior, "que funcione igual") */
+  .video-overlay .video-controls {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: clamp(8px, 0.9cqw, 12px);
+    padding: clamp(6px, 0.7cqw, 10px) clamp(10px, 1.2cqw, 16px);
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+    opacity: 1;
+    transition: opacity 0.3s ease;
+  }
+  .video-overlay .video-controls.idle {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .vc-playpause {
+    flex: 0 0 auto;
+    width: clamp(28px, 2.8cqw, 40px);
+    height: clamp(28px, 2.8cqw, 40px);
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: #ccc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .vc-seek, .vc-volume {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+    cursor: pointer;
+  }
+  .vc-seek::-webkit-slider-thumb, .vc-volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: clamp(9px, 0.85cqw, 12px);
+    height: clamp(9px, 0.85cqw, 12px);
+    border-radius: 50%;
+    background: #fff;
+  }
+  .vc-seek::-moz-range-thumb, .vc-volume::-moz-range-thumb {
+    width: clamp(9px, 0.85cqw, 12px);
+    height: clamp(9px, 0.85cqw, 12px);
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .vc-seek::-moz-range-progress, .vc-volume::-moz-range-progress {
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .vc-seek {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .vc-volume-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .vc-volume-hit {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: clamp(34px, 3.3cqw, 48px);
+    height: clamp(90px, 9cqw, 130px);
+    transform: translateX(-50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .vc-volume-wrap:hover .vc-volume-hit,
+  .vc-volume-hit:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .vc-mute {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(10px, 1cqw, 14px);
+    transform: translateX(-50%);
+    width: clamp(18px, 1.7cqw, 24px);
+    height: clamp(18px, 1.7cqw, 24px);
+    border: none;
+    background: none;
+    color: #ccc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    pointer-events: auto;
+  }
+  .vc-volume {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(32px, 3cqw, 44px);
+    width: clamp(18px, 1.7cqw, 24px);
+    height: clamp(60px, 5.6cqw, 80px);
+    background: none;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    transform: translateX(-50%);
+  }
+  .vc-volume::-webkit-slider-runnable-track {
+    width: 4px;
+    height: 100%;
+    margin: 0 auto;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .vc-volume::-moz-range-track {
+    width: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.35);
+  }
+
   #fps {
     position: fixed;
     left: 8px;
@@ -831,9 +1066,10 @@
     <div class="piece corner" id="corner-bl"></div>
     <div class="piece corner" id="corner-br"></div>
     <div id="header"></div>
+    <div id="header-preview"><video id="header-preview-video" muted loop playsinline preload="none"></video><div id="header-crt"></div></div>
     <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png" alt="">
     <div class="logo-window" id="logo-white-win"><img class="logo-text" id="logo-white" src="assets/images/logo-desarme/text-white.png" alt="" style="opacity:0"></div>
-    <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png" alt="" style="opacity:0"></div>
+    <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png" alt=""></div>
     <div id="header-info">
       <div id="header-info-lines">
         <div id="header-info-edition">EDITION</div>
@@ -864,6 +1100,21 @@
     <div id="watch-text-clip"><span id="watch-text">WATCH!<span id="watch-progress"><span id="watch-progress-text">WATCH!</span></span></span></div>
     <div id="watch"><div id="watch-shape"></div></div>
   </div>
+  </div>
+  <div class="video-overlay" id="video-overlay">
+    <div class="player" id="video-player">
+      <video id="botonera-video" playsinline></video>
+      <div class="video-controls" id="video-controls">
+        <button class="vc-playpause" type="button" aria-label="Pausar"></button>
+        <input class="vc-seek" type="range" min="0" max="1000" step="1" value="0" aria-label="Progreso">
+        <div class="vc-volume-wrap">
+          <div class="vc-volume-hit">
+            <input class="vc-volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volumen">
+            <button class="vc-mute" type="button" aria-label="Silenciar"></button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   <div id="gate">
     <div id="gate-label">ENTER PASSWORD</div>
@@ -1050,6 +1301,7 @@
   const separatorEl = document.getElementById('separator');
   const separatorWin = document.getElementById('separator-win');
   const navEl = document.getElementById('nav');
+  let navAnchor = null, navY = 0; // see placeNav
   const bracketLeft = document.getElementById('bracket-left');
   const bracketRight = document.getElementById('bracket-right');
   const bracketLeftThin = document.getElementById('bracket-left-thin');
@@ -1207,6 +1459,8 @@
   const ONDA_CORNER = 762;
   // first ring's radius at t seconds: a quick start, then ~1000px/s
   const ONDA_R0 = (t) => (t < 0.1 ? 3 + 270 * t : 30 + 1014 * (t - 0.1));
+  // playback speed vs the original (0.75 = 25% slower)
+  const ONDA_SPEED = 0.75;
   const ondaEl = document.createElement('canvas');
   ondaEl.id = 'onda';
   stage.insertBefore(ondaEl, globe ? globe.el : separatorWin);
@@ -1241,7 +1495,7 @@
     ondaEl.classList.add('visible');
     (function frame(now) {
       if (run !== ondaRun) return;
-      const r0 = ONDA_R0((now - start) / 1000);
+      const r0 = ONDA_R0((now - start) / 1000 * ONDA_SPEED);
       ondaCtx.clearRect(0, 0, bw, bh);
       if (r0 * k > end) { ondaEl.classList.remove('visible'); ondaPlaying = false; return; }
       ondaCtx.fillStyle = '#fff';
@@ -1292,9 +1546,11 @@
   const logoGray = document.getElementById('logo-gray');
   const logoWhiteWin = document.getElementById('logo-white-win');
   const logoGrayWin = document.getElementById('logo-gray-win');
+  const logoGrayLit = document.getElementById('logo-gray-lit');
   const LOGO_WIN_H = 260 * UI;
   const headerInfo = document.getElementById('header-info');
   let lastState = null;
+  const headerBox = { x: 0, y: 0, w: 0, h: 0 }; // the header's black, stage px (setState)
   function setState(state) {
     lastState = state;
     const { w, h, r, gap, or } = state;
@@ -1333,7 +1589,8 @@
     // its word's window ends WATCH_GAP left of the (2.025x) triangle
     watchClip.style.transform = `${t(watchCX - (9.5 * 2.025 + WATCH_GAP) * UI, watchCY)} scale(${UI}) translate(-100%, -50%)`;
     // portrait nav bar: centered, capitals on the same line as WATCH!'s
-    navEl.style.transform = `${t(CX, watchCY)} scale(${UI}) translate(-50%, ${-contactCapCenter()}px)`;
+    navY = watchCY;
+    placeNav();
     // separator preview: cover the hueco (like object-fit: cover), inside
     // its window at the hueco's top-left (see #separator-win)
     const sk = Math.max(w / 1090, h / 974);
@@ -1399,9 +1656,23 @@
       lastOr = or;
     }
 
-    // header: inside the outline, above the hueco's calle
-    const oL = L - gap - T, oR = Rt + gap + T, oT = Tp - gap - hh - T;
-    headerEl.style.transform = `${t(L - gap, Tp - gap - hh)} scale(${(w + 2 * gap) / 100}, ${hh / 100})`;
+    // the outline's outer box, snapped to screen pixels (see the outline
+    // pieces below) - the header and its corner masks are placed off the
+    // SAME snapped box, so they can never land a fraction of a pixel off
+    // the outline and leave a hairline of white between them
+    const snap = (v) => Math.round(v / U) * U;
+    const x0 = snap(L - gap - T), y0 = snap(Tp - gap - hh - T);
+    const x1 = snap(Rt + gap + T), y1 = snap(B + gap + T);
+    // header: inside the outline, above the hueco's calle - and tucked one
+    // screen pixel UNDER the outline's stroke on the left, right and top
+    // (black on black), so no antialiased seam can open up between them
+    // on any screen or browser. Its bottom edge stays on the calle.
+    const oL = x0, oR = x1, oT = y0;
+    headerBox.x = x0 + T - U;
+    headerBox.y = y0 + T - U;
+    headerBox.w = (x1 - T + U) - headerBox.x;
+    headerBox.h = (Tp - gap) - headerBox.y;
+    headerEl.style.transform = `${t(headerBox.x, headerBox.y)} scale(${headerBox.w / 100}, ${Math.max(0, headerBox.h) / 100})`;
     maskTL.style.transform = t(oL, oT);
     maskTR.style.transform = t(oR - or, oT);
     // "Diego Tavella": lp 0 = centered at 1.1x (logo size, between the
@@ -1419,6 +1690,7 @@
     logoGrayWin.style.transform = t(lx, hb - LOGO_WIN_H); // ends at hb
     logoWhiteWin.style.transform = t(lx, hb);              // starts at hb
     logoGray.style.transform = `${t(0, ly - (hb - LOGO_WIN_H))} scale(${ls})`;
+    logoGrayLit.style.transform = logoGray.style.transform;
     logoWhite.style.transform = `${t(0, ly - hb)} scale(${ls})`;
     if (lg !== lastLg) {
       logoBlack.style.opacity = String(1 - lg);
@@ -1430,9 +1702,7 @@
     headerInfo.style.transform = `${t(Rt - logoInset, oT + (59.7 + 50.4) * UI)} scale(${UI}) translate(-100%, -50%)`;
 
     // outline pieces (see #outline): outer box snapped to screen pixels
-    const snap = (v) => Math.round(v / U) * U;
-    const x0 = snap(L - gap - T), y0 = snap(Tp - gap - hh - T);
-    const x1 = snap(Rt + gap + T), y1 = snap(B + gap + T);
+    // (x0/y0/x1/y1, computed above with the header)
     const ro = Math.max(or, T);
     if (ro !== lastRo) { stage.style.setProperty('--ro', ro + 'px'); lastRo = ro; }
     ol['ol-top'].style.transform = t(x0 + ro / 2, y0);
@@ -1674,19 +1944,28 @@
     cell.appendChild(num);
     botoneraEl.appendChild(cell);
     botCells.push(cell);
-    cell.addEventListener('mouseenter', () => showHeaderInfo(i - 1));
-    cell.addEventListener('mouseleave', () => headerInfo.classList.remove('visible'));
+    cell.addEventListener('mouseenter', () => { showHeaderInfo(i - 1); showPreview(i - 1); });
+    cell.addEventListener('mouseleave', () => { headerInfo.classList.remove('visible'); hidePreview(); });
+    // (portrait: no player yet - it gets its own design)
+    cell.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (PORTRAIT || !botoneraEl.classList.contains('live')) return;
+      hidePreview();
+      openVideo(i - 1, num);
+    });
   }
-  // the videos' info, from the current site's BOTONERA_VIDEOS
+  // the videos and their info, from the current site's BOTONERA_VIDEOS
+  // (src + per-video framing: startAt seconds, frameH/cropTop/cropBottom
+  // for baked-in letterboxing, square aspect, recede the scene behind)
   const VIDEO_INFO = [
-    { edition: 'EDITION', title: 'Demo Reel', tag: '2026' },
-    { edition: 'EDITION', title: 'Multideportes ESPN', tag: 'TV PROMO' },
-    { edition: 'EDITION', title: 'Titulo Video 3', tag: 'TIPO DE VIDEO' },
-    { edition: 'EDITION', title: 'Titulo Video 4', tag: 'TIPO DE VIDEO' },
-    { edition: 'EDITION', title: 'Titulo Video 5', tag: 'TIPO DE VIDEO' },
-    { edition: 'EDITION', title: 'Titulo Video 6', tag: 'TIPO DE VIDEO' },
-    { edition: 'EDITION', title: 'Titulo Video 7', tag: 'TIPO DE VIDEO' },
-    { edition: 'EDITION', title: 'Titulo Video 8', tag: 'TIPO DE VIDEO' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video1/video1reel.mp4', startAt: 2, edition: 'EDITION', title: 'Demo Reel', tag: '2026' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video2/Multideportes.mp4', edition: 'EDITION', title: 'Multideportes ESPN', tag: 'TV PROMO' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6ok/AUTOCINE%20TENARIS%20ALTA.mp4', frameH: 0.7, recede: true, edition: 'EDITION', title: 'Titulo Video 3', tag: 'TIPO DE VIDEO' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video4/video4.mp4', cropTop: 10, cropBottom: 10, edition: 'EDITION', title: 'Titulo Video 4', tag: 'TIPO DE VIDEO' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video5/efda.mp4', edition: 'EDITION', title: 'Titulo Video 5', tag: 'TIPO DE VIDEO' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video6/hltfoxviejo.mp4', edition: 'EDITION', title: 'Titulo Video 6', tag: 'TIPO DE VIDEO' },
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/video9/video9.mp4', aspect: 'square', recede: true, edition: 'EDITION', title: 'Titulo Video 7', tag: 'TIPO DE VIDEO' }, // "Visita"
+    { src: 'https://pub-5dae75b9216945058a34d5462aa57b48.r2.dev/WORKS/videofav/FOX%20HIGHLIGHT%20FEBRERO%2060%20SEGS_PT%20(2).mp4', edition: 'EDITION', title: 'Titulo Video 8', tag: 'TIPO DE VIDEO' },
   ];
   function showHeaderInfo(index) {
     if (!botoneraEl.classList.contains('live')) return;
@@ -1695,8 +1974,317 @@
     document.getElementById('header-info-title').textContent = info.title;
     document.getElementById('header-info-tag').textContent = info.tag;
     document.getElementById('header-info-number').textContent = String(index + 1).padStart(2, '0');
+    layoutHeaderInfo();
     headerInfo.classList.add('visible');
   }
+  // header preview: one shared, muted, looping <video>, its src swapped
+  // per number (the same files the player opens, streamed). Sized to the
+  // header when shown - the botonera holds still while it's up.
+  const previewWin = document.getElementById('header-preview');
+  const previewVideo = document.getElementById('header-preview-video');
+  let previewIndex = -1;
+  // no sound, ever (the attribute alone only sets the default)
+  previewVideo.muted = true;
+  previewVideo.volume = 0;
+  function showPreview(index) {
+    if (PORTRAIT || !canHover || !botoneraEl.classList.contains('live')) return;
+    const st = lastState, entry = VIDEO_INFO[index];
+    // exactly over the header's black (tucked under the outline like it)
+    previewWin.style.width = headerBox.w + 'px';
+    previewWin.style.height = headerBox.h + 'px';
+    previewWin.style.transform = `translate(${headerBox.x}px, ${headerBox.y}px)`;
+    // oval's ends, in header px: the texts' margin (their inset from the
+    // header's edge) in from the logo's right edge and the info's left
+    const W = headerBox.w;
+    const win = previewWin.getBoundingClientRect(), k = W / win.width;
+    const margin = 59.7 * UI - T;
+    const logoR = (logoGray.getBoundingClientRect().right - win.left) * k;
+    const infoL = (hiLines.getBoundingClientRect().left - win.left) * k;
+    updateCrtMask(W, headerBox.h, logoR + margin, infoL - margin);
+    previewIndex = index;
+    if (previewVideo.getAttribute('src') !== entry.src) previewVideo.setAttribute('src', entry.src);
+    previewVideo.currentTime = entry.startAt || 0;
+    previewVideo.muted = true;
+    // only fade in once real frames are coming (no black flash while it
+    // buffers); the check keeps a late 'playing' from a number the
+    // pointer already left from showing it
+    const reveal = () => {
+      if (previewIndex !== index) return;
+      previewWin.classList.add('visible');
+      logoGrayLit.classList.add('on');
+    };
+    if (previewVideo.readyState >= 3) reveal();
+    else previewVideo.addEventListener('playing', reveal, { once: true });
+    previewVideo.play().catch(() => {});
+  }
+  // the clear window in the texture, from the Photoshop mock: an oval
+  // spanning the gap between "Diego Tavella" and the left edge of the
+  // info's longest line, leaving on each side the same margin the texts
+  // keep from the header's edges; 80% of the header's height tall (it
+  // runs off the top and bottom), feathered 80px there = ~140 design px.
+  // Inside it the texture keeps only `inside` of its strength. Drawn as
+  // an SVG mask: white (full texture) with a gray oval, blurred,
+  // luminance -> alpha. The white runs well past the edges so the blur
+  // doesn't fade them.
+  const CRT_WINDOW = { cy: 0.5, ry: 0.8, feather: 140, inside: 0.2 };
+  const crtEl = document.getElementById('header-crt');
+  let crtMaskKey = '';
+  function updateCrtMask(W, H, x0, x1) {
+    const key = [W, H, x0, x1].map(Math.round).join('x');
+    if (key === crtMaskKey) return;
+    crtMaskKey = key;
+    const c = CRT_WINDOW, g = Math.round(255 * c.inside);
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${W}' height='${H}' viewBox='0 0 ${W} ${H}'>` +
+      `<filter id='f' filterUnits='userSpaceOnUse' x='${-W}' y='${-H}' width='${3 * W}' height='${3 * H}'>` +
+      `<feGaussianBlur stdDeviation='${c.feather / 2}'/><feColorMatrix type='luminanceToAlpha'/></filter>` +
+      `<g filter='url(#f)'><rect x='${-W}' y='${-H}' width='${3 * W}' height='${3 * H}' fill='#fff'/>` +
+      `<ellipse cx='${(x0 + x1) / 2}' cy='${c.cy * H}' rx='${Math.max(0, (x1 - x0) / 2)}' ry='${c.ry * H}' fill='rgb(${g},${g},${g})'/></g></svg>`;
+    const url = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+    crtEl.style.webkitMaskImage = url;
+    crtEl.style.maskImage = url;
+  }
+  function hidePreview() {
+    previewIndex = -1;
+    previewWin.classList.remove('visible');
+    logoGrayLit.classList.remove('on');
+    previewVideo.pause();
+  }
+  // proportions of the number's digit height, from the design: EDITION's
+  // capitals 23%, gap 9%, the title's capitals 31%, gap 14%, TIPO DE
+  // VIDEO's capitals 23% (edition and tag the same size)
+  const HI_EDITION = 0.23, HI_TITLE_TOP = 0.32, HI_TITLE = 0.31, HI_TAG = 0.23;
+  const hiLines = document.getElementById('header-info-lines');
+  const hiEls = ['edition', 'title', 'tag', 'number'].map((k) => document.getElementById('header-info-' + k));
+  // where, inside an element's own line box (line-height 1), its baseline
+  // and the top of `ch` fall - and the cap height per px of font size
+  function lineMetrics(el, ch, sizePx) {
+    const cs = getComputedStyle(el);
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `${cs.fontWeight} ${sizePx}px ${cs.fontFamily}`;
+    const m = ctx.measureText(ch);
+    const base = (sizePx - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+    return { base, top: base - m.actualBoundingBoxAscent, bottom: base + m.actualBoundingBoxDescent, cap: m.actualBoundingBoxAscent / sizePx };
+  }
+  function layoutHeaderInfo() {
+    const [ed, title, tag, num] = hiEls;
+    const n = lineMetrics(num, '0', parseFloat(getComputedStyle(num).fontSize));
+    const H = n.base - n.top; // digit height (baseline to top)
+    const place = (el, capH, capTop) => {
+      const size = capH / lineMetrics(el, 'H', 100).cap;
+      el.style.fontSize = size + 'px';
+      const m = lineMetrics(el, 'H', size);
+      el.style.transform = `translateY(${capTop - m.top}px)`;
+    };
+    place(ed, HI_EDITION * H, n.top);
+    place(title, HI_TITLE * H, n.top + HI_TITLE_TOP * H);
+    place(tag, HI_TAG * H, n.base - HI_TAG * H);
+    hiLines.style.width = Math.max(ed.offsetWidth, title.offsetWidth, tag.offsetWidth) + 'px';
+  }
+
+  // --- botonera video player (landscape only, for now) ---
+  // The previous site's player (index_v3: openVideo/closeVideo and the
+  // controls bar), copied as is.
+  const BOTONERA_VIDEOS = VIDEO_INFO;
+  const videoOverlay = document.getElementById('video-overlay');
+  const videoPlayer = document.getElementById('video-player');
+  const botoneraVideo = document.getElementById('botonera-video');
+  const videoControls = document.getElementById('video-controls');
+  const vcPlayPause = videoControls.querySelector('.vc-playpause');
+  const vcSeek = videoControls.querySelector('.vc-seek');
+  const vcVolume = videoControls.querySelector('.vc-volume');
+  const vcMute = videoControls.querySelector('.vc-mute');
+
+  const VC_ICON_SOUND_ON = '<svg viewBox="0 0 24 24" width="16" height="16">' +
+    '<path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/>' +
+    '<path d="M16 8.5a5 5 0 0 1 0 7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+    '<path d="M18.5 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.6"/>' +
+    '</svg>';
+  const VC_ICON_SOUND_OFF = '<svg viewBox="0 0 24 24" width="16" height="16">' +
+    '<path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/>' +
+    '<path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>' +
+    '</svg>';
+  const VC_ICON_PLAY = '<svg viewBox="0 0 24 24" width="16" height="16">' +
+    '<path d="M8 5l11 7-11 7V5z" fill="currentColor"/></svg>';
+  const VC_ICON_PAUSE = '<svg viewBox="0 0 24 24" width="16" height="16">' +
+    '<rect x="6" y="4" width="4" height="16" fill="currentColor"/>' +
+    '<rect x="14" y="4" width="4" height="16" fill="currentColor"/></svg>';
+  vcPlayPause.innerHTML = VC_ICON_PLAY;
+
+  let vcSeeking = false;
+  let vcIdleTimer = null;
+  function wakeVideoControls() {
+    videoControls.classList.remove('idle');
+    clearTimeout(vcIdleTimer);
+    vcIdleTimer = setTimeout(() => videoControls.classList.add('idle'), 2000);
+  }
+  videoPlayer.addEventListener('mousemove', wakeVideoControls);
+  videoControls.addEventListener('click', (e) => e.stopPropagation());
+  videoControls.addEventListener('pointerdown', (e) => e.stopPropagation());
+
+  vcPlayPause.addEventListener('click', () => {
+    if (botoneraVideo.paused) botoneraVideo.play().catch(() => {});
+    else botoneraVideo.pause();
+  });
+  botoneraVideo.addEventListener('play', () => {
+    vcPlayPause.innerHTML = VC_ICON_PAUSE;
+    vcPlayPause.setAttribute('aria-label', 'Pausar');
+  });
+  botoneraVideo.addEventListener('pause', () => {
+    vcPlayPause.innerHTML = VC_ICON_PLAY;
+    vcPlayPause.setAttribute('aria-label', 'Reproducir');
+  });
+
+  vcSeek.addEventListener('input', () => {
+    vcSeeking = true;
+    if (botoneraVideo.duration) botoneraVideo.currentTime = (vcSeek.value / 1000) * botoneraVideo.duration;
+  });
+  vcSeek.addEventListener('change', () => { vcSeeking = false; });
+  botoneraVideo.addEventListener('timeupdate', () => {
+    if (vcSeeking || !botoneraVideo.duration) return;
+    vcSeek.value = (botoneraVideo.currentTime / botoneraVideo.duration) * 1000;
+  });
+
+  function updateMuteIcon() {
+    const isMuted = botoneraVideo.muted || botoneraVideo.volume === 0;
+    vcMute.innerHTML = isMuted ? VC_ICON_SOUND_OFF : VC_ICON_SOUND_ON;
+    vcMute.setAttribute('aria-label', isMuted ? 'Activar sonido' : 'Silenciar');
+  }
+  vcMute.addEventListener('click', () => { botoneraVideo.muted = !botoneraVideo.muted; });
+  vcVolume.addEventListener('input', () => {
+    botoneraVideo.volume = parseFloat(vcVolume.value);
+    if (botoneraVideo.volume > 0) botoneraVideo.muted = false;
+  });
+  botoneraVideo.addEventListener('volumechange', () => {
+    vcVolume.value = botoneraVideo.volume;
+    updateMuteIcon();
+  });
+  updateMuteIcon();
+
+  // three fixed size instances instead of a pure vh/vw scale that grew
+  // (or shrank/cropped) without any limit - standard, "universal"
+  // breakpoints (768/1024, same ones Bootstrap/Tailwind use for
+  // mobile/tablet/desktop) rather than anything specific to this site:
+  //   - computer (>1024px wide): capped well below "fills a 4K
+  //     monitor" territory
+  //   - tablet horizontal (768-1024px wide): a modest, fixed-feeling
+  //     size in between
+  //   - vertical (<768px wide - phones, and tablets held upright):
+  //     width-driven instead of height-driven, since a narrow viewport
+  //     runs out of WIDTH long before it runs out of height - the old
+  //     height-first formula kept demanding a wide player and only
+  //     caught the overflow after the fact, which is what read as
+  //     "se cropea"
+  // Each tier is still a min/max BOX (maxW x maxH), not one single
+  // hardcoded pixel size - openVideo below still fits the video's own
+  // aspect ratio inside whichever box applies, so it isn't a step
+  // function at the exact breakpoint edges within a tier's own range.
+  function playerBounds() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (vw < 768) {
+      return { maxW: vw * 0.92, maxH: vh * 0.8 };
+    }
+    if (vw <= 1024) {
+      return { maxW: Math.min(vw * 0.9, 900), maxH: Math.min(vh * 0.85, 640) };
+    }
+    return { maxW: Math.min(vw * 0.95, 1400), maxH: Math.min(vh * 0.9, 900) };
+  }
+
+  // sizes .player to fit within playerBounds() (fit-by-height first,
+  // capped by width, same shape as marco.html's own expand step) -
+  // cropped to frameH for videos with baked-in letterboxing. .video-
+  // overlay is already a fixed, viewport-filling flexbox that centers
+  // .player on its own, so there's no gridBounds/left/top math to redo
+  // here, just width/height
+  function openVideo(index, sourceEl) {
+    const entry = BOTONERA_VIDEOS[index];
+    if (!entry) return;
+    const aspect = entry.aspect === 'square' ? 1 : 16 / 9;
+    const bounds = playerBounds();
+    let videoH = bounds.maxH;
+    let w = videoH * aspect;
+    if (w > bounds.maxW) {
+      w = bounds.maxW;
+      videoH = w / aspect;
+    }
+    const frameFraction = entry.frameH || 1;
+    const cropTop = entry.cropTop || 0;
+    const cropBottom = entry.cropBottom || 0;
+    const frameH = videoH * frameFraction - cropTop - cropBottom;
+    videoPlayer.style.width = w + 'px';
+    videoPlayer.style.height = frameH + 'px';
+    if (frameFraction !== 1) {
+      botoneraVideo.style.position = 'absolute';
+      botoneraVideo.style.left = '0';
+      botoneraVideo.style.height = videoH + 'px';
+      botoneraVideo.style.top = ((frameH - videoH) / 2) + 'px';
+      botoneraVideo.style.objectFit = '';
+    } else {
+      botoneraVideo.style.position = '';
+      botoneraVideo.style.left = '';
+      botoneraVideo.style.height = '100%';
+      botoneraVideo.style.top = '';
+      // frame's own top/bottom edges moved in by cropTop/cropBottom
+      // (anchored on center, same as the frameFraction branch above)
+      // while the video keeps its normal box - object-fit:cover just
+      // fills that now-shorter box instead of letterboxing it, which
+      // is what turns the height cut into a crop with no black bars
+      botoneraVideo.style.objectFit = (cropTop || cropBottom) ? 'cover' : '';
+    }
+    if (botoneraVideo.getAttribute('src') !== entry.src) botoneraVideo.setAttribute('src', entry.src);
+    botoneraVideo.currentTime = entry.startAt || 0;
+    botoneraVideo.muted = false;
+    vcSeeking = false;
+    vcSeek.value = 0;
+    vcVolume.value = botoneraVideo.volume;
+
+    // "grows" out of the clicked botonera chip instead of just fading in
+    // centered - a FLIP: the overlay/player are already in the layout
+    // at this point (opacity:0, not display:none), so their real final
+    // rect can be read right now, before .visible even gets added.
+    // Animate a transform that starts by exactly overlapping the
+    // chip's own on-screen box down to identity, so the player visibly
+    // expands from wherever it was clicked rather than from its own
+    // center. Own WAAPI animation, not the CSS `transition: transform`
+    // below (that one's still what handles the CLOSE shrink-back) -
+    // switched off for the duration of this animation so the two don't
+    // fight over the same property.
+    const startRect = sourceEl ? sourceEl.getBoundingClientRect() : null;
+    videoPlayer.style.transition = 'none';
+    videoOverlay.classList.add('visible');
+    document.querySelector('.viewport').classList.toggle('receded', !!entry.recede);
+    if (startRect && startRect.width && startRect.height) {
+      const endRect = videoPlayer.getBoundingClientRect();
+      const scaleX = startRect.width / endRect.width;
+      const scaleY = startRect.height / endRect.height;
+      const dx = (startRect.left + startRect.width / 2) - (endRect.left + endRect.width / 2);
+      const dy = (startRect.top + startRect.height / 2) - (endRect.top + endRect.height / 2);
+      const flipAnim = videoPlayer.animate([
+        { transform: `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`, opacity: 0.5 },
+        { transform: 'translate(0, 0) scale(1)', opacity: 1 }
+      ], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      flipAnim.finished.then(() => flipAnim.cancel(), () => {}).then(() => {
+        videoPlayer.style.transition = '';
+      });
+    } else {
+      videoPlayer.style.transition = '';
+    }
+
+    botoneraVideo.play().catch(() => {});
+    wakeVideoControls();
+  }
+
+  function closeVideo() {
+    videoOverlay.classList.remove('visible');
+    document.querySelector('.viewport').classList.remove('receded');
+    botoneraVideo.pause();
+    clearTimeout(vcIdleTimer);
+    videoControls.classList.remove('idle');
+  }
+
+  // click anywhere on the overlay (backdrop or video itself) closes it
+  // - the controls bar already stops its own clicks from bubbling here
+  videoOverlay.addEventListener('click', closeVideo);
   const barAt = (x) => `translate(${x - 1}px, ${CY - 23.4}px)`;
   const armH = tagPlus.querySelector('.plus-arm-h');
   const armV = tagPlus.querySelector('.plus-arm-v');
@@ -1725,6 +2313,7 @@
   function teardownBotonera() {
     botoneraEl.classList.remove('live');
     headerInfo.classList.remove('visible');
+    hidePreview();
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
     botCells.forEach((c) => { c.getAnimations().forEach((a) => a.cancel()); });
     botBars.forEach(({ el, fromX, toX }) => {
@@ -1825,8 +2414,25 @@
       navEl.classList.toggle('m-square', current === SQUARE && shown === 'cyan-shape');
       navEl.classList.toggle('m-contact', current === SQUARE && shown !== 'cyan-shape');
       navEl.classList.toggle('m-bot', current === BOTONERA);
+      measureNavAnchor();
+      placeNav();
     }
     navEl.classList.toggle('visible', (current === SQUARE || current === BOTONERA) && (!animating || navWorking));
+  }
+  // the bar sits centered at the bottom: on the "|" when it shows
+  // CONTACT | WORK (so the two words balance around the hueco's middle),
+  // on its own middle otherwise. navAnchor is that point, in the bar's
+  // own (unscaled) px - measured when the mode changes.
+  function measureNavAnchor() {
+    const sep = document.getElementById('nav-sep');
+    navAnchor = navEl.classList.contains('m-square')
+      ? sep.offsetLeft + sep.offsetWidth / 2
+      : navEl.offsetWidth / 2;
+  }
+  function placeNav() {
+    if (!PORTRAIT) return;
+    if (navAnchor === null) measureNavAnchor();
+    navEl.style.transform = `translate(${CX}px, ${navY}px) scale(${UI}) translate(${-navAnchor}px, ${-contactCapCenter()}px)`;
   }
   function setNavProgress(p) {
     navFill.style.transform = `translateX(${(p - 1) * 100}%)`;
@@ -2091,6 +2697,8 @@
     watchEl.style.setProperty('--hit-w', (right - left + 2 * extra) + 'px');
   }
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeWatchHit);
+  // (the nav's anchor too - it was measured with whatever font was there)
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { navAnchor = null; placeNav(); });
   sizeWatchHit();
   let watchOpen = false;
   function stopOnda() {
