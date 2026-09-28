@@ -1950,6 +1950,7 @@
         video.muted = true;
         video.loop = true;
         video.playsInline = true;
+        video.preload = 'auto';
         video.style.cssText = canvas.style.cssText;
         canvas.replaceWith(video);
         BG_VIDEO_SRC = 'assets/videos/fdo_invloop_1080.webm';
@@ -1958,6 +1959,7 @@
       const source = document.createElement('video');
       source.muted = true;
       source.loop = true;
+      source.preload = 'auto';
       source.playsInline = true;
       source.setAttribute('playsinline', '');
       // kept in the DOM (1px, invisible) rather than detached - some
@@ -2048,8 +2050,20 @@
       // set unconditionally same as landscape - no orientation guard here
       // anymore.
       document.getElementById('bg-video').src = BG_VIDEO_SRC;
-      document.getElementById('onda-video').src = 'assets/videos/ondablanca_1080.webm';
-      document.getElementById('separator-video').src = 'assets/videos/separador_atletas_2.mp4';
+      // preload='auto' so these short clips are fully buffered before
+      // their first play - with the browser default (metadata only) the
+      // first few hover/accent plays stuttered while still downloading
+      const ondaVideo = document.getElementById('onda-video');
+      ondaVideo.preload = 'auto';
+      ondaVideo.src = 'assets/videos/ondablanca_1080.webm';
+      // separador is a hover-only preview (see showSeparatorAndHideGlobe) -
+      // touch screens have no hover, so it'd never be seen there; skip
+      // downloading it at all
+      if (!BG_VIDEO_SMALL) {
+        const separatorVideo = document.getElementById('separator-video');
+        separatorVideo.preload = 'auto';
+        separatorVideo.src = 'assets/videos/separador_atletas_2.mp4';
+      }
     }
     if (location.hash !== '#from-contact' && location.hash !== '#from-menu-portrait') {
       loadHeavyVideos();
@@ -3378,6 +3392,10 @@
     // ends (mouseleave or click-through).
     function showSeparatorAndHideGlobe() {
       const video = document.getElementById('separator-video');
+      // never loaded on touch screens (see loadHeavyVideos) - a tap still
+      // fires mouseenter there, which would otherwise hide the globe
+      // behind an empty mask
+      if (!video.getAttribute('src')) return;
       const mask = document.getElementById('separator-video-mask');
       const bgVideo = document.getElementById('bg-video');
       video.loop = true;
@@ -3390,6 +3408,10 @@
       video.play();
     }
     function cutSeparatorAndRestoreGlobe() {
+      // nothing was shown (touch screens - see showSeparatorAndHideGlobe),
+      // so nothing to restore; touching bg-video's opacity here would
+      // override portrait's own inline hidden state
+      if (!document.getElementById('separator-video').getAttribute('src')) return;
       const mask = document.getElementById('separator-video-mask');
       const bgVideo = document.getElementById('bg-video');
       document.getElementById('separator-video').pause();
@@ -6058,7 +6080,22 @@
         setStyleIfChanged(frame, 'width', cs.width);
         setStyleIfChanged(frame, 'height', cs.height);
         setStyleIfChanged(frame, 'borderRadius', cs.borderRadius);
-        if (!frame.style.boxShadow.includes('3000px')) frame.style.boxShadow = '0 0 0 3000px #fff';
+        // the spread only has to reach the canvas's own far corners
+        // (outside the 1920x1080 canvas it's white page anyway) - a fixed
+        // 3000px spread made every hueco resize repaint a ~6000px square
+        // of white, which is what choked the tablet's GPU on the rect
+        // transitions. Measured to the CORNERS (hypot), not just the
+        // edges, since the shadow's own outer corners are rounded.
+        const frameW = parseFloat(cs.width);
+        const frameH = parseFloat(cs.height);
+        const frameCenterY = parseFloat(cs.top);
+        const spreadX = 960 - frameW / 2;
+        const spreadY = Math.max(frameCenterY - frameH / 2, 1080 - (frameCenterY + frameH / 2));
+        const spread = Math.ceil(Math.hypot(Math.max(0, spreadX), Math.max(0, spreadY)) + 20);
+        if (frame.dataset.spread !== String(spread) || frame.style.boxShadow === 'none') {
+          frame.dataset.spread = spread;
+          frame.style.boxShadow = `0 0 0 ${spread}px #fff`;
+        }
         // #separator-video-mask tracks the exact same box (the HUECO)
         // this same `cs` already describes - see playSeparatorThenAdvance
         // for when it's actually shown; kept in sync unconditionally here
