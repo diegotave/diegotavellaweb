@@ -1,3 +1,7 @@
 # ── CARPETA LOCAL — no sube a GitHub ─────────────────────────────────────
 _local/
 
+
+# macOS / editor clutter
+.DS_Store
+.claude/
