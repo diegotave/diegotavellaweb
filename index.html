@@ -375,38 +375,6 @@
   #rect2-black.visible {
     display: block;
   }
-  /* botonera hover preview: a random mid-video 5s clip (see
-     playBotoneraPreview), keyed through assets/images/crt-texture.svg as
-     an alpha matte (mask-image defaults to an image source's own alpha
-     channel, not luminance, so the texture's black-on-transparent tile
-     works directly as a matte - no separate luminance step needed) so it
-     reads as footage glimpsed through a scanned CRT screen rather than a
-     plain video rectangle. Hidden (opacity 0) whenever nothing's hovered,
-     so the celeste rect stays clean the rest of the time - see
-     playBotoneraPreview/stopBotoneraPreview. 40% opacity even while
-     showing, so it's a hint rather than a full video takeover. Same
-     width/height:100% + rect2's own overflow:hidden tracking as
-     onda-video/bg-video off their own parents. */
-  #botonera-preview-video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    pointer-events: none;
-    filter: grayscale(1);
-    -webkit-mask-image: url('assets/images/crt-texture.svg');
-    mask-image: url('assets/images/crt-texture.svg');
-    -webkit-mask-repeat: repeat;
-    mask-repeat: repeat;
-    -webkit-mask-size: 64px 64px;
-    mask-size: 64px 64px;
-    transition: opacity 0.2s ease;
-  }
-  #botonera-preview-video.visible {
-    opacity: 0.2;
-  }
 
   /* bg-video's own wrapper - used to live directly inside .rect and rely
      on its overflow:hidden/border-radius for clipping "for free", but
@@ -874,6 +842,53 @@
     transform: scale(1.5);
     opacity: 1;
     animation: none;
+  }
+  /* step 1's forward arrow (the one that leads to the botonera) gets a
+     2px white border while hovered. A real CSS border would just get
+     cut off by the clip-path, so it's painted instead: a white triangle
+     filling the clip shape, with a black one inset inside it. Both the
+     hover scale (arrow as tall as the "T" of "WATCH!") and that SVG
+     (whose inset has to be 2px / scale in the 19x19 box to land on 2px
+     on screen) are measured off the real font and written as custom
+     properties by sizeWatchArrow in the script - the values below are
+     just the fallback until that runs. The blinking square itself (no
+     .triangle) keeps its own size - only this hover state grows. */
+  #blink-square.triangle:not(.back) {
+    transform: scale(var(--watch-arrow-scale, 2.025));
+    background: var(--watch-arrow-bg, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 19 19' preserveAspectRatio='none'%3E%3Cpolygon points='0,0 19,9.5 0,19' fill='%23fff'/%3E%3Cpolygon points='0.988,1.598 16.791,9.5 0.988,17.402' fill='%23000'/%3E%3C/svg%3E")) center / 100% 100% no-repeat;
+  }
+  /* "WATCH!" - slides out to the LEFT from the hovered arrow's own
+     vertical edge (step 1 only - see the hover-zone's mouseenter/
+     mouseleave). #watch-text-clip is the fixed window, its RIGHT edge
+     placed in JS a gap of twice the letters' own visual spacing left of
+     that edge (see openWatchText); the span inside starts fully tucked
+     to the right of it (+101%) and slides to 0. Helvetica Black; JS
+     sets the clip's top so the caps' own ink center lands on the
+     arrow's center. */
+  #watch-text-clip {
+    position: absolute;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateX(-100%);
+    display: none;
+  }
+  #watch-text-clip.visible {
+    display: block;
+  }
+  #watch-text {
+    display: block;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 900;
+    font-size: 39px; /* 54px - 15% - 15% again (the arrow stays sized off 54px - see WATCH_ARROW_REF_FONT_PX) */
+    line-height: 1;
+    letter-spacing: -0.015em; /* just a hair tighter */
+    color: #fff;
+    white-space: nowrap;
+    transform: translateX(101%);
+    transition: transform 0.4s ease;
+  }
+  #watch-text-clip.open #watch-text {
+    transform: translateX(0);
   }
   /* step 2's persistent "back" button: the same triangle shape, turned to
      point left instead of right via a flat, in-plane rotate() (the
@@ -1382,18 +1397,11 @@
      overflow:hidden technique as #bg-video-mask/#rect2, except this one
      tracks #rect2's own live box (the HUECO), not #rect's - see
      syncRectMasks. display:none whenever nothing's playing (matching
-     #rect2/#rect2-black's own pattern) EXCEPT while actually playing,
-     when opacity (not display, which can't animate) is what shows/hides
-     it - appears instantly (opacity jumps straight to 1, no fade in) but
-     fades out over its own LAST 15 (native) frames, opacity ramping
-     100->0 in lockstep with #bg-video's own dim ramping back up 35->100 -
-     see the mouseenter/'ended' handlers and trackSeparatorFade in the
-     script, which drive both opacity values directly per rendered video
-     frame (not a CSS transition - there's no fixed duration to hang one
-     on, since it has to line up with the video's own remaining frames
-     however long a given hover actually holds it). Leaving early
-     (mouseleave, before that fade window is ever reached) still cuts
-     instantly - no fade to interrupt there. */
+     #rect2/#rect2-black's own pattern) EXCEPT while the hover holds it:
+     enters and exits by a plain cut (no fades), loops for as long as the
+     pointer stays on the button, and #bg-video (the globe) is hidden
+     outright (opacity 0) the whole time - see showSeparatorAndHideGlobe /
+     cutSeparatorAndRestoreGlobe in the script. */
   #separator-video-mask {
     position: absolute;
     left: 960px;
@@ -1452,11 +1460,9 @@
     opacity: 1;
     pointer-events: none;
     /* opacity's own transition is deliberately much shorter than
-       transform's - see #blink-square-hover-zone's mouseenter/mouseleave
-       (the back-triangle hover dims this to 25% while separador_atletas
-       plays over it): "in and out in two frames" - 2/60s, not a plain cut
-       (opacity: 1/0.25 toggled with no transition at all) and not a slow
-       fade either. */
+       transform's. (The back-triangle hover hides this outright by a cut
+       while separador_atletas plays - it sets transition:none inline for
+       that, see showSeparatorAndHideGlobe.) */
     transition: transform 0.75s ease, opacity 0.0333s linear;
   }
   #bg-video.visible {
@@ -1722,7 +1728,6 @@
       <div id="canvas-backdrop"></div>
       <div id="rect2-mask">
         <div id="rect2">
-          <video id="botonera-preview-video" muted loop playsinline></video>
         </div>
         <div id="rect2-black"></div>
       </div>
@@ -1731,7 +1736,7 @@
       </div>
       <div id="bg-video-mask">
         <div id="bg-video-rotate">
-          <video id="bg-video" muted loop playsinline></video>
+          <canvas id="bg-video" width="1920" height="1080"></canvas>
         </div>
       </div>
       <div id="separator-video-mask">
@@ -1768,6 +1773,7 @@
       <img class="logo-sprite" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png" alt="">
       <div class="logo-sprite" id="blink-square"></div>
       <div id="blink-square-hover-zone"></div>
+      <div id="watch-text-clip"><span id="watch-text">WATCH!</span></div>
       <a id="contact-button" href="contact.html">Contact</a>
       <div id="header-line"></div>
       <div id="header-box"></div>
@@ -1909,6 +1915,114 @@
       document.getElementById('bg-video').style.opacity = '0';
     }
 
+    // #bg-video is a <canvas>, not a <video>: VP9-with-alpha (the only
+    // transparent format Chrome plays) is always decoded in software,
+    // which is what stuttered on the Android tablet. Instead the globe is
+    // a plain H.264 file (hardware-decoded everywhere) with the color on
+    // the top half and the alpha matte (as grayscale) on the bottom half -
+    // fdo_invloop_stacked.mp4, 1920x2160 - recombined here by a tiny
+    // WebGL shader into a transparent 1920x1080 image. The canvas keeps
+    // the id, CSS (object-fit:cover works on canvas too) and every
+    // transform/opacity/animate() the old <video> had; play/pause/
+    // currentTime/src are forwarded to the hidden source <video> below,
+    // so none of the call sites (showBgVideo, hideBgVideo...) changed. No
+    // WebGL -> swaps back to a real <video> playing the VP9-alpha webm.
+    // touch devices (tablets/phones) get a 1280x720-per-half version
+    // (1280x1440 total): the 1920x2160 one is past what cheaper hardware
+    // decoders handle (the Galaxy Tab A8's Unisoc T618 tops out at
+    // 1080p), which would drop it back to slow software decoding - the
+    // exact thing this whole setup exists to avoid. The canvas's own
+    // drawing buffer matches, so it isn't upscaling for nothing.
+    const BG_VIDEO_SMALL = matchMedia('(pointer: coarse)').matches;
+    let BG_VIDEO_SRC = BG_VIDEO_SMALL
+      ? 'assets/videos/fdo_invloop_stacked_720.mp4'
+      : 'assets/videos/fdo_invloop_stacked.mp4';
+    (function setupBgVideoCanvas() {
+      const canvas = document.getElementById('bg-video');
+      if (BG_VIDEO_SMALL) {
+        canvas.width = 1280;
+        canvas.height = 720;
+      }
+      const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false });
+      if (!gl) {
+        const video = document.createElement('video');
+        video.id = 'bg-video';
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.style.cssText = canvas.style.cssText;
+        canvas.replaceWith(video);
+        BG_VIDEO_SRC = 'assets/videos/fdo_invloop_1080.webm';
+        return;
+      }
+      const source = document.createElement('video');
+      source.muted = true;
+      source.loop = true;
+      source.playsInline = true;
+      source.setAttribute('playsinline', '');
+      // kept in the DOM (1px, invisible) rather than detached - some
+      // mobile browsers won't keep decoding a video that isn't in the
+      // document at all
+      source.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+      document.body.appendChild(source);
+
+      const vs = 'attribute vec2 p; varying vec2 uv;' +
+        'void main(){ uv = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5); gl_Position = vec4(p, 0.0, 1.0); }';
+      const fs = 'precision mediump float; varying vec2 uv; uniform sampler2D t;' +
+        'void main(){ vec3 c = texture2D(t, vec2(uv.x, uv.y * 0.5)).rgb;' +
+        ' float a = texture2D(t, vec2(uv.x, 0.5 + uv.y * 0.5)).r;' +
+        ' gl_FragColor = vec4(c * a, a); }';
+      function compile(type, src) {
+        const sh = gl.createShader(type);
+        gl.shaderSource(sh, src);
+        gl.compileShader(sh);
+        return sh;
+      }
+      const prog = gl.createProgram();
+      gl.attachShader(prog, compile(gl.VERTEX_SHADER, vs));
+      gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fs));
+      gl.linkProgram(prog);
+      gl.useProgram(prog);
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      function draw() {
+        if (source.readyState < 2) return;
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, source);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+      // redraw only when the decoder actually hands over a new frame (30fps
+      // source), not on every display refresh
+      if ('requestVideoFrameCallback' in source) {
+        const onFrame = () => { draw(); source.requestVideoFrameCallback(onFrame); };
+        source.requestVideoFrameCallback(onFrame);
+      } else {
+        const loop = () => { if (!source.paused) draw(); requestAnimationFrame(loop); };
+        requestAnimationFrame(loop);
+      }
+      // a seek while paused (hideBgVideo's currentTime = 0) doesn't fire
+      // requestVideoFrameCallback everywhere - redraw explicitly
+      source.addEventListener('seeked', draw);
+      source.addEventListener('loadeddata', draw);
+
+      canvas.play = () => source.play();
+      canvas.pause = () => source.pause();
+      Object.defineProperty(canvas, 'currentTime', { get: () => source.currentTime, set: (v) => { source.currentTime = v; } });
+      Object.defineProperty(canvas, 'paused', { get: () => source.paused });
+      Object.defineProperty(canvas, 'src', { get: () => source.src, set: (v) => { source.src = v; } });
+    })();
+
     // #bg-video (fdo_invloop.webm, ~3.4MB) and #onda-video no longer carry
     // a `src` in the markup (see their own tags) - on a normal cold visit
     // there's a whole password gate + intro to get through before either
@@ -1933,9 +2047,9 @@
       // isPortrait branch, which plays and scales it in), so its src is
       // set unconditionally same as landscape - no orientation guard here
       // anymore.
-      document.getElementById('bg-video').src = 'assets/videos/fdo_invloop.webm';
-      document.getElementById('onda-video').src = 'assets/videos/ondablanca.webm';
-      document.getElementById('separator-video').src = 'assets/videos/separador_atletas.webm';
+      document.getElementById('bg-video').src = BG_VIDEO_SRC;
+      document.getElementById('onda-video').src = 'assets/videos/ondablanca_1080.webm';
+      document.getElementById('separator-video').src = 'assets/videos/separador_atletas_2.mp4';
     }
     if (location.hash !== '#from-contact' && location.hash !== '#from-menu-portrait') {
       loadHeavyVideos();
@@ -3242,15 +3356,10 @@
     }
     document.getElementById('blink-square-hover-zone').addEventListener('click', () => {
       if (step === 1) {
-        // clicking through cuts the hover preview short wherever it
-        // happens to be in its own playback (mid-clip, mid its own
-        // natural-end fade, whatever) - a fast 3-frame fade instead of
-        // either of the other two exits (instant on early mouseleave, the
-        // slower 15-frame one at the video's own natural end), and NOT
-        // gated on that fade finishing first - the actual transition
-        // starts right away, in parallel. See
-        // fastFadeOutSeparatorAndRestoreGlobe.
-        fastFadeOutSeparatorAndRestoreGlobe();
+        // clicking through cuts the hover preview (and restores the globe)
+        // right away, in parallel with the actual transition
+        cutSeparatorAndRestoreGlobe();
+        closeWatchText();
         advanceFromOvershoot();
       } else if (step === 2) reverseFromWidened();
     });
@@ -3262,165 +3371,134 @@
     // (and thus only able to receive these events at all) while the blink
     // square is actually shown, so no separate visibility check is needed.
     // separador_atletas.webm (see #separator-video-mask's own CSS comment)
-    // is this hover's own preview now - reuses the mask/video already
-    // built for the (now scrapped) pre-transition beat, which already
-    // sits in front of the globe and tracks the hueco's own live box, so
-    // no separate sizing work needed here. #onda-video used to be this
-    // hover's preview instead - it's now a standalone 8s-interval accent
-    // (see startOndaAccentLoop) with no hover tie-in at all. The globe
-    // itself dims to 35% opacity for the duration so the hover preview
-    // actually reads clearly against it instead of competing with it.
-    const SEPARATOR_NATIVE_FPS = 30; // separador_atletas.webm's own fps - confirmed via ffprobe
-    const SEPARATOR_FADE_FRAMES = 15;
-    const BG_VIDEO_HOVER_DIM_OPACITY = 0.35;
-
-    // drives the crossfade over the video's own LAST 15 (native) frames:
-    // #separator-video-mask ramps opacity 100->0 while #bg-video ramps its
-    // own dim back up 35->100, in lockstep, landing exactly on their resting
-    // values (0 / 100) the instant the video actually ends - not a fixed-
-    // duration CSS transition, since there's no fixed duration to give one:
-    // it has to line up with however many (real) frames are actually left,
-    // which only the video's own playback position can say. Prefers
-    // requestVideoFrameCallback (reports the real presented frame's own
-    // media time) over 'timeupdate' (throttled, too coarse for a 15-frame
-    // window) wherever it's available, falling back to the latter only on
-    // the rare browser without it.
-    let separatorFadeHandle = null;
-    let separatorFadeUsesRvfc = false;
-    // #bg-video's own CSS transition on opacity (2 frames - see its own
-    // rule) is right for the plain one-shot dim mouseenter sets below, but
-    // fights every one of the per-frame writes both ramps here make: each
-    // write would kick off its OWN 2-frame tween toward that write's
-    // target, compounding into a laggy blur trailing behind the mask
-    // instead of moving in lockstep with it. Suppressed for the duration
-    // of either ramp, restored once whichever one finishes.
-    let separatorFadeWindowEntered = false;
-    function applySeparatorFadeForTime(mediaTime, duration) {
-      const framesLeft = (duration - mediaTime) * SEPARATOR_NATIVE_FPS;
-      if (!isFinite(framesLeft) || framesLeft > SEPARATOR_FADE_FRAMES) return;
-      const bgVideo = document.getElementById('bg-video');
-      if (!separatorFadeWindowEntered) {
-        separatorFadeWindowEntered = true;
-        bgVideo.style.transition = 'none';
-      }
-      const t = Math.max(0, framesLeft) / SEPARATOR_FADE_FRAMES; // 1 at the window's start -> 0 right as the video ends
-      document.getElementById('separator-video-mask').style.opacity = t;
-      bgVideo.style.opacity = 1 - t * (1 - BG_VIDEO_HOVER_DIM_OPACITY);
-    }
-    function startSeparatorFadeTracking() {
-      separatorFadeWindowEntered = false;
+    // is this hover's own preview: enters and exits by a plain CUT (no
+    // fades at all), loops for as long as the pointer stays on the
+    // button, and the globe (#bg-video) disappears entirely (opacity 0,
+    // also a cut) while it plays - back to 100 the instant the hover
+    // ends (mouseleave or click-through).
+    function showSeparatorAndHideGlobe() {
       const video = document.getElementById('separator-video');
-      if (typeof video.requestVideoFrameCallback === 'function') {
-        separatorFadeUsesRvfc = true;
-        const onFrame = (now, metadata) => {
-          if (video.paused || video.ended) return;
-          applySeparatorFadeForTime(metadata.mediaTime, video.duration);
-          separatorFadeHandle = video.requestVideoFrameCallback(onFrame);
-        };
-        separatorFadeHandle = video.requestVideoFrameCallback(onFrame);
-      } else {
-        separatorFadeUsesRvfc = false;
-        separatorFadeHandle = () => applySeparatorFadeForTime(video.currentTime, video.duration);
-        video.addEventListener('timeupdate', separatorFadeHandle);
-      }
-    }
-    function stopSeparatorFadeTracking() {
-      const video = document.getElementById('separator-video');
-      if (separatorFadeHandle === null) return;
-      if (separatorFadeUsesRvfc) {
-        if (typeof video.cancelVideoFrameCallback === 'function') video.cancelVideoFrameCallback(separatorFadeHandle);
-      } else {
-        video.removeEventListener('timeupdate', separatorFadeHandle);
-      }
-      separatorFadeHandle = null;
-    }
-    // click-through exit (see the click handler above) - a fast, wall-
-    // clock-timed fade (3 frames @60fps, NOT the video's own native fps -
-    // this one has no "frames remaining in the clip" to line up with,
-    // since a click can land at any arbitrary point in the playback) from
-    // whichever opacity values the crossfade above already left things at,
-    // down/up to their resting values (mask 0, globe 100). Time-based
-    // (performance.now() elapsed, not a literal 3-callback count) so it
-    // holds steady across different display refresh rates - same
-    // reasoning as the readme's own note on 60Hz vs. ProMotion timing.
-    const CLICK_EXIT_FADE_MS = (3 / 60) * 1000;
-    function fastFadeOutSeparatorAndRestoreGlobe() {
-      stopSeparatorFadeTracking();
       const mask = document.getElementById('separator-video-mask');
       const bgVideo = document.getElementById('bg-video');
-      const video = document.getElementById('separator-video');
-      video.pause();
-      const startMaskOpacity = parseFloat(mask.style.opacity) || 0;
-      const startBgOpacity = parseFloat(bgVideo.style.opacity) || 1;
-      // already at rest (never hovered this round, or the natural-end fade
-      // already finished) - nothing to animate
-      if (startMaskOpacity === 0 && startBgOpacity === 1) return;
-      bgVideo.style.transition = 'none'; // see applySeparatorFadeForTime's own comment on why - same conflict, same fix
-      const startTime = performance.now();
-      function tick(now) {
-        const t = Math.min(1, (now - startTime) / CLICK_EXIT_FADE_MS);
-        mask.style.opacity = startMaskOpacity * (1 - t);
-        bgVideo.style.opacity = startBgOpacity + (1 - startBgOpacity) * t;
-        if (t < 1) {
-          requestAnimationFrame(tick);
-        } else {
-          mask.style.opacity = '0';
-          mask.style.display = 'none';
-          bgVideo.style.opacity = '';
-          // forces the jump above to actually commit while transition is
-          // still 'none', BEFORE restoring it below - setting opacity and
-          // transition back-to-back with no flush between them risks the
-          // browser coalescing the two and animating this jump through
-          // the just-restored transition instead of snapping it
-          void bgVideo.offsetHeight;
-          bgVideo.style.transition = ''; // back to the CSS default, ready for the next mouseenter's own dim
-        }
-      }
-      requestAnimationFrame(tick);
+      video.loop = true;
+      video.currentTime = 0;
+      video.playbackRate = 1;
+      mask.style.opacity = '1';
+      mask.style.display = 'block';
+      bgVideo.style.transition = 'none'; // cut, not #bg-video's own 2-frame opacity transition
+      bgVideo.style.opacity = '0';
+      video.play();
     }
+    function cutSeparatorAndRestoreGlobe() {
+      const mask = document.getElementById('separator-video-mask');
+      const bgVideo = document.getElementById('bg-video');
+      document.getElementById('separator-video').pause();
+      mask.style.opacity = '0';
+      mask.style.display = 'none';
+      bgVideo.style.transition = 'none';
+      bgVideo.style.opacity = ''; // back to the CSS default (1)
+      // forces the jump above to commit while transition is still 'none',
+      // BEFORE restoring it - otherwise the browser may coalesce both
+      // writes and animate this jump through the restored transition
+      void bgVideo.offsetHeight;
+      bgVideo.style.transition = '';
+    }
+    // "WATCH!" (see #watch-text-clip's own CSS comment). Everything is
+    // measured off the rendered font with a canvas (whatever weight/face
+    // the system actually resolves "Helvetica Neue 900" to):
+    // - the arrow's hover scale = the "T"'s own ink height / the 19px box
+    // - the gap = 2x the visual space between two letters ("C" -> "H":
+    //   C's right side-bearing + H's left one), minus the "!"'s own right
+    //   side-bearing, which already sits inside the clip's right edge.
+    // The arrow was signed off at the size of the "T" of the ORIGINAL 54px
+    // text - the text itself has since shrunk (twice, 15% each), the arrow hasn't, so
+    // its scale is still measured at this fixed reference size.
+    const WATCH_ARROW_REF_FONT_PX = 54;
+    let watchMetrics = null;
+    function measureWatch() {
+      if (watchMetrics) return watchMetrics;
+      const cs = getComputedStyle(document.getElementById('watch-text'));
+      const fontSize = parseFloat(cs.fontSize);
+      const ls = parseFloat(cs.letterSpacing) || 0; // 'normal' -> 0
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = `${cs.fontWeight} ${WATCH_ARROW_REF_FONT_PX}px ${cs.fontFamily}`;
+      const refT = ctx.measureText('T');
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const t = ctx.measureText('T');
+      const c = ctx.measureText('C');
+      const h = ctx.measureText('H');
+      const bang = ctx.measureText('!');
+      const letterGap = (c.width - c.actualBoundingBoxRight) + (-h.actualBoundingBoxLeft) + ls;
+      // letter-spacing is also added after the last glyph, so it counts
+      // toward the space between the "!"'s ink and the box's right edge
+      const bangRsb = bang.width - bang.actualBoundingBoxRight + ls;
+      // caps' ink center, measured down from the top of the span's
+      // line-height:1 box (content area centered in the line box)
+      let capCenterFromTop = fontSize / 2;
+      if (t.fontBoundingBoxAscent !== undefined) {
+        const fA = t.fontBoundingBoxAscent, fD = t.fontBoundingBoxDescent;
+        const baseline = (fontSize - (fA + fD)) / 2 + fA;
+        capCenterFromTop = baseline - (t.actualBoundingBoxAscent - t.actualBoundingBoxDescent) / 2;
+      }
+      watchMetrics = {
+        scale: (refT.actualBoundingBoxAscent + refT.actualBoundingBoxDescent) / BRACKET_WIDTH,
+        clipGap: Math.max(0, 2 * letterGap - bangRsb),
+        capCenterFromTop,
+      };
+      return watchMetrics;
+    }
+    // writes the hover scale + its matching 2px-border SVG (see the CSS
+    // comment on #blink-square.triangle:not(.back)) - inset polygon =
+    // the outer triangle (0,0 19,9.5 0,19) shrunk about its incenter by
+    // 2px / scale, in the 19x19 box's own units.
+    function sizeWatchArrow() {
+      const { scale } = measureWatch();
+      const S = BRACKET_WIDTH;
+      const side = Math.hypot(S, S / 2);
+      const r = (S * S) / (S + 2 * side); // inradius (2*area / perimeter)
+      const ix = r, iy = S / 2; // incenter
+      const k = (r - 2 / scale) / r;
+      const pt = (x, y) => `${(ix + k * (x - ix)).toFixed(3)},${(iy + k * (y - iy)).toFixed(3)}`;
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${S} ${S}' preserveAspectRatio='none'>`
+        + `<polygon points='0,0 ${S},${S / 2} 0,${S}' fill='#fff'/>`
+        + `<polygon points='${pt(0, 0)} ${pt(S, S / 2)} ${pt(0, S)}' fill='#000'/></svg>`;
+      const sq = document.getElementById('blink-square');
+      sq.style.setProperty('--watch-arrow-scale', scale);
+      sq.style.setProperty('--watch-arrow-bg', `url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
+    }
+    function openWatchText() {
+      const sq = document.getElementById('blink-square');
+      const clip = document.getElementById('watch-text-clip');
+      const { scale, clipGap, capCenterFromTop } = measureWatch();
+      const left = parseFloat(sq.style.left) || 0;
+      const top = parseFloat(sq.style.top) || 0;
+      const half = BRACKET_WIDTH / 2;
+      // arrow's vertical edge = box center - half the hovered width
+      clip.style.left = (left + half - half * scale - clipGap) + 'px';
+      clip.style.top = (top + half - capCenterFromTop) + 'px';
+      clip.classList.add('visible');
+      void clip.offsetWidth; // commit the tucked-away start before sliding out
+      clip.classList.add('open');
+    }
+    function closeWatchText() {
+      document.getElementById('watch-text-clip').classList.remove('open');
+    }
+    document.getElementById('watch-text').addEventListener('transitionend', () => {
+      const clip = document.getElementById('watch-text-clip');
+      if (!clip.classList.contains('open')) clip.classList.remove('visible');
+    });
     document.getElementById('blink-square-hover-zone').addEventListener('mouseenter', () => {
       if (step !== 1) return;
+      sizeWatchArrow();
       document.getElementById('blink-square').classList.add('triangle');
-      const video = document.getElementById('separator-video');
-      const mask = document.getElementById('separator-video-mask');
-      video.currentTime = 0;
-      video.playbackRate = 1; // normal speed - the 2x rate belonged to the (now scrapped) click-driven pre-transition beat, never reset since
-      mask.style.display = 'block';
-      mask.style.opacity = '1'; // appears instantly - only the exit fades
-      document.getElementById('bg-video').style.opacity = String(BG_VIDEO_HOVER_DIM_OPACITY);
-      video.play();
-      startSeparatorFadeTracking();
+      openWatchText();
+      showSeparatorAndHideGlobe();
     });
     document.getElementById('blink-square-hover-zone').addEventListener('mouseleave', () => {
       if (step !== 1) return;
       document.getElementById('blink-square').classList.remove('triangle');
-      // leaving BEFORE the video's own last-15-frames window cuts
-      // instantly - nothing to interrupt smoothly, there's no fade
-      // playing yet at that point
-      stopSeparatorFadeTracking();
-      const mask = document.getElementById('separator-video-mask');
-      mask.style.opacity = '0';
-      mask.style.display = 'none';
-      document.getElementById('separator-video').pause();
-      const bgVideo = document.getElementById('bg-video');
-      bgVideo.style.opacity = ''; // back to the CSS default (1)
-      void bgVideo.offsetHeight; // see fastFadeOutSeparatorAndRestoreGlobe's own comment on this flush
-      bgVideo.style.transition = ''; // in case the fade window was already entered - restore its normal (2-frame) transition for the next mouseenter's own dim
-    });
-    // plays through ONCE per hover, no loop, no freeze-on-last-frame: by
-    // the time this fires the crossfade above has already ramped both
-    // opacities to their resting values (mask 0, globe 100) - this just
-    // settles them exactly and returns the mask to display:none, ready
-    // for a fresh mouseenter to restart it from currentTime 0.
-    document.getElementById('separator-video').addEventListener('ended', () => {
-      stopSeparatorFadeTracking();
-      const mask = document.getElementById('separator-video-mask');
-      mask.style.opacity = '0';
-      mask.style.display = 'none';
-      const bgVideo = document.getElementById('bg-video');
-      bgVideo.style.opacity = '';
-      void bgVideo.offsetHeight; // see fastFadeOutSeparatorAndRestoreGlobe's own comment on this flush
-      bgVideo.style.transition = ''; // restore the normal (2-frame) transition for the next mouseenter's own dim
+      closeWatchText();
+      cutSeparatorAndRestoreGlobe();
     });
 
     // portrait ("vertical version") only: the second-click advance to
@@ -4547,12 +4625,10 @@
           zone.addEventListener('mouseenter', () => {
             label.classList.add('forced-hover');
             showHeaderVideoInfo(i - 1);
-            playBotoneraPreview(i - 1);
           });
           zone.addEventListener('mouseleave', () => {
             label.classList.remove('forced-hover');
             hideHeaderVideoInfo();
-            stopBotoneraPreview();
           });
 
           const anim = label.animate([{ opacity: 0 }, { opacity: GRAY_OPACITY }], { duration: INDEX_FADE_MS, easing: 'ease', fill: 'forwards' });
@@ -4781,7 +4857,6 @@
       });
       document.querySelectorAll('.botonera-index-hover-zone').forEach((zone) => zone.remove());
       hideHeaderVideoInfo();
-      stopBotoneraPreview();
 
       // brackets un-spread and rise back up to before multiplyPlusIntoBars
       // moved them, crossfading back from the thin stand-ins (currently
@@ -4993,7 +5068,6 @@
       document.querySelectorAll('.botonera-index').forEach((label) => label.remove());
       document.querySelectorAll('.botonera-index-hover-zone').forEach((zone) => zone.remove());
       hideHeaderVideoInfo();
-      stopBotoneraPreview();
       [
         document.getElementById('bracket-left'), document.getElementById('bracket-right'),
         document.getElementById('bracket-left-thin'), document.getElementById('bracket-right-thin')
@@ -5140,64 +5214,6 @@
     }
     function hideHeaderVideoInfo() {
       headerVideoInfo.classList.remove('visible');
-    }
-
-    // botonera hover preview - see #botonera-preview-video for the visual
-    // side (the CRT-texture alpha matte). PREVIEW_CLIP_SECONDS-long window
-    // starting somewhere around the middle of the video, never right at
-    // the start: midpoint +/- up to 30% of the duration, clamped so the
-    // window itself can never run past the end or before a sane floor.
-    // previewLoopHandler is the one 'timeupdate' listener alive at a time
-    // (re-added per hover rather than kept forever) - it just jumps back
-    // to that window's own start once playback reaches the end of it,
-    // faking a sub-clip loop the native `loop` attribute can't do on its
-    // own (that only loops the whole file).
-    const botoneraPreviewVideo = document.getElementById('botonera-preview-video');
-    const PREVIEW_CLIP_SECONDS = 5;
-    let previewLoopHandler = null;
-    function clearPreviewLoopHandler() {
-      if (previewLoopHandler) {
-        botoneraPreviewVideo.removeEventListener('timeupdate', previewLoopHandler);
-        previewLoopHandler = null;
-      }
-    }
-    function startPreviewClip() {
-      const duration = botoneraPreviewVideo.duration;
-      let start = 0;
-      if (isFinite(duration) && duration > 0) {
-        const mid = duration / 2;
-        const jitter = (Math.random() - 0.5) * duration * 0.6; // +/- 30% of duration
-        const floor = duration * 0.15;
-        const ceiling = Math.max(floor, duration - PREVIEW_CLIP_SECONDS - 0.5);
-        start = Math.min(Math.max(mid + jitter, floor), ceiling);
-      }
-      botoneraPreviewVideo.currentTime = start;
-      botoneraPreviewVideo.play().catch(() => {});
-      clearPreviewLoopHandler();
-      previewLoopHandler = () => {
-        if (botoneraPreviewVideo.currentTime >= start + PREVIEW_CLIP_SECONDS) {
-          botoneraPreviewVideo.currentTime = start;
-        }
-      };
-      botoneraPreviewVideo.addEventListener('timeupdate', previewLoopHandler);
-    }
-    function playBotoneraPreview(index) {
-      const entry = BOTONERA_VIDEOS[index];
-      if (!entry) return;
-      botoneraPreviewVideo.classList.add('visible');
-      if (botoneraPreviewVideo.getAttribute('src') !== entry.src) {
-        botoneraPreviewVideo.setAttribute('src', entry.src);
-        botoneraPreviewVideo.addEventListener('loadedmetadata', startPreviewClip, { once: true });
-      } else if (botoneraPreviewVideo.readyState >= 1) {
-        startPreviewClip();
-      } else {
-        botoneraPreviewVideo.addEventListener('loadedmetadata', startPreviewClip, { once: true });
-      }
-    }
-    function stopBotoneraPreview() {
-      botoneraPreviewVideo.classList.remove('visible');
-      botoneraPreviewVideo.pause();
-      clearPreviewLoopHandler();
     }
 
     const videoOverlay = document.getElementById('video-overlay');
@@ -5670,6 +5686,18 @@
     // Landscape never touches the tall pair at all - they default to
     // opacity:0 in their own CSS. Called from enterFromContact.
     function resetArrivalBrackets(isPortrait, bracketEndX0, brLeft, bl, br) {
+      // lands POR CORTE: #bracket-left/-right carry a transform
+      // transition (see their CSS), so without this they'd still be
+      // sliding in from .bracket-offstage's +-300px when
+      // playCenterTagline(true) measures their live box right after -
+      // which is what spread "Video Editor"/"motion graphics" out past
+      // the brackets on the way back from Contact.
+      const brackets = [bl, br, document.getElementById('bracket-left-tall'), document.getElementById('bracket-right-tall')];
+      brackets.forEach((el) => { el.style.transition = 'none'; });
+      applyArrivalBrackets(isPortrait, bracketEndX0, brLeft, bl, br);
+      brackets.forEach((el) => { void el.offsetHeight; el.style.transition = ''; });
+    }
+    function applyArrivalBrackets(isPortrait, bracketEndX0, brLeft, bl, br) {
       if (isPortrait) {
         bl.style.opacity = '0';
         br.style.opacity = '0';
@@ -5884,6 +5912,17 @@
     // be enough here the way they mostly are for rect2. Runs forever once
     // started; a getComputedStyle + a few style writes per frame is
     // cheap enough not to matter.
+    // syncRectMasks runs every frame, forever, and interleaves
+    // getComputedStyle/getBoundingClientRect reads with style writes -
+    // every write (even of the exact same value) dirties style/layout, so
+    // the NEXT read in the same frame forces a synchronous layout. Only
+    // writing when the value actually differs means idle frames (nothing
+    // animating) do zero writes and every read is served from the
+    // already-clean layout, instead of re-laying-out the whole canvas
+    // ~60 times a second for nothing.
+    function setStyleIfChanged(el, prop, value) {
+      if (el.style[prop] !== value) el.style[prop] = value;
+    }
     function syncRectMasks() {
       const rectEl = document.getElementById('rect');
       const rectCs = getComputedStyle(rectEl);
@@ -5902,9 +5941,9 @@
       // bottom edge). See #bg-video's own portrait sizing below instead -
       // that's the box object-fit:cover actually operates against now,
       // sized independently of this mask entirely.
-      bgVideoMask.style.width = rectCs.width;
-      bgVideoMask.style.height = rectCs.height;
-      bgVideoMask.style.borderRadius = rectCs.borderRadius;
+      setStyleIfChanged(bgVideoMask, 'width', rectCs.width);
+      setStyleIfChanged(bgVideoMask, 'height', rectCs.height);
+      setStyleIfChanged(bgVideoMask, 'borderRadius', rectCs.borderRadius);
       const isPortrait = isPortraitViewport();
       const video = document.getElementById('bg-video');
       if (isPortrait) {
@@ -5920,13 +5959,13 @@
         // GLOBE_PORTRAIT_SCALE's own comment.
         const rectWidthPx = parseFloat(rectCs.width);
         const boxPx = rectWidthPx * GLOBE_PORTRAIT_SCALE;
-        video.style.left = '50%';
-        video.style.top = '50%';
-        video.style.right = 'auto';
-        video.style.bottom = 'auto';
-        video.style.width = boxPx + 'px';
-        video.style.height = boxPx + 'px';
-        video.style.transform = `translate(calc(-50% + ${GLOBE_PORTRAIT_OFFSET_X}px), -50%) rotate(${GLOBE_PORTRAIT_ROTATE}deg)`;
+        setStyleIfChanged(video, 'left', '50%');
+        setStyleIfChanged(video, 'top', '50%');
+        setStyleIfChanged(video, 'right', 'auto');
+        setStyleIfChanged(video, 'bottom', 'auto');
+        setStyleIfChanged(video, 'width', boxPx + 'px');
+        setStyleIfChanged(video, 'height', boxPx + 'px');
+        setStyleIfChanged(video, 'transform', `translate(calc(-50% + ${GLOBE_PORTRAIT_OFFSET_X}px), -50%) rotate(${GLOBE_PORTRAIT_ROTATE}deg)`);
       } else {
         // landscape - clear any leftover portrait inline overrides (in
         // case a resize ever crossed the orientation boundary), back to
@@ -5936,12 +5975,12 @@
         // calls elsewhere) already owns that property, and this function
         // runs every single frame, so overwriting it here would fight
         // all of them constantly.
-        video.style.left = '';
-        video.style.top = '';
-        video.style.right = '';
-        video.style.bottom = '';
-        video.style.width = '';
-        video.style.height = '';
+        setStyleIfChanged(video, 'left', '');
+        setStyleIfChanged(video, 'top', '');
+        setStyleIfChanged(video, 'right', '');
+        setStyleIfChanged(video, 'bottom', '');
+        setStyleIfChanged(video, 'width', '');
+        setStyleIfChanged(video, 'height', '');
         // #onda-video-mask - see its own CSS comment for the two states
         // below (before/after #header-line shows). #onda-video itself is
         // 100%/100% + object-fit:cover off THIS box in CSS, so it fills
@@ -5991,21 +6030,21 @@
           const bgVideoRectNow = video.getBoundingClientRect();
           const globeCenterYLocal = ((bgVideoRectNow.top + bgVideoRectNow.bottom) / 2 - canvasRectNow.top) / canvasScaleNow;
           const ondaBottom = 2 * globeCenterYLocal - ondaTop;
-          ondaMask.style.left = (960 - rectWidthLocal / 2) + 'px';
-          ondaMask.style.width = rectWidthLocal + 'px';
-          ondaMask.style.top = ondaTop + 'px';
-          ondaMask.style.height = (ondaBottom - ondaTop) + 'px';
-          ondaVideoEl.style.width = (rectWidthLocal * ONDA_BURST_REACH_SCALE) + 'px';
+          setStyleIfChanged(ondaMask, 'left', (960 - rectWidthLocal / 2) + 'px');
+          setStyleIfChanged(ondaMask, 'width', rectWidthLocal + 'px');
+          setStyleIfChanged(ondaMask, 'top', ondaTop + 'px');
+          setStyleIfChanged(ondaMask, 'height', (ondaBottom - ondaTop) + 'px');
+          setStyleIfChanged(ondaVideoEl, 'width', (rectWidthLocal * ONDA_BURST_REACH_SCALE) + 'px');
         } else {
           // step 1 (#rect square, no header carve-out yet): #rect's own
           // full box, edge to edge - confirmed correct as-is.
           const rectW = parseFloat(rectCs.width);
           const rectH = parseFloat(rectCs.height);
-          ondaMask.style.left = (960 - rectW / 2) + 'px';
-          ondaMask.style.width = rectW + 'px';
-          ondaMask.style.top = (RECT_CENTER_Y - rectH / 2) + 'px';
-          ondaMask.style.height = rectH + 'px';
-          ondaVideoEl.style.width = (rectW * ONDA_BURST_REACH_SCALE) + 'px';
+          setStyleIfChanged(ondaMask, 'left', (960 - rectW / 2) + 'px');
+          setStyleIfChanged(ondaMask, 'width', rectW + 'px');
+          setStyleIfChanged(ondaMask, 'top', (RECT_CENTER_Y - rectH / 2) + 'px');
+          setStyleIfChanged(ondaMask, 'height', rectH + 'px');
+          setStyleIfChanged(ondaVideoEl, 'width', (rectW * ONDA_BURST_REACH_SCALE) + 'px');
         }
       }
       const rect2El = document.getElementById('rect2');
@@ -6015,23 +6054,23 @@
       const frame = document.getElementById('rect-frame');
       if (active) {
         const cs = getComputedStyle(active);
-        frame.style.top = cs.top;
-        frame.style.width = cs.width;
-        frame.style.height = cs.height;
-        frame.style.borderRadius = cs.borderRadius;
-        frame.style.boxShadow = '0 0 0 3000px #fff';
+        setStyleIfChanged(frame, 'top', cs.top);
+        setStyleIfChanged(frame, 'width', cs.width);
+        setStyleIfChanged(frame, 'height', cs.height);
+        setStyleIfChanged(frame, 'borderRadius', cs.borderRadius);
+        if (!frame.style.boxShadow.includes('3000px')) frame.style.boxShadow = '0 0 0 3000px #fff';
         // #separator-video-mask tracks the exact same box (the HUECO)
         // this same `cs` already describes - see playSeparatorThenAdvance
         // for when it's actually shown; kept in sync unconditionally here
         // regardless, same as #bg-video-mask above, so it's never a frame
         // late/stale when it does get shown.
         const separatorMask = document.getElementById('separator-video-mask');
-        separatorMask.style.top = cs.top;
-        separatorMask.style.width = cs.width;
-        separatorMask.style.height = cs.height;
-        separatorMask.style.borderRadius = cs.borderRadius;
+        setStyleIfChanged(separatorMask, 'top', cs.top);
+        setStyleIfChanged(separatorMask, 'width', cs.width);
+        setStyleIfChanged(separatorMask, 'height', cs.height);
+        setStyleIfChanged(separatorMask, 'borderRadius', cs.borderRadius);
       } else {
-        frame.style.boxShadow = 'none';
+        if (frame.style.boxShadow !== 'none') frame.style.boxShadow = 'none';
       }
       requestAnimationFrame(syncRectMasks);
     }
