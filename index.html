@@ -11,6 +11,11 @@
     overflow: hidden;
     background: #fff;
   }
+  /* no browser tap flash: mobile Chrome paints a translucent blue box
+     over anything tappable the moment it's touched - on the logo button
+     that read as the cyan showing up before the bounce was over. Every
+     tap here already has its own feedback. */
+  html { -webkit-tap-highlight-color: transparent; }
 
   /* fixed, exactly viewport-sized, clipping - without it the 1920px-wide
      stage (its pre-transform layout box) plus the 8000px bars made the
@@ -357,6 +362,21 @@
     pointer-events: none;
   }
   #separator.visible { visibility: visible; }
+  /* portrait, botonera -> square: a white calle-wide band sweeping the
+     hueco left to right, as if a new background pushed the old one out
+     (both cyan, so only their dividing line shows). Over the shapes,
+     under the globe and the texts; the white pieces hide it outside the
+     hueco. Translate only. */
+  #fake-push {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: #fff;
+    display: none;
+    will-change: transform;
+    pointer-events: none;
+  }
+  #fake-push.on { display: block; }
   /* its window, placed at the hueco's top-left. In portrait it's the
      hueco's size and clips (a plain rectangle): there the video's "cover"
      scale makes it much wider than the hueco, and when it slides in
@@ -392,9 +412,16 @@
   }
   .portrait #nav { display: block; }
   #nav.visible { opacity: 1; pointer-events: auto; }
-  #nav > span { display: inline-block; vertical-align: top; transition: opacity 0.3s ease; }
+  /* (all on one baseline - CONTACT and WORK are bigger than the rest) */
+  #nav > span { display: inline-block; vertical-align: baseline; transition: opacity 0.3s ease; }
+  /* the two destinations: 30% bigger and bolder than the chevrons, the
+     "|" and HOME */
+  #nav-contact, #nav-work { font-size: 34.3px; }
+  #nav-contact { font-weight: 400; }
+  /* the botonera's <<< HOME (back from the dial) in black */
+  #nav.m-bot #nav-home, #nav.m-bot #nav-chevs-l { color: #000; }
   #nav .nav-word { cursor: pointer; padding: 10px; margin: -10px; }
-  #nav-work { font-weight: 500; position: relative; }
+  #nav-work { font-weight: 700; position: relative; }
   #nav-sep { margin: 0 0.5em; opacity: 0.6; }
   .nav-chevs { font-weight: 300; letter-spacing: 0; }
   #nav-chevs-l { margin-right: 0.6em; }
@@ -465,6 +492,24 @@
     opacity: 0.6;
     white-space: nowrap;
     user-select: none;
+  }
+  /* portrait: the tapped (selected) number, same look as the desktop
+     hover below - no transition, it's a touch screen */
+  .bot-cell.sel .bot-num {
+    opacity: 1;
+    background: #000;
+    font-weight: 700;
+    color: #fff;
+    border-radius: 4px;
+    transform: scaleX(1.2);
+  }
+  /* portrait dial: each cell's opacity is set by renderDial, and the
+     number in the window only turns bold */
+  .portrait .bot-num { opacity: 1; }
+  .portrait .bot-cell.sel .bot-num {
+    background: none;
+    color: #000;
+    transform: none;
   }
   /* hover (desktop only - a touch screen never hovers, and skipping it
      there keeps those transitions off the tablet entirely) */
@@ -592,6 +637,17 @@
     will-change: transform, opacity;
   }
   #header-preview.visible { opacity: 1; }
+  /* touch screens (tablet/phone): the same look without the per-frame
+     GPU work - no saturation filter on the video, and the texture as a
+     plain see-through layer (dark row gaps + faint RGB stripes) instead
+     of a multiply blend */
+  #header-preview.lite video { filter: none; }
+  #header-preview.lite #header-crt {
+    mix-blend-mode: normal;
+    background-image:
+      linear-gradient(to bottom, transparent 72%, rgba(0, 0, 0, 0.75) 72%),
+      linear-gradient(to right, rgba(255, 0, 0, 0.22) 0 33.34%, rgba(0, 255, 0, 0.22) 33.34% 66.67%, rgba(0, 0, 255, 0.22) 66.67%);
+  }
   #header-preview video {
     display: block;
     width: 100%;
@@ -636,6 +692,7 @@
     position: absolute;
     left: 0;
     top: 0;
+    transform-origin: 0 0; /* scaled (UI, fit) from its own corner - see setState */
     display: flex;
     align-items: center;
     gap: 20px;
@@ -884,6 +941,22 @@
   .video-overlay.visible .player {
     transform: scale(1);
   }
+  /* portrait: the video plays fullscreen, black around it (and a
+     horizontal video turns the phone to landscape - openVideoPortrait) */
+  .video-overlay.fs { background: #000; }
+  .video-overlay.fs .player {
+    width: 100vw !important;
+    height: 100vh !important;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+  }
+  .video-overlay.fs video {
+    position: static !important;
+    height: 100% !important;
+    object-fit: contain !important;
+  }
   .video-overlay video {
     display: block;
     width: 100%;
@@ -1028,6 +1101,9 @@
     background: #000;
     padding: 6px 8px;
     pointer-events: none;
+    white-space: pre;
+    line-height: 1.3;
+    z-index: 2000;
   }
 </style>
 </head>
@@ -1044,6 +1120,7 @@
       <div class="disc tl"></div><div class="disc tr"></div><div class="disc bl"></div><div class="disc br"></div>
     </div>
 
+    <div id="fake-push"></div>
     <div id="separator-win"><video id="separator" muted loop playsinline></video></div>
 
     <div id="content">
@@ -1140,7 +1217,10 @@
   const STAGE_H = PORTRAIT ? Math.round(1920 * innerHeight / innerWidth) : 1080;
   const UI = PORTRAIT ? 2.2 : 1;
   if (PORTRAIT) document.documentElement.classList.add('portrait');
-  addEventListener('resize', () => { if ((innerHeight > innerWidth) !== PORTRAIT) location.reload(); });
+  // (not while the portrait fullscreen player is up - it turns the phone
+  // to landscape on purpose; closeVideo re-checks once it's closed)
+  let fsVideo = false;
+  addEventListener('resize', () => { if (!fsVideo && (innerHeight > innerWidth) !== PORTRAIT) location.reload(); });
 
   // --- look (design px) ---
   const CX = 960;        // hueco center
@@ -1202,10 +1282,17 @@
     return [
       { w: 200 * UI, h: 139 * UI, cy: CY, r: 1, rt: 1, hh: 0, lp: 0, lg: 0, gap: 7 * UI, or: 1, drop: 0, bi: 3, bx: 863, ks: UI, bo: 1, bt: 0, duration: 700 },
       { w, h, cy: CY, r: 12 * UI, rt: 12 * UI, hh: 0, lp: 1, lg: 1, gap, or: 29 * UI, drop: 0, bi: 18.4, bx: 503.4, ks: null, bo: 1, bt: 0, duration: 1370 },
-      { w, h: h - hh - gap, cy: CY + (hh + gap) / 2, r: 12 * UI, rt: 0, hh, lp: 1, lg: 1, gap, or: 29 * UI, drop: 1, bi: 18.4, bx: 417, ks: 'fit', bo: 0, bt: 0.6, duration: 700 },
+      { w, h: h - hh - gap, cy: CY + (hh + gap) / 2, r: 12 * UI, rt: 0, hh, lp: 1, lg: 1, gap, or: 29 * UI, drop: 1, bi: 18.4, bx: 417, ks: 'fit', bo: 1, bt: 0, duration: 700 },
     ];
   }
   const STATES = PORTRAIT ? portraitStates() : LANDSCAPE_STATES;
+  // portrait botonera = a dial (see renderDial): row pitch = the
+  // brackets' own height, so they frame exactly one number between two
+  // bars; DIAL_W is the window's width between them (content px)
+  // DIAL_K: the dial's brackets, bigger than the logo's; DIAL_NUM_K:
+  // the number in the window, bigger than the rest
+  const DIAL_K = 1.25, DIAL_NUM_K = 1.4;
+  const DIAL_ROW = 124.3 * DIAL_K, DIAL_W = 110 * DIAL_K, DIAL_FADE = 3;
 
   // --- the globe video ---
   // frame: the source video's own size; center/diameter: where the globe
@@ -1302,6 +1389,7 @@
   const separatorWin = document.getElementById('separator-win');
   const navEl = document.getElementById('nav');
   let navAnchor = null, navY = 0; // see placeNav
+  let navCap = null; // the capitals' middle, from the bar's top (see measureNavAnchor)
   const bracketLeft = document.getElementById('bracket-left');
   const bracketRight = document.getElementById('bracket-right');
   const bracketLeftThin = document.getElementById('bracket-left-thin');
@@ -1551,6 +1639,12 @@
   const headerInfo = document.getElementById('header-info');
   let lastState = null;
   const headerBox = { x: 0, y: 0, w: 0, h: 0 }; // the header's black, stage px (setState)
+  const fakePushEl = document.getElementById('fake-push');
+  let fakePushP = null; // the band's progress 0..1 while it runs, null = off
+  // the video info's extra scale (1, or less when a long title wouldn't
+  // fit between "Diego Tavella" and the edge - portrait) + those limits
+  let hiFit = 1, logoRightX = 0, infoRightX = 0;
+  const HEADER_TEXT_K = 0.8; // the header's text blocks, 20% smaller
   function setState(state) {
     lastState = state;
     const { w, h, r, gap, or } = state;
@@ -1605,8 +1699,18 @@
     const ks = state.ksv ?? blockScaleFor(state);
     contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
     const bx = state.bx ?? (L + 3);
-    bracketLeft.style.transform = t(bx, CY - 124.3 / 2);
-    bracketRight.style.transform = t(1920 - bx - 24.2, CY - 124.3 / 2);
+    let lbx = bx, rbx = 1920 - bx - 24.2, bk = 1;
+    if (PORTRAIT) {
+      // they close in from the sides onto the dial's window as the header
+      // forms (square -> botonera)
+      // (growing to DIAL_K around their own centers on the way)
+      const hb0 = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
+      bk = 1 + (DIAL_K - 1) * hb0;
+      lbx += ((960 - DIAL_W / 2 - 25.3 * (DIAL_K + 1) / 2) - lbx) * hb0;
+      rbx += ((960 + DIAL_W / 2 + 24.2 * (DIAL_K - 1) / 2) - rbx) * hb0;
+    }
+    bracketLeft.style.transform = `${t(lbx, CY - 124.3 / 2)} scale(${bk})`;
+    bracketRight.style.transform = `${t(rbx, CY - 124.3 / 2)} scale(${bk})`;
     bracketLeftThin.style.transform = bracketLeft.style.transform;
     bracketRightThin.style.transform = bracketRight.style.transform;
     const bt = String(state.bt ?? 0);
@@ -1628,6 +1732,13 @@
       const k = (GLOBE_DIAMETER / globe.cfg.diameter) * globeScale;
       globe.el.style.transform =
         `${t(gx - globe.cfg.centerX, gy - globe.cfg.centerY)} rotate(${GLOBE_ROTATE}deg) scale(${k})`;
+    }
+    // the fake background push (see #fake-push): its band from just left
+    // of the hueco to just past its right edge
+    if (fakePushP !== null) {
+      fakePushEl.style.width = gap + 'px';
+      fakePushEl.style.height = STAGE_H + 'px';
+      fakePushEl.style.transform = t((L - gap) + (w + gap) * fakePushP, 0);
     }
     // the onda's canvas IS the hueco (see onda below), riding with the cyan
     ondaEl.style.transform = t(L + cyanX, Tp + shapeOffset['cyan-shape'] * push);
@@ -1680,10 +1791,19 @@
     // header's spot); lg = how far it's turned from black (the white/gray
     // pair, split at the header's edge - see .logo-window)
     const lp = state.lp ?? 0, lg = state.lg ?? 0;
-    const ls0 = 1.1 * UI, ls1 = 1.4 * UI;
+    // hf: how far the header has formed (0 at the square, 1 at the
+    // botonera). In the header both text blocks ("Diego Tavella" and the
+    // video info) shrink by HEADER_TEXT_K and sit centered on the header's
+    // height; at the square the logo keeps its size and spot over the
+    // cyan. Eased along with the header.
+    const hf = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
+    const hk = 1 - (1 - HEADER_TEXT_K) * hf;
+    const headerMid = headerBox.y + headerBox.h / 2;
+    const ls0 = 1.1 * UI, ls1 = 1.4 * UI * hk;
     const ls = ls0 + (ls1 - ls0) * lp;
+    const lyTop = (oT + 59.7 * UI) + ((headerMid - 36 * ls1) - (oT + 59.7 * UI)) * hf;
     const lx = (960 - 131 * ls0 / 2) + ((oL + 59.7 * UI) - (960 - 131 * ls0 / 2)) * lp;
-    const ly = (CY - 72 * ls0 / 2) + ((oT + 59.7 * UI) - (CY - 72 * ls0 / 2)) * lp;
+    const ly = (CY - 72 * ls0 / 2) + (lyTop - (CY - 72 * ls0 / 2)) * lp;
     logoBlack.style.transform = `${t(lx, ly)} scale(${ls})`;
     // split line = the header's bottom edge (the black's sweep)
     const hb = Tp - gap;
@@ -1698,8 +1818,13 @@
       logoGray.style.opacity = String(lg);
       lastLg = lg;
     }
-    // video info: right edge on the back arrow's, centered on the logo ink
-    headerInfo.style.transform = `${t(Rt - logoInset, oT + (59.7 + 50.4) * UI)} scale(${UI}) translate(-100%, -50%)`;
+    // video info: right edge mirroring the logo's inset, centered on the
+    // header's height like the logo
+    const infoR = Rt - logoInset;
+    const infoY = (oT + (59.7 + 50.4) * UI) + (headerMid - (oT + (59.7 + 50.4) * UI)) * hf;
+    headerInfo.style.transform = `${t(infoR, infoY)} scale(${UI * hiFit * hk}) translate(-100%, -50%)`;
+    logoRightX = lx + 131 * ls;
+    infoRightX = infoR;
 
     // outline pieces (see #outline): outer box snapped to screen pixels
     // (x0/y0/x1/y1, computed above with the header)
@@ -1773,10 +1898,13 @@
       globeStarting = true;
       globe.play();
     }
+    const fakePush = PORTRAIT && current === BOTONERA && next === SQUARE;
+    if (fakePush) fakePushEl.classList.add('on');
     const start = performance.now();
     (function frame(now) {
       const p = Math.min(1, (now - start) / b.duration);
       const e = ease(p);
+      if (fakePush) fakePushP = e;
       const mix = (k) => a[k] + (b[k] - a[k]) * e;
       if (hidingGlobe) globeScale = 1 - e;
       setState({ w: mix('w'), h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: mix('lp'), lg: mix('lg'), ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bo: mix('bo'), bt: mix('bt') });
@@ -1787,6 +1915,7 @@
         if (globeScale === 0) showGlobe();
       }
       if (p < 1) { requestAnimationFrame(frame); return; }
+      if (fakePush) { fakePushP = null; fakePushEl.classList.remove('on'); }
       current = next;
       if (hidingGlobe && globe) globe.pause();
       transitionRunning = false;
@@ -1929,7 +2058,7 @@
       const bar = document.createElement('div');
       bar.className = 'bot-bar';
       botoneraEl.appendChild(bar);
-      botBars.push({ el: bar, fromX: side < 0 ? BOT_INNER_L : BOT_INNER_R, toX: 960 + side * BOT_GAP * i });
+      botBars.push({ el: bar, k: side * i, fromX: side < 0 ? BOT_INNER_L : BOT_INNER_R, toX: 960 + side * BOT_GAP * i });
     });
   }
   for (let i = 1; i <= 8; i++) {
@@ -1944,15 +2073,113 @@
     cell.appendChild(num);
     botoneraEl.appendChild(cell);
     botCells.push(cell);
-    cell.addEventListener('mouseenter', () => { showHeaderInfo(i - 1); showPreview(i - 1); });
-    cell.addEventListener('mouseleave', () => { headerInfo.classList.remove('visible'); hidePreview(); });
-    // (portrait: no player yet - it gets its own design)
+    cell.addEventListener('mouseenter', () => { if (!PORTRAIT) { showHeaderInfo(i - 1); showPreview(i - 1); } });
+    cell.addEventListener('mouseleave', () => { if (!PORTRAIT) { headerInfo.classList.remove('visible'); hidePreview(); } });
     cell.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (PORTRAIT || !botoneraEl.classList.contains('live')) return;
-      hidePreview();
-      openVideo(i - 1, num);
+      if (!botoneraEl.classList.contains('live')) return;
+      if (!PORTRAIT) { hidePreview(); openVideo(i - 1, num); return; }
+      // portrait (the dial): tapping the number in the window opens it;
+      // tapping another one turns the dial to it (which selects it -
+      // info + preview in the header)
+      if (performance.now() - dialDraggedAt < 350) return; // the drag's own click
+      if (selectedCell === i - 1 && Math.round(dialPos) === i - 1) { openVideoPortrait(i - 1); return; }
+      dialTo(i - 1);
     });
+  }
+  // portrait: the botonera is a DIAL. The numbers and their bars form a
+  // column that slides as one block under the finger; the (bold)
+  // brackets hold still and frame exactly one number between two bars.
+  // That number is bold and at 100%, its two bars hidden behind the
+  // brackets; outside the window everything fades out, up from the top
+  // bracket and down from the bottom one. Elastic, one number at a time:
+  // a drag stretches toward the next number but never a whole row, and
+  // on release it springs onto it (or back). Transform + opacity only.
+  let dialPos = 0;   // the number in the window (0 = 01), fractional while moving
+  let dialRun = 0;   // bumped to stop a running settle
+  const dialBars = [];
+  if (PORTRAIT) {
+    for (let k = 0; k < 7; k++) {
+      const bar = document.createElement('div');
+      bar.className = 'bot-bar';
+      botoneraEl.appendChild(bar);
+      dialBars.push(bar);
+    }
+  }
+  function renderDial() {
+    const half = DIAL_ROW / 2;
+    const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / (DIAL_FADE * DIAL_ROW));
+    const near = Math.round(dialPos);
+    botCells.forEach((cell, n) => {
+      const y = CY + (n - dialPos) * DIAL_ROW, d = Math.abs(y - CY);
+      const grow = d <= half ? 1 + (DIAL_NUM_K - 1) * (1 - d / half) : 1;
+      cell.style.transform = `translate(${960 - BOT_GAP / 2}px, ${y - 23.4}px) scale(${grow})`;
+      cell.style.opacity = d <= half ? 1 - 0.4 * (d / half) : outside(d);
+      cell.classList.toggle('sel', n === near);
+    });
+    dialBars.forEach((bar, k) => {
+      const y = CY + (k + 0.5 - dialPos) * DIAL_ROW, d = Math.abs(y - CY);
+      bar.style.transform = `translate(959px, ${y - 23.4}px) rotate(90deg)`;
+      bar.style.opacity = d <= half ? 0.6 : outside(d); // never above 60%
+    });
+  }
+  // damped spring, 0 -> 1 with a small overshoot (the elastic stop)
+  const dialSpring = (p) => 1 - Math.exp(-6 * p) * Math.cos(9 * p);
+  function dialTo(target) {
+    const from = dialPos, start = performance.now(), run = ++dialRun;
+    (function frame(now) {
+      if (run !== dialRun) return;
+      const p = Math.min(1, (now - start) / 520);
+      dialPos = p < 1 ? from + (target - from) * dialSpring(p) : target;
+      renderDial();
+      if (p < 1) { requestAnimationFrame(frame); return; }
+      if (target !== selectedCell) selectCell(target);
+    })(start);
+  }
+  let dialDrag = null, dialDraggedAt = 0;
+  if (PORTRAIT) {
+    const rowPx = () => DIAL_ROW * blockScaleFor(STATES[BOTONERA]) * stageScale(); // one row, in screen px
+    viewport.addEventListener('pointerdown', (e) => {
+      if (current !== BOTONERA || animating || fsVideo || !botoneraEl.classList.contains('live')) return;
+      dialDrag = { x: e.clientX, y: e.clientY, pos0: Math.round(dialPos), moved: false };
+      dialRun++; // hold a settle that's still running
+    });
+    addEventListener('pointermove', (e) => {
+      if (!dialDrag) return;
+      const dx = e.clientX - dialDrag.x, dy = e.clientY - dialDrag.y;
+      if (!dialDrag.moved) {
+        if (Math.abs(dy) < 8 || Math.abs(dy) < Math.abs(dx)) return; // not (yet) a vertical drag
+        dialDrag.moved = true;
+      }
+      const r = -dy / rowPx();
+      let disp = r / (1 + Math.abs(r)); // follows less and less, never a whole row
+      const to = dialDrag.pos0 + disp;
+      if (to < 0 || to > 7) disp *= 0.35; // past 01 / 08: stiffer
+      dialPos = dialDrag.pos0 + disp;
+      renderDial();
+    });
+    const release = () => {
+      if (!dialDrag) return;
+      const d = dialDrag;
+      dialDrag = null;
+      if (d.moved) dialDraggedAt = performance.now();
+      const disp = dialPos - d.pos0;
+      const step = Math.abs(disp) > 0.3 ? Math.sign(disp) : 0;
+      dialTo(Math.max(0, Math.min(7, d.pos0 + step)));
+    };
+    addEventListener('pointerup', release);
+    addEventListener('pointercancel', release);
+  }
+  let selectedCell = -1;
+  function selectCell(index) {
+    selectedCell = index;
+    botCells.forEach((c, n) => c.classList.toggle('sel', n === index));
+    showHeaderInfo(index);
+    showPreview(index);
+  }
+  function clearSelection() {
+    selectedCell = -1;
+    botCells.forEach((c) => c.classList.remove('sel'));
   }
   // the videos and their info, from the current site's BOTONERA_VIDEOS
   // (src + per-video framing: startAt seconds, frameH/cropTop/cropBottom
@@ -1975,19 +2202,27 @@
     document.getElementById('header-info-tag').textContent = info.tag;
     document.getElementById('header-info-number').textContent = String(index + 1).padStart(2, '0');
     layoutHeaderInfo();
+    if (PORTRAIT) {
+      // widest it can be: from the logo's right edge (plus the texts'
+      // margin) to its own right edge
+      const room = infoRightX - logoRightX - (59.7 * UI - T);
+      hiFit = Math.min(1, room / (headerInfo.offsetWidth * UI * HEADER_TEXT_K));
+      setState(lastState);
+    }
     headerInfo.classList.add('visible');
   }
   // header preview: one shared, muted, looping <video>, its src swapped
   // per number (the same files the player opens, streamed). Sized to the
   // header when shown - the botonera holds still while it's up.
   const previewWin = document.getElementById('header-preview');
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) previewWin.classList.add('lite');
   const previewVideo = document.getElementById('header-preview-video');
   let previewIndex = -1;
   // no sound, ever (the attribute alone only sets the default)
   previewVideo.muted = true;
   previewVideo.volume = 0;
   function showPreview(index) {
-    if (PORTRAIT || !canHover || !botoneraEl.classList.contains('live')) return;
+    if ((!PORTRAIT && !canHover) || !botoneraEl.classList.contains('live')) return;
     const st = lastState, entry = VIDEO_INFO[index];
     // exactly over the header's black (tucked under the outline like it)
     previewWin.style.width = headerBox.w + 'px';
@@ -2275,6 +2510,21 @@
   }
 
   function closeVideo() {
+    if (videoOverlay.classList.contains('fs')) {
+      videoOverlay.classList.remove('fs');
+      if (screen.orientation && screen.orientation.unlock) { try { screen.orientation.unlock(); } catch (e) {} }
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if ((document.fullscreenElement || document.webkitFullscreenElement) && exit) {
+        const r = exit.call(document); // (Safari's returns nothing)
+        if (r && r.catch) r.catch(() => {});
+      }
+      // back in the page: if the phone stayed sideways, reload into that
+      // layout (the resize check was off while the player was up)
+      setTimeout(() => {
+        fsVideo = false;
+        if ((innerHeight > innerWidth) !== PORTRAIT) location.reload();
+      }, 600);
+    }
     videoOverlay.classList.remove('visible');
     document.querySelector('.viewport').classList.remove('receded');
     botoneraVideo.pause();
@@ -2282,26 +2532,95 @@
     videoControls.classList.remove('idle');
   }
 
+  // portrait: fullscreen, and a horizontal video locks the screen to
+  // landscape - the phone has to be turned (Android). Where a page can't
+  // go fullscreen (iPhone), the browser's own fullscreen video player
+  // takes over, which follows the phone's rotation.
+  function openVideoPortrait(index) {
+    const entry = VIDEO_INFO[index];
+    if (!entry) return;
+    hidePreview();
+    fsVideo = true;
+    videoPlayer.style.width = '';
+    videoPlayer.style.height = '';
+    if (botoneraVideo.getAttribute('src') !== entry.src) botoneraVideo.setAttribute('src', entry.src);
+    botoneraVideo.currentTime = entry.startAt || 0;
+    botoneraVideo.muted = false;
+    vcSeek.value = 0;
+    videoOverlay.classList.add('fs', 'visible');
+    const fs = videoOverlay.requestFullscreen || videoOverlay.webkitRequestFullscreen;
+    if (fs) {
+      Promise.resolve(fs.call(videoOverlay)).then(() => {
+        if (entry.aspect !== 'square' && screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      }).catch(() => {});
+    } else if (botoneraVideo.webkitEnterFullscreen) {
+      botoneraVideo.addEventListener('webkitendfullscreen', closeVideo, { once: true });
+      botoneraVideo.play().then(() => botoneraVideo.webkitEnterFullscreen()).catch(() => {});
+    }
+    botoneraVideo.play().catch(() => {});
+    wakeVideoControls();
+  }
+  // the page stops being seen (screen turned off, app or tab switched):
+  // the player closes - paused, out of fullscreen - so waking the device
+  // lands back on the botonera; the header preview stops too
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) return;
+    if (videoOverlay.classList.contains('visible')) {
+      if (botoneraVideo.webkitDisplayingFullscreen && botoneraVideo.webkitExitFullscreen) botoneraVideo.webkitExitFullscreen();
+      closeVideo();
+    }
+    hidePreview();
+  });
+  // leaving fullscreen (back gesture, Esc) closes the player too
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach((ev) => document.addEventListener(ev, () => {
+    if (!(document.fullscreenElement || document.webkitFullscreenElement) && videoOverlay.classList.contains('fs')) closeVideo();
+  }));
   // click anywhere on the overlay (backdrop or video itself) closes it
-  // - the controls bar already stops its own clicks from bubbling here
-  videoOverlay.addEventListener('click', closeVideo);
+  // - the controls bar already stops its own clicks from bubbling here.
+  // Fullscreen (portrait): a first tap only brings the controls back if
+  // they had hidden - there's no hover to wake them there.
+  videoOverlay.addEventListener('click', () => {
+    if (videoOverlay.classList.contains('fs') && videoControls.classList.contains('idle')) { wakeVideoControls(); return; }
+    closeVideo();
+  });
   const barAt = (x) => `translate(${x - 1}px, ${CY - 23.4}px)`;
+  // a bar's resting place: in the row (landscape), or lying across the
+  // column between two numbers (portrait)
+  const barTo = (bar) => barAt(bar.toX);
   const armH = tagPlus.querySelector('.plus-arm-h');
   const armV = tagPlus.querySelector('.plus-arm-v');
   function buildBotonera() {
+    if (PORTRAIT) {
+      // the plus bows out; the dial fades in on 01, which gets selected
+      tagPlus.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' });
+      dialRun++;
+      dialPos = 0;
+      renderDial();
+      botoneraEl.getAnimations().forEach((a) => a.cancel());
+      botoneraEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BOT_FORM_MS + BOT_FADE_MS, easing: 'ease', fill: 'forwards' })
+        .finished.then(() => {
+          if (current !== BOTONERA && !transitionRunning) return;
+          botoneraEl.classList.add('live');
+          selectCell(0);
+        }).catch(() => {});
+      return;
+    }
     // the plus becomes the middle bar: arms collapse to one thin, taller,
     // gray vertical bar
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
-    armH.animate([{ transform: getComputedStyle(armH).transform }, { transform: 'scaleX(0)' }], opts);
-    armV.animate([{ transform: getComputedStyle(armV).transform }, { transform: `scale(${2 / 7.15}, 1.5)` }], opts);
+    // (portrait: a thin HORIZONTAL bar, the column's middle divider)
+    armH.animate([{ transform: getComputedStyle(armH).transform }, { transform: PORTRAIT ? `scale(1.5, ${2 / 7.15})` : 'scaleX(0)' }], opts);
+    armV.animate([{ transform: getComputedStyle(armV).transform }, { transform: PORTRAIT ? 'scaleY(0)' : `scale(${2 / 7.15}, 1.5)` }], opts);
     tagPlus.animate([{ opacity: 1 }, { opacity: 0.6 }], opts);
     // the other six bars: on desktop they slide out from the brackets'
     // inner edges, like the current site; on touch they just fade in
     // where they end up (lighter)
-    const done = botBars.map(({ el, fromX, toX }) => el.animate(
-      canHover
-        ? [{ transform: barAt(fromX), opacity: 1 }, { transform: barAt(toX), opacity: 0.6 }]
-        : [{ transform: barAt(toX), opacity: 0 }, { transform: barAt(toX), opacity: 0.6 }],
+    const done = botBars.map((bar) => bar.el.animate(
+      canHover && !PORTRAIT
+        ? [{ transform: barAt(bar.fromX), opacity: 1 }, { transform: barTo(bar), opacity: 0.6 }]
+        : [{ transform: barTo(bar), opacity: 0 }, { transform: barTo(bar), opacity: 0.6 }],
       opts
     ).finished);
     Promise.all(done).then(() => {
@@ -2316,11 +2635,17 @@
     hidePreview();
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
     botCells.forEach((c) => { c.getAnimations().forEach((a) => a.cancel()); });
-    botBars.forEach(({ el, fromX, toX }) => {
-      el.getAnimations().forEach((a) => a.cancel());
-      el.animate(canHover
-        ? [{ transform: barAt(toX), opacity: 0.6 }, { transform: barAt(fromX), opacity: 0 }]
-        : [{ transform: barAt(toX), opacity: 0.6 }, { transform: barAt(toX), opacity: 0 }], opts);
+    clearSelection();
+    if (PORTRAIT) {
+      dialRun++;
+      botoneraEl.getAnimations().forEach((a) => a.cancel());
+      botoneraEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' });
+    }
+    if (!PORTRAIT) botBars.forEach((bar) => {
+      bar.el.getAnimations().forEach((a) => a.cancel());
+      bar.el.animate(canHover && !PORTRAIT
+        ? [{ transform: barTo(bar), opacity: 0.6 }, { transform: barAt(bar.fromX), opacity: 0 }]
+        : [{ transform: barTo(bar), opacity: 0.6 }, { transform: barTo(bar), opacity: 0 }], opts);
     });
     // the plus goes back to being a plus (playTagline shows it again)
     [armH, armV, tagPlus].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
@@ -2419,20 +2744,35 @@
     }
     navEl.classList.toggle('visible', (current === SQUARE || current === BOTONERA) && (!animating || navWorking));
   }
-  // the bar sits centered at the bottom: on the "|" when it shows
-  // CONTACT | WORK (so the two words balance around the hueco's middle),
-  // on its own middle otherwise. navAnchor is that point, in the bar's
-  // own (unscaled) px - measured when the mode changes.
+  // the bar sits centered at the bottom: the whole <<< CONTACT | WORK >>>
+  // block at the square; with a lone HOME (Contact's HOME >>>, the
+  // botonera's <<< HOME) the WORD is what's centered - in line with the
+  // dial's column - and the chevrons hang off its side. navAnchor is that
+  // point, in the bar's own (unscaled) px - measured when the mode changes.
   function measureNavAnchor() {
-    const sep = document.getElementById('nav-sep');
-    navAnchor = navEl.classList.contains('m-square')
-      ? sep.offsetLeft + sep.offsetWidth / 2
-      : navEl.offsetWidth / 2;
+    const home = document.getElementById('nav-home');
+    const square = navEl.classList.contains('m-square');
+    navAnchor = square ? navEl.offsetWidth / 2 : home.offsetLeft + home.offsetWidth / 2;
+    // capitals of the main word(s) on WATCH!'s line: the word's own top
+    // (inside its 10px tap padding) + its capitals' middle
+    const ref = square ? document.getElementById('nav-work') : home;
+    const m = lineMetrics(ref, 'H', parseFloat(getComputedStyle(ref).fontSize));
+    navCap = ref.offsetTop + 10 + (m.top + m.base) / 2;
   }
   function placeNav() {
     if (!PORTRAIT) return;
-    if (navAnchor === null) measureNavAnchor();
-    navEl.style.transform = `translate(${CX}px, ${navY}px) scale(${UI}) translate(${-navAnchor}px, ${-contactCapCenter()}px)`;
+    if (navAnchor === null || navCap === null) measureNavAnchor();
+    navEl.style.transform = `translate(${CX}px, ${navY}px) scale(${UI}) translate(${-navAnchor}px, ${-navCap}px)`;
+  }
+  // eases the bar's anchor to another point of it (transform only)
+  function slideNavAnchor(to, ms) {
+    const from = navAnchor, start = performance.now();
+    (function frame(now) {
+      const p = Math.min(1, (now - start) / ms);
+      navAnchor = from + (to - from) * easeOut(p);
+      placeNav();
+      if (p < 1) requestAnimationFrame(frame);
+    })(start);
   }
   function setNavProgress(p) {
     navFill.style.transform = `translateX(${(p - 1) * 100}%)`;
@@ -2482,6 +2822,9 @@
     navWorking = true;
     navEl.classList.add('working');
     updateContactButton();
+    // WORK alone is left: it slides to the middle while the rest fades
+    const work = document.getElementById('nav-work');
+    slideNavAnchor(work.offsetLeft + work.offsetWidth / 2, 400);
     stopOnda();
     // the window is only sized here - the hueco holds still from now
     // until the clip is gone
@@ -2856,11 +3199,39 @@
       worstGap = Math.max(worstGap, now - prev);
       prev = now;
       if (now - last >= 1000) {
-        box.textContent = Math.round(frames * 1000 / (now - last)) + ' fps  min ' + Math.round(1000 / worstGap);
+        box.textContent = Math.round(frames * 1000 / (now - last)) + ' fps  min ' + Math.round(1000 / worstGap) + globeLine();
         frames = 0; last = now; worstGap = 0;
       }
       requestAnimationFrame(tick);
     })(last);
+    // the globe's own frames: how many it shows per second, the longest
+    // wait between two of them, and every stall ("tirón": a wait over
+    // 60ms, or frames the browser skipped) filed by what was going on -
+    // the video looping back to its start, an onda burst, or neither
+    const g = { shown: 0, prevAt: 0, prevTime: 0, prevCount: 0, gap: 0, loop: 0, onda: 0, other: 0, lastLoopAt: -1e9 };
+    function globeLine() {
+      const line = `\nglobo ${g.shown} fps  salto ${Math.round(g.gap)}ms\ntirones: loop ${g.loop}  onda ${g.onda}  otro ${g.other}`;
+      g.shown = 0; g.gap = 0;
+      return line;
+    }
+    if (!globe || !('requestVideoFrameCallback' in HTMLVideoElement.prototype)) return;
+    (globe.medias || [globe.media]).forEach((media) => media.requestVideoFrameCallback(function onFrame(now, meta) {
+      if (media !== globe.media) { media.requestVideoFrameCallback(onFrame); return; } // the copy waiting its turn
+      if (meta.mediaTime < g.prevTime - 1) g.lastLoopAt = now; // back at the start (a turn change, or a loop)
+      if (g.prevAt && !media.paused) {
+        // (each copy counts its own frames - only compare within one)
+        const wait = now - g.prevAt, skipped = g.prevMedia === media && meta.presentedFrames - g.prevCount > 1;
+        g.gap = Math.max(g.gap, wait);
+        if (wait > 60 || skipped) {
+          if (now - g.lastLoopAt < 400) g.loop++;
+          else if (ondaPlaying) g.onda++;
+          else g.other++;
+        }
+      }
+      g.shown++;
+      g.prevAt = now; g.prevTime = meta.mediaTime; g.prevCount = meta.presentedFrames; g.prevMedia = media;
+      media.requestVideoFrameCallback(onFrame);
+    }));
   })();
 </script>
 </body>
