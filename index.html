@@ -212,6 +212,16 @@
      pieces, so the white pieces clip it to the hueco for free - no rounded
      clipping mask (the thing Chrome on the tablet paid most for on the
      current site). Built in JS - see setupGlobe. */
+  #onda {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    will-change: transform, opacity;
+    pointer-events: none;
+  }
+  #onda.visible { opacity: 1; }
   #globe {
     position: absolute;
     left: 0;
@@ -578,23 +588,59 @@
   }
   #idle-hit.on { display: block; }
 
-  /* the black outline: ONE real bordered, rounded box drawn by the
-     browser. It has to resize to follow the hueco, so it repaints every
-     frame - but it's a single empty box on its own layer. Its edges are
-     snapped to whole screen pixels (see outlineBoxFor) so the line never
-     lands between pixels and reads jagged. */
+  /* the black outline, built from pieces that only ever TRANSLATE - so it
+     never repaints while the rect grows (the single bordered box it used
+     to be had to be redrawn whole every frame, and in portrait on the
+     tablet it covers most of the screen - that was the stutter):
+     - four straight sides: long fixed-length black strips, each starting
+       inside its own corner and running on past the opposite one;
+     - four corners: a real CSS border arc (same rendering as the box it
+       replaces, so curves and straights match), on a white fill outside
+       the arc that hides the strips passing underneath;
+     - two white covers, right of and below the outline, hiding whatever
+       the strips run past.
+     Positions and thickness are snapped to whole screen pixels. The corner
+     pieces are the only thing that repaints, and only while the radius
+     changes (logo -> square) - they're tiny. */
   #outline {
     position: absolute;
     left: 0;
     top: 0;
-    box-sizing: border-box;
-    border: var(--t) solid #000;
-    will-change: transform;
-    contain: layout paint;
-    /* it spans the whole hueco - without this it swallowed the mouse
-       before the botonera numbers underneath could see it */
     pointer-events: none;
   }
+  #outline > div {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+  }
+  .ol-h { width: 4000px; height: var(--t); background: #000; }
+  .ol-v { width: var(--t); height: 4000px; background: #000; }
+  .ol-corner {
+    width: var(--ro);
+    height: var(--ro);
+    overflow: hidden;
+  }
+  .ol-corner::before {
+    content: '';
+    position: absolute;
+    width: calc(var(--ro) * 2);
+    height: calc(var(--ro) * 2);
+    box-sizing: border-box;
+    border: var(--t) solid #000;
+    border-radius: 50%;
+  }
+  #ol-tl { background: radial-gradient(circle at 100% 100%, transparent calc(var(--ro) - 0.5px), #fff calc(var(--ro) + 0.5px)); }
+  #ol-tr { background: radial-gradient(circle at 0% 100%, transparent calc(var(--ro) - 0.5px), #fff calc(var(--ro) + 0.5px)); }
+  #ol-bl { background: radial-gradient(circle at 100% 0%, transparent calc(var(--ro) - 0.5px), #fff calc(var(--ro) + 0.5px)); }
+  #ol-br { background: radial-gradient(circle at 0% 0%, transparent calc(var(--ro) - 0.5px), #fff calc(var(--ro) + 0.5px)); }
+  #ol-tl::before { left: 0; top: 0; }
+  #ol-tr::before { right: 0; top: 0; }
+  #ol-bl::before { left: 0; bottom: 0; }
+  #ol-br::before { right: 0; bottom: 0; }
+  .ol-cover { background: #fff; }
+  #ol-cover-r { width: 4000px; height: 8000px; }
+  #ol-cover-b { width: 8000px; height: 4000px; }
 
   /* password gate - before anything else. Plain white screen, the same
      thin spaced type as the site's labels, the typed characters as
@@ -714,7 +760,13 @@
     </div>
     <div class="outline-mask" id="outline-mask-tl"></div>
     <div class="outline-mask" id="outline-mask-tr"></div>
-    <div id="outline"></div>
+    <div id="outline">
+      <div class="ol-h" id="ol-top"></div><div class="ol-h" id="ol-bottom"></div>
+      <div class="ol-v" id="ol-left"></div><div class="ol-v" id="ol-right"></div>
+      <div class="ol-corner" id="ol-tl"></div><div class="ol-corner" id="ol-tr"></div>
+      <div class="ol-corner" id="ol-bl"></div><div class="ol-corner" id="ol-br"></div>
+      <div class="ol-cover" id="ol-cover-r"></div><div class="ol-cover" id="ol-cover-b"></div>
+    </div>
     <div id="idle-back"></div>
     <div id="idle">
       <div id="idle-rect"></div>
@@ -833,6 +885,15 @@
   // fdo_02, color-inverted (baked into the files - no CSS filter), cropped to the globe + satellite orbit
   // (672x528 out of 1920x1080 - measured over EVERY frame, with margin, so the satellite's whole orbit fits), one exact 181-frame loop cycle repeated 4x (24s - the browser's own loop restart costs a frame or two, so it should happen as rarely as possible), so there are far fewer pixels to decode
   const GLOBE_DESKTOP = { src: 'assets/videos/fdo_02_inv_web.webm?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
+  // onda (ondablanca), cropped to the 1088px-wide band its dots actually
+  // use (of 1920x1080), audio dropped; touch copy stacked + 728x720 per
+  // half (inside what the tablet's hardware decoder handles). reach: how
+  // far the burst spreads from its center, in the file's px - it's sized
+  // so that reach lands on the hueco's sides (landscape) or, rotated 90deg
+  // in portrait, its top and bottom
+  const ONDA_DESKTOP = { src: 'assets/videos/onda_web.webm?v=1', frameW: 1088, frameH: 1080, centerX: 544, centerY: 540, reach: 540 };
+  const ONDA_TOUCH = { src: 'assets/videos/onda_stacked.mp4?v=1', frameW: 728, frameH: 720, centerX: 364, centerY: 360, reach: 540 * 728 / 1088 };
+  const ONDA_EVERY_MS = 8000;
   const GLOBE_TOUCH = { src: 'assets/videos/fdo_02_inv_stacked.mp4?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
 
   const stage = document.getElementById('stage');
@@ -847,7 +908,10 @@
     el.style.height = (260 * UI) + 'px';
   });
   const viewport = document.getElementById('viewport');
-  const outlineEl = document.getElementById('outline');
+  const ol = {};
+  ['ol-top', 'ol-bottom', 'ol-left', 'ol-right', 'ol-tl', 'ol-tr', 'ol-bl', 'ol-br', 'ol-cover-r', 'ol-cover-b']
+    .forEach((id) => { ol[id] = document.getElementById(id); });
+  let lastRo = null;
   const pieces = {};
   document.querySelectorAll('.piece').forEach((el) => { pieces[el.id] = el; });
 
@@ -897,17 +961,22 @@
 
   let globeScale = 0; // 0 hidden (logo size), 1 full size
   let globeStarting = false; // playing early, still invisible - see goTo
-  let globe = null;   // { el, cfg, play(), pause() } - see setupGlobe
-  function setupGlobe() {
+  let globe = null;   // { el, cfg, media, play(), pause() } - see createAlphaVideo
+  let onda = null;
+  let ondaPlaying = false;
+  // a video with transparency, played the cheapest way per device: the
+  // VP9-alpha webm directly on desktop; on touch, the H.264 file with the
+  // alpha matte stacked under the color, recombined by a tiny WebGL shader
+  // (hardware decoded - VP9 alpha is always software, too slow on the
+  // tablet). keepPlaying() says whether the warm-up should leave it
+  // running. Returns { el, cfg, media, play(), pause() }.
+  function createAlphaVideo({ id, desktop, touch: touchCfg, loop, insertAt, keepPlaying }) {
     const touch = matchMedia('(pointer: coarse)').matches;
-    // under the separator preview and the brackets/tagline, like the
-    // current site
-    const insertAt = document.getElementById('separator');
     function nativeVideo(cfg) {
       const v = document.createElement('video');
-      v.id = 'globe';
+      v.id = id;
       v.muted = true;
-      v.loop = true;
+      v.loop = loop;
       v.playsInline = true;
       v.preload = 'auto';
       v.src = cfg.src;
@@ -916,7 +985,7 @@
       v.style.transformOrigin = `${cfg.centerX}px ${cfg.centerY}px`;
       stage.insertBefore(v, insertAt);
       primeVideo(v);
-      return { el: v, cfg, play: () => v.play().catch(() => {}), pause: () => v.pause() };
+      return { el: v, cfg, media: v, play: () => v.play().catch(() => {}), pause: () => v.pause() };
     }
     // warm-up: play the (still invisible) video just long enough to get
     // its first frame out, then pause. Starting the decoder cold at the
@@ -924,23 +993,23 @@
     // the tablet.
     function primeVideo(v, onFrame) {
       v.addEventListener('loadeddata', () => {
-        if (globeScale > 0) return; // already showing - leave it playing
+        if (keepPlaying()) return; // already showing - leave it playing
         v.play().then(() => {
-          const stop = () => { if (globeScale === 0 && !globeStarting) v.pause(); if (onFrame) onFrame(); };
+          const stop = () => { if (!keepPlaying()) v.pause(); if (onFrame) onFrame(); };
           if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(stop);
           else setTimeout(stop, 100);
         }).catch(() => {});
       }, { once: true });
     }
-    if (!touch) return nativeVideo(GLOBE_DESKTOP);
+    if (!touch) return nativeVideo(desktop);
 
-    const cfg = GLOBE_TOUCH;
+    const cfg = touchCfg;
     const canvas = document.createElement('canvas');
     canvas.width = cfg.frameW;
     canvas.height = cfg.frameH;
     const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false });
-    if (!gl) return nativeVideo(GLOBE_DESKTOP);
-    canvas.id = 'globe';
+    if (!gl) return nativeVideo(desktop);
+    canvas.id = id;
     canvas.style.width = cfg.frameW + 'px';
     canvas.style.height = cfg.frameH + 'px';
     canvas.style.transformOrigin = `${cfg.centerX}px ${cfg.centerY}px`;
@@ -950,7 +1019,7 @@
     // mobile browsers stop decoding a video that isn't in the DOM at all
     const source = document.createElement('video');
     source.muted = true;
-    source.loop = true;
+    source.loop = loop;
     source.playsInline = true;
     source.preload = 'auto';
     source.src = cfg.src;
@@ -1005,9 +1074,21 @@
     // warm-up (see primeVideo): gets the hardware decoder AND the WebGL
     // texture/shader going before the globe is ever shown
     primeVideo(source, draw);
-    return { el: canvas, cfg, play: () => source.play().catch(() => {}), pause: () => source.pause() };
+    return { el: canvas, cfg, media: source, play: () => source.play().catch(() => {}), pause: () => source.pause() };
   }
-  globe = setupGlobe();
+  // the globe: under the separator preview and the brackets/tagline
+  globe = createAlphaVideo({
+    id: 'globe', desktop: GLOBE_DESKTOP, touch: GLOBE_TOUCH, loop: true,
+    insertAt: document.getElementById('separator'),
+    keepPlaying: () => globeScale > 0 || globeStarting,
+  });
+  // the onda (dot burst) accent: plays once every ONDA_EVERY_MS, centered
+  // on the globe and just BEHIND it - same as the current site
+  onda = createAlphaVideo({
+    id: 'onda', desktop: ONDA_DESKTOP, touch: ONDA_TOUCH, loop: false,
+    insertAt: globe.el,
+    keepPlaying: () => ondaPlaying,
+  });
 
   let lastR = null, lastRt = null, lastOr = null, lastLg = null;
   // the text block's scale at the square (see setState): the left
@@ -1109,6 +1190,12 @@
       const k = (GLOBE_DIAMETER / globe.cfg.diameter) * globeScale;
       globe.el.style.transform =
         `${t(gx - globe.cfg.centerX, gy - globe.cfg.centerY)} rotate(${GLOBE_ROTATE}deg) scale(${k})`;
+      if (onda) {
+        const oc = onda.cfg;
+        const os = (PORTRAIT ? h / 2 : w / 2) / oc.reach;
+        onda.el.style.transform =
+          `${t(gx - oc.centerX, gy - oc.centerY)} rotate(${PORTRAIT ? 90 : 0}deg) scale(${os})`;
+      }
     }
     pieces['bar-top'].style.transform = t(spanX, Tp - BAR);
     pieces['bar-bottom'].style.transform = t(spanX, B);
@@ -1165,12 +1252,22 @@
     // video info: right edge on the back arrow's, centered on the logo ink
     headerInfo.style.transform = `${t(Rt - logoInset, oT + (59.7 + 50.4) * UI)} scale(${UI}) translate(-100%, -50%)`;
 
+    // outline pieces (see #outline): outer box snapped to screen pixels
     const snap = (v) => Math.round(v / U) * U;
-    const x = snap(L - gap - T), y = snap(Tp - gap - hh - T);
-    outlineEl.style.transform = t(x, y);
-    outlineEl.style.width = (snap(Rt + gap + T) - x) + 'px';
-    outlineEl.style.height = (snap(B + gap + T) - y) + 'px';
-    outlineEl.style.borderRadius = or + 'px';
+    const x0 = snap(L - gap - T), y0 = snap(Tp - gap - hh - T);
+    const x1 = snap(Rt + gap + T), y1 = snap(B + gap + T);
+    const ro = Math.max(or, T);
+    if (ro !== lastRo) { stage.style.setProperty('--ro', ro + 'px'); lastRo = ro; }
+    ol['ol-top'].style.transform = t(x0 + ro / 2, y0);
+    ol['ol-bottom'].style.transform = t(x0 + ro / 2, y1 - T);
+    ol['ol-left'].style.transform = t(x0, y0 + ro / 2);
+    ol['ol-right'].style.transform = t(x1 - T, y0 + ro / 2);
+    ol['ol-tl'].style.transform = t(x0, y0);
+    ol['ol-tr'].style.transform = t(x1 - ro, y0);
+    ol['ol-bl'].style.transform = t(x0, y1 - ro);
+    ol['ol-br'].style.transform = t(x1 - ro, y1 - ro);
+    ol['ol-cover-r'].style.transform = t(x1, spanY);
+    ol['ol-cover-b'].style.transform = t(spanX, y1);
   }
 
   // cubic-bezier(0.65, 0, 0.35, 1) - ease-in-out
@@ -1214,6 +1311,7 @@
     animating = true;
     transitionRunning = true;
     updateContactButton();
+    if (next !== SQUARE) stopOnda(); // the onda lives at the square only
     if (current === SQUARE && next === BOTONERA) collapseTagline();
     else if (current === SQUARE) hideTagline();
     if (current === BOTONERA) teardownBotonera();
@@ -1329,8 +1427,32 @@
   const tagTransform = (el, x) => `translate(${x - (el === tagRight ? 965 : 0)}px, -50%)`;
   const placeTag = (el, x) => { el.style.transform = tagTransform(el, x); };
   let spinTimer = null, spinTurns = 0;
+  // onda accent loop: first burst right as the tagline finishes arming,
+  // then one every ONDA_EVERY_MS, like the current site
+  let ondaTimer = null;
+  function playOnda() {
+    // only at the square (not the botonera), and skipped while the
+    // separator (athletes) plays - WATCH! hover / beat
+    if (!onda || watchOpen || current !== SQUARE || animating) return;
+    ondaPlaying = true;
+    onda.media.currentTime = 0;
+    onda.play();
+    onda.el.classList.add('visible');
+  }
+  if (onda) {
+    onda.media.addEventListener('ended', () => {
+      ondaPlaying = false;
+      onda.el.classList.remove('visible');
+    });
+  }
+  function startOndaLoop() {
+    if (ondaTimer) return;
+    playOnda();
+    ondaTimer = setInterval(playOnda, ONDA_EVERY_MS);
+  }
   function playTagline() {
     taglineShown = true;
+    setTimeout(startOndaLoop, TAGLINE_SWAP_MS);
     layoutTagline();
     // each word starts where the OTHER one ends up (hidden behind its own
     // window's edge at the plus) and slides out to its place
@@ -1637,9 +1759,16 @@
     watchProgressText.style.transform = `translateX(${(1 - p) * 100}%)`;
   }
   let watchOpen = false;
+  function stopOnda() {
+    if (!onda || !ondaPlaying) return;
+    onda.pause();
+    ondaPlaying = false;
+    onda.el.classList.remove('visible');
+  }
   function openWatch() {
     if (watchOpen || current !== SQUARE || animating) return;
     watchOpen = true;
+    stopOnda(); // no dot burst over the athletes
     watchEl.classList.add('triangle');
     watchClip.classList.add('open');
     separatorEl.currentTime = 0;
