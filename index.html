@@ -21,6 +21,8 @@
     inset: 0;
     overflow: hidden;
   }
+  /* portrait: horizontal swipes are ours, not the browser's */
+  .portrait .viewport { touch-action: none; }
 
   /* 1920x1080 design space, scaled to fit the viewport (fitStage) - same
      coordinate system as the current site, so pieces can move over */
@@ -109,11 +111,24 @@
     will-change: transform;
   }
   #watch.visible { display: block; }
-  /* generous invisible hit area around the small square */
+  /* invisible hit area: at the square it spans the whole OPEN button -
+     from the start of "WATCH!" to the triangle's tip - plus 10% more on
+     each side (sized in JS, see sizeWatchHit), so moving onto the word
+     doesn't drop the hover. At the botonera (back arrow) it's just a
+     margin around the arrow. */
   #watch::before {
     content: '';
     position: absolute;
-    inset: -20px;
+    left: var(--hit-l, -20px);
+    width: var(--hit-w, 59px);
+    top: -16px;
+    height: 51px;
+  }
+  #watch.back::before {
+    left: -20px;
+    width: 59px;
+    top: -20px;
+    height: 59px;
   }
   #watch-shape {
     width: 19px;
@@ -190,8 +205,10 @@
     position: absolute;
     left: 0;
     top: 0;
-    color: #fff;
-    font: 100 16px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /* dark gray, Helvetica Neue Regular, sized so its capitals are as tall
+       as the WATCH! square (19px) - see contactCapCenter */
+    color: #333;
+    font: 400 26.4px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
     letter-spacing: 1px;
     white-space: nowrap;
     user-select: none;
@@ -206,6 +223,9 @@
     opacity: 1;
     pointer-events: auto;
   }
+  /* same button as "Home" (over Contact's gray): same size, weight and
+     alignment, in white */
+  #contact-button.home { color: #fff; }
 
   /* the globe: fixed size (the video's own frame), moved/rotated/scaled
      only through transform. It sits between the shapes and the white
@@ -217,7 +237,6 @@
     left: 0;
     top: 0;
     opacity: 0;
-    transition: opacity 0.2s ease;
     will-change: transform, opacity;
     pointer-events: none;
   }
@@ -338,6 +357,71 @@
     pointer-events: none;
   }
   #separator.visible { visibility: visible; }
+  /* its window, placed at the hueco's top-left. In portrait it's the
+     hueco's size and clips (a plain rectangle): there the video's "cover"
+     scale makes it much wider than the hueco, and when it slides in
+     sideways (WORK swipe) it would otherwise cover the cyan. */
+  #separator-win {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+    pointer-events: none;
+  }
+  .portrait #separator-win { overflow: hidden; }
+
+  /* portrait navigation bar, centered at the bottom of the hueco where
+     Contact and WATCH! sit in landscape: <<< CONTACT | WORK >>>, or
+     HOME >>> (over Contact's gray) or <<< HOME (at the botonera). Swipes
+     drive it; tapping the words works too. */
+  #nav {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: none;
+    color: #fff;
+    font: 400 26.4px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    user-select: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    will-change: transform, opacity;
+  }
+  .portrait #nav { display: block; }
+  #nav.visible { opacity: 1; pointer-events: auto; }
+  #nav > span { display: inline-block; vertical-align: top; transition: opacity 0.3s ease; }
+  #nav .nav-word { cursor: pointer; padding: 10px; margin: -10px; }
+  #nav-work { font-weight: 500; position: relative; }
+  #nav-sep { margin: 0 0.5em; opacity: 0.6; }
+  .nav-chevs { font-weight: 300; letter-spacing: 0; }
+  #nav-chevs-l { margin-right: 0.6em; }
+  #nav-chevs-r { margin-left: 0.6em; }
+  .nav-chevs > span { display: inline-block; opacity: 0.6; }
+  /* which parts show per mode */
+  #nav.m-square #nav-home,
+  #nav.m-contact #nav-chevs-l, #nav.m-contact #nav-contact, #nav.m-contact #nav-sep, #nav.m-contact #nav-work,
+  #nav.m-bot #nav-chevs-r, #nav.m-bot #nav-contact, #nav.m-bot #nav-sep, #nav.m-bot #nav-work { display: none; }
+  /* during the WORK swipe everything but WORK fades out */
+  #nav.working #nav-chevs-l, #nav.working #nav-chevs-r,
+  #nav.working #nav-contact, #nav.working #nav-sep { opacity: 0; }
+  /* WORK fills in dark gray as the clip plays - same trick as WATCH!'s
+     #watch-progress (a window sliding right, its copy sliding back) */
+  #nav-work-fill {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    right: 10px;
+    bottom: 10px;
+    overflow: hidden;
+    transform: translateX(-100%);
+  }
+  #nav-work-fill > span {
+    display: block;
+    color: #333;
+    transform: translateX(100%);
+  }
 
   /* the botonera: the plus multiplies into thin gray bars that spread out
      between the (now thin, gray) brackets, and numbers 01-08 fade in, one
@@ -725,7 +809,7 @@
       <div class="disc tl"></div><div class="disc tr"></div><div class="disc bl"></div><div class="disc br"></div>
     </div>
 
-    <video id="separator" muted loop playsinline></video>
+    <div id="separator-win"><video id="separator" muted loop playsinline></video></div>
 
     <div id="content">
       <img class="bracket" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
@@ -776,6 +860,7 @@
     </div>
     <div id="idle-hit"></div>
     <div id="contact-button">Contact</div>
+    <div id="nav" class="m-square"><span class="nav-chevs" id="nav-chevs-l"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span><span class="nav-word" id="nav-contact">CONTACT</span><span id="nav-sep">|</span><span class="nav-word" id="nav-work">WORK<span id="nav-work-fill"><span>WORK</span></span></span><span class="nav-word" id="nav-home">HOME</span><span class="nav-chevs" id="nav-chevs-r"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span></div>
     <div id="watch-text-clip"><span id="watch-text">WATCH!<span id="watch-progress"><span id="watch-progress-text">WATCH!</span></span></span></div>
     <div id="watch"><div id="watch-shape"></div></div>
   </div>
@@ -803,6 +888,7 @@
   const STAGE_W = 1920;
   const STAGE_H = PORTRAIT ? Math.round(1920 * innerHeight / innerWidth) : 1080;
   const UI = PORTRAIT ? 2.2 : 1;
+  if (PORTRAIT) document.documentElement.classList.add('portrait');
   addEventListener('resize', () => { if ((innerHeight > innerWidth) !== PORTRAIT) location.reload(); });
 
   // --- look (design px) ---
@@ -885,14 +971,6 @@
   // fdo_02, color-inverted (baked into the files - no CSS filter), cropped to the globe + satellite orbit
   // (672x528 out of 1920x1080 - measured over EVERY frame, with margin, so the satellite's whole orbit fits), one exact 181-frame loop cycle repeated 4x (24s - the browser's own loop restart costs a frame or two, so it should happen as rarely as possible), so there are far fewer pixels to decode
   const GLOBE_DESKTOP = { src: 'assets/videos/fdo_02_inv_web.webm?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
-  // onda (ondablanca), cropped to the 1088px-wide band its dots actually
-  // use (of 1920x1080), audio dropped; touch copy stacked + 728x720 per
-  // half (inside what the tablet's hardware decoder handles). reach: how
-  // far the burst spreads from its center, in the file's px - it's sized
-  // so that reach lands on the hueco's sides (landscape) or, rotated 90deg
-  // in portrait, its top and bottom
-  const ONDA_DESKTOP = { src: 'assets/videos/onda_web.webm?v=1', frameW: 1088, frameH: 1080, centerX: 544, centerY: 540, reach: 540 };
-  const ONDA_TOUCH = { src: 'assets/videos/onda_stacked.mp4?v=1', frameW: 728, frameH: 720, centerX: 364, centerY: 360, reach: 540 * 728 / 1088 };
   const ONDA_EVERY_MS = 8000;
   const GLOBE_TOUCH = { src: 'assets/videos/fdo_02_inv_stacked.mp4?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
 
@@ -935,12 +1013,43 @@
   // just above it, +1 = just below it. Both are hidden under the white
   // bars whenever they're not at 0.
   const shapeOffset = { 'cyan-shape': 0, 'gray-shape': -1 };
+  // same idea sideways (portrait swipes), in units of the hueco's width
+  // plus the calle: -1 = parked just left of it, +1 = just right. In
+  // portrait the gray waits on the left (CONTACT pushes in from there) and
+  // the separator on the right (WORK).
+  const offX = { 'cyan-shape': 0, 'gray-shape': 0, separator: 0 };
+  if (PORTRAIT) {
+    shapeOffset['gray-shape'] = 0;
+    offX['gray-shape'] = -1;
+    offX.separator = 1;
+  }
   const contactButton = document.getElementById('contact-button');
+  // where the capitals' vertical center sits below the top of Contact's
+  // line box, measured from the real font (line-height 1): baseline minus
+  // half the cap height. Measured once, lazily (fonts are ready by then).
+  let contactCapCenterPx = null;
+  function contactCapCenter() {
+    if (contactCapCenterPx !== null) return contactCapCenterPx;
+    const cs = getComputedStyle(contactButton);
+    const size = parseFloat(cs.fontSize);
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const m = ctx.measureText('C');
+    let v = size / 2;
+    if (m.fontBoundingBoxAscent !== undefined) {
+      const baseline = (size - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      v = baseline - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+    }
+    contactCapCenterPx = v;
+    return v;
+  }
   const contentEl = document.getElementById('content');
   const WATCH_GAP = 14; // space between "WATCH!" and the hovered triangle
   const watchEl = document.getElementById('watch');
   const watchClip = document.getElementById('watch-text-clip');
   const separatorEl = document.getElementById('separator');
+  const separatorWin = document.getElementById('separator-win');
+  const navEl = document.getElementById('nav');
   const bracketLeft = document.getElementById('bracket-left');
   const bracketRight = document.getElementById('bracket-right');
   const bracketLeftThin = document.getElementById('bracket-left-thin');
@@ -1079,16 +1188,83 @@
   // the globe: under the separator preview and the brackets/tagline
   globe = createAlphaVideo({
     id: 'globe', desktop: GLOBE_DESKTOP, touch: GLOBE_TOUCH, loop: true,
-    insertAt: document.getElementById('separator'),
+    insertAt: separatorWin,
     keepPlaying: () => globeScale > 0 || globeStarting,
   });
   // the onda (dot burst) accent: plays once every ONDA_EVERY_MS, centered
-  // on the globe and just BEHIND it - same as the current site
-  onda = createAlphaVideo({
-    id: 'onda', desktop: ONDA_DESKTOP, touch: ONDA_TOUCH, loop: false,
-    insertAt: globe.el,
-    keepPlaying: () => ondaPlaying,
-  });
+  // on the globe and just BEHIND it - same as the current site. Drawn in
+  // code (it used to be a video, ondablanca, cropped to a square) on a
+  // canvas exactly the size of the hueco, so it's clipped to the hueco and
+  // never spills onto Contact's gray. Measured off the original, frame by
+  // frame (in its 1920x1080 px): 69 rays of dots, one ring every 24.2px;
+  // the whole grid travels outward (ONDA_R0: its first ring's radius over
+  // time) while a mask 2.22x as far out reveals it, the ring at the mask's
+  // edge fading in; each dot's diameter only depends on its radius,
+  // 2.1 * e^(r / 380). It ends when the first ring has left the hueco.
+  // Scaled so the original's square (its corner at 762) maps to the
+  // hueco's corner.
+  const ONDA_RAYS = 69, ONDA_RING = 24.2, ONDA_MASK = 2.22;
+  const ONDA_CORNER = 762;
+  // first ring's radius at t seconds: a quick start, then ~1000px/s
+  const ONDA_R0 = (t) => (t < 0.1 ? 3 + 270 * t : 30 + 1014 * (t - 0.1));
+  const ondaEl = document.createElement('canvas');
+  ondaEl.id = 'onda';
+  stage.insertBefore(ondaEl, globe ? globe.el : separatorWin);
+  const ondaCtx = ondaEl.getContext('2d');
+  const ONDA_COS = [], ONDA_SIN = [];
+  for (let j = 0; j < ONDA_RAYS; j++) {
+    ONDA_COS.push(Math.cos(j * 2 * Math.PI / ONDA_RAYS));
+    ONDA_SIN.push(Math.sin(j * 2 * Math.PI / ONDA_RAYS));
+  }
+  let ondaRun = 0; // bumped to stop a running burst
+  // sizes the canvas to the hueco (only when that changed) and runs one
+  // burst from the globe's center; one path per ring, only the dots that
+  // land inside the canvas
+  function burstOnda() {
+    const st = lastState;
+    const dev = 1 / U; // real px per design px
+    const bw = Math.round(st.w * dev), bh = Math.round(st.h * dev);
+    if (ondaEl.width !== bw || ondaEl.height !== bh) {
+      ondaEl.width = bw;
+      ondaEl.height = bh;
+      ondaEl.style.width = st.w + 'px';
+      ondaEl.style.height = st.h + 'px';
+    }
+    const ox = bw / 2, oy = bh / 2 + (st.drop || 0) * bh / 2;
+    // end: the hueco's farthest corner from the center - the burst is over
+    // once its first ring passes it, and no ring beyond it is ever drawn
+    // (past the original's frame the dots grow huge - e^(r/380))
+    const end = Math.hypot(Math.max(ox, bw - ox), Math.max(oy, bh - oy));
+    const k = end / ONDA_CORNER; // file px -> real px
+    const run = ++ondaRun;
+    const start = performance.now();
+    ondaEl.classList.add('visible');
+    (function frame(now) {
+      if (run !== ondaRun) return;
+      const r0 = ONDA_R0((now - start) / 1000);
+      ondaCtx.clearRect(0, 0, bw, bh);
+      if (r0 * k > end) { ondaEl.classList.remove('visible'); ondaPlaying = false; return; }
+      ondaCtx.fillStyle = '#fff';
+      const mask = r0 * ONDA_MASK;
+      for (let r = r0; r < mask + ONDA_RING && r <= ONDA_CORNER; r += ONDA_RING) {
+        const a = Math.min(1, (mask - r) / ONDA_RING + 1);
+        if (a <= 0) break;
+        const R = r * k;
+        const dot = 1.05 * Math.exp(r / 380) * k; // radius
+        ondaCtx.globalAlpha = a;
+        ondaCtx.beginPath();
+        for (let j = 0; j < ONDA_RAYS; j++) {
+          const x = ox + R * ONDA_COS[j], y = oy + R * ONDA_SIN[j];
+          if (x < -dot || y < -dot || x > bw + dot || y > bh + dot) continue;
+          ondaCtx.moveTo(x + dot, y);
+          ondaCtx.arc(x, y, dot, 0, 2 * Math.PI);
+        }
+        ondaCtx.fill();
+      }
+      requestAnimationFrame(frame);
+    })(start);
+  }
+  onda = { el: ondaEl, pause() { ondaRun++; ondaCtx.clearRect(0, 0, ondaEl.width, ondaEl.height); } };
 
   let lastR = null, lastRt = null, lastOr = null, lastLg = null;
   // the text block's scale at the square (see setState): the left
@@ -1126,12 +1302,13 @@
     const L = CX - w / 2, Rt = CX + w / 2, Tp = cy - h / 2, B = cy + h / 2;
     const t = (x, y) => `translate(${x}px, ${y}px)`;
     const spanX = -(BAR_SPAN - STAGE_W) / 2, spanY = -(BAR_SPAN - STAGE_H) / 2;
-    const push = h + gap;
+    const push = h + gap, pushX = w + gap;
+    const cyanX = offX['cyan-shape'] * pushX;
     // shapes: the hueco grown by 1px on every side, radius included
     const sw = w + 2, sh = h + 2, sr = r + 1, srt = rt + 1;
     for (const id in shapeOffset) {
       const p = shapeParts[id];
-      p.root.style.transform = t(L - 1, Tp - 1 + shapeOffset[id] * push);
+      p.root.style.transform = t(L - 1 + offX[id] * pushX, Tp - 1 + shapeOffset[id] * push);
       // three bands that DON'T overlap (full-width middle, plus the strips
       // between the corners above and below it) - two crossing bands had
       // the GPU fill almost the whole hueco twice every frame
@@ -1144,7 +1321,8 @@
       p.bl.style.transform = t(0, sh - sr);
       p.br.style.transform = t(sw - sr, sh - sr);
     }
-    contactButton.style.transform = `${t(L + 44 * UI, B - 54 * UI)} scale(${UI}) translateY(-50%)`;
+    // capitals' vertical center on the WATCH! square's center (watchCY)
+    contactButton.style.transform = `${t(L + 44 * UI, B - 54 * UI - contactCapCenter() * UI)} scale(${UI})`;
 
     // "Diego Tavella"'s distance from the hueco's left edge (it sits 59.7
     // in from the OUTLINE's corner) - WATCH! mirrors it on the right: its
@@ -1154,10 +1332,13 @@
     watchEl.style.transform = `${t(watchCX - 9.5 * UI, watchCY - 9.5 * UI)} scale(${UI})`;
     // its word's window ends WATCH_GAP left of the (2.025x) triangle
     watchClip.style.transform = `${t(watchCX - (9.5 * 2.025 + WATCH_GAP) * UI, watchCY)} scale(${UI}) translate(-100%, -50%)`;
-    // separator preview: cover the hueco (like object-fit: cover)
+    // portrait nav bar: centered, capitals on the same line as WATCH!'s
+    navEl.style.transform = `${t(CX, watchCY)} scale(${UI}) translate(-50%, ${-contactCapCenter()}px)`;
+    // separator preview: cover the hueco (like object-fit: cover), inside
+    // its window at the hueco's top-left (see #separator-win)
     const sk = Math.max(w / 1090, h / 974);
-    separatorEl.style.transform =
-      `${t(CX - 1090 * sk / 2, cy - 974 * sk / 2 + shapeOffset['cyan-shape'] * push)} scale(${sk})`;
+    separatorWin.style.transform = t(L + offX.separator * pushX, Tp + shapeOffset['cyan-shape'] * push);
+    separatorEl.style.transform = `${t(w / 2 - 1090 * sk / 2, h / 2 - 974 * sk / 2)} scale(${sk})`;
 
     // brackets + tagline ride along with the cyan (Contact push), and the
     // whole block is scaled around the center so that, from the square
@@ -1165,7 +1346,7 @@
     // and the right one's with WATCH!'s right edge (both logoInset in from
     // the hueco's sides). Eased in with the logo's own move (lp).
     const ks = state.ksv ?? blockScaleFor(state);
-    contentEl.style.transform = `${t(0, shapeOffset['cyan-shape'] * push)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
+    contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
     const bx = state.bx ?? (L + 3);
     bracketLeft.style.transform = t(bx, CY - 124.3 / 2);
     bracketRight.style.transform = t(1920 - bx - 24.2, CY - 124.3 / 2);
@@ -1185,18 +1366,14 @@
     // globe: centered on the hueco, dropped toward its bottom edge per
     // state, and carried along with the cyan when Contact pushes it out
     if (globe) {
-      const gx = CX;
+      const gx = CX + cyanX;
       const gy = cy + (state.drop || 0) * h / 2 + shapeOffset['cyan-shape'] * push;
       const k = (GLOBE_DIAMETER / globe.cfg.diameter) * globeScale;
       globe.el.style.transform =
         `${t(gx - globe.cfg.centerX, gy - globe.cfg.centerY)} rotate(${GLOBE_ROTATE}deg) scale(${k})`;
-      if (onda) {
-        const oc = onda.cfg;
-        const os = (PORTRAIT ? h / 2 : w / 2) / oc.reach;
-        onda.el.style.transform =
-          `${t(gx - oc.centerX, gy - oc.centerY)} rotate(${PORTRAIT ? 90 : 0}deg) scale(${os})`;
-      }
     }
+    // the onda's canvas IS the hueco (see onda below), riding with the cyan
+    ondaEl.style.transform = t(L + cyanX, Tp + shapeOffset['cyan-shape'] * push);
     pieces['bar-top'].style.transform = t(spanX, Tp - BAR);
     pieces['bar-bottom'].style.transform = t(spanX, B);
     pieces['bar-left'].style.transform = t(L - BAR, spanY);
@@ -1296,10 +1473,12 @@
   function updateContactButton() {
     if (typeof updateIdle === 'function' && canHoverReady) updateIdle();
     const idle = !animating;
-    contactButton.classList.toggle('visible', current === SQUARE && idle);
+    // portrait: the nav bar takes over from Contact and WATCH!
+    contactButton.classList.toggle('visible', !PORTRAIT && current === SQUARE && idle);
+    updateNav();
     // WATCH! at the square (only with the cyan up - not on Contact's
     // gray), the back arrow at the botonera
-    const watchOn = idle && ((current === SQUARE && shown === 'cyan-shape') || current === BOTONERA);
+    const watchOn = !PORTRAIT && idle && ((current === SQUARE && shown === 'cyan-shape') || current === BOTONERA);
     watchEl.classList.toggle('visible', watchOn);
     watchEl.classList.toggle('back', current === BOTONERA);
     if (!watchOn) closeWatch();
@@ -1433,17 +1612,11 @@
   function playOnda() {
     // only at the square (not the botonera), and skipped while the
     // separator (athletes) plays - WATCH! hover / beat
-    if (!onda || watchOpen || current !== SQUARE || animating) return;
+    // (and not while Contact's gray is up)
+    if (!onda || watchOpen || current !== SQUARE || animating || shown !== 'cyan-shape') return;
     ondaPlaying = true;
-    onda.media.currentTime = 0;
-    onda.play();
-    onda.el.classList.add('visible');
-  }
-  if (onda) {
-    onda.media.addEventListener('ended', () => {
-      ondaPlaying = false;
-      onda.el.classList.remove('visible');
-    });
+    burstOnda();
+    waveChevrons();
   }
   function startOndaLoop() {
     if (ondaTimer) return;
@@ -1564,8 +1737,8 @@
     [armH, armV, tagPlus].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
     tagPlus.classList.remove('visible', 'spin');
   }
-  // square -> botonera: the words slide back in behind the plus (left one
-  // quicker than the right, like the current site) while the plus stays
+  // square -> botonera: the words slide back in behind the plus, both at
+  // the same pace, while the plus stays
   // and becomes the botonera's middle bar
   function collapseTagline() {
     taglineShown = false;
@@ -1578,7 +1751,9 @@
         .catch(() => {});
     };
     hide(tagLeft, tagLeftX, tagRightX, TAGLINE_SWAP_MS);
-    hide(tagRight, tagRightX, tagLeftX, 1300);
+    // same duration for both, so they finish hiding together (the current
+    // site gave the right one 1300ms, which read as it lagging behind)
+    hide(tagRight, tagRightX, tagLeftX, TAGLINE_SWAP_MS);
     buildBotonera();
   }
 
@@ -1619,6 +1794,7 @@
       if (p < 1) { requestAnimationFrame(frame); return; }
       shown = incoming;
       contactButton.textContent = shown === 'cyan-shape' ? 'Contact' : 'Home';
+      contactButton.classList.toggle('home', shown !== 'cyan-shape');
       animating = false;
       updateContactButton();
     })(start);
@@ -1626,6 +1802,151 @@
   contactButton.addEventListener('click', (e) => {
     e.stopPropagation(); // don't also advance to the next state
     pushShapes();
+  });
+
+  // --- portrait: swipe navigation ---
+  // At the square, swipe left = WORK: the athletes clip pushes in from
+  // the right (cyan, globe and text leave to the left), plays once at
+  // 133% while WORK fills in gray, then cuts back to the cyan and the
+  // botonera builds. Swipe right = CONTACT: the gray pushes in from the
+  // left. The opposite swipe goes HOME from either. The sideways
+  // counterpart of pushShapes - same pieces, offX instead of shapeOffset.
+  const SWIPE_MS = 690;
+  const WORK_RATE = 1.33;
+  const easeOut = bezier(0.2, 0.7, 0.3, 1);
+  const navFill = document.getElementById('nav-work-fill');
+  const navFillText = navFill.firstElementChild;
+  let navWorking = false; // keep the bar up through the WORK swipe
+  function updateNav() {
+    if (!PORTRAIT) return;
+    // the mode only changes while nothing moves (the bar is faded out
+    // during every other transition, so the swap is never seen)
+    if (!animating) {
+      navEl.classList.toggle('m-square', current === SQUARE && shown === 'cyan-shape');
+      navEl.classList.toggle('m-contact', current === SQUARE && shown !== 'cyan-shape');
+      navEl.classList.toggle('m-bot', current === BOTONERA);
+    }
+    navEl.classList.toggle('visible', (current === SQUARE || current === BOTONERA) && (!animating || navWorking));
+  }
+  function setNavProgress(p) {
+    navFill.style.transform = `translateX(${(p - 1) * 100}%)`;
+    navFillText.style.transform = `translateX(${(1 - p) * 100}%)`;
+  }
+  // with every onda burst the chevrons light up one by one, from the
+  // words outward (white 100% while lit, 60% at rest)
+  function waveChevrons() {
+    if (!PORTRAIT || !navEl.classList.contains('visible')) return;
+    const l = navEl.querySelectorAll('#nav-chevs-l > span');
+    const r = navEl.querySelectorAll('#nav-chevs-r > span');
+    for (let i = 0; i < 3; i++) {
+      [[l[2 - i], -1], [r[i], 1]].forEach(([el, dir]) => {
+        el.animate([
+          { opacity: 0.6, transform: 'translateX(0)' },
+          { opacity: 1, transform: `translateX(${dir * 4}px)`, offset: 0.4 },
+          { opacity: 0.6, transform: 'translateX(0)' },
+        ], { duration: 700, delay: i * 140, easing: 'ease-in-out' });
+      });
+    }
+  }
+  // moves: { key: [from, to] } over offX, one rAF loop like pushShapes
+  function slideX(moves, done) {
+    const start = performance.now();
+    (function frame(now) {
+      const p = Math.min(1, (now - start) / SWIPE_MS);
+      const e = easeOut(p);
+      for (const k in moves) offX[k] = moves[k][0] + (moves[k][1] - moves[k][0]) * e;
+      setState(lastState);
+      if (p < 1) { requestAnimationFrame(frame); return; }
+      done();
+    })(start);
+  }
+  function swipeContact(toContact) {
+    animating = true;
+    updateContactButton();
+    slideX(toContact
+      ? { 'gray-shape': [-1, 0], 'cyan-shape': [0, 1] }
+      : { 'gray-shape': [0, -1], 'cyan-shape': [1, 0] }, () => {
+      shown = toContact ? 'gray-shape' : 'cyan-shape';
+      animating = false;
+      updateContactButton();
+    });
+  }
+  function swipeWork() {
+    animating = true;
+    navWorking = true;
+    navEl.classList.add('working');
+    updateContactButton();
+    stopOnda();
+    // the window is only sized here - the hueco holds still from now
+    // until the clip is gone
+    separatorWin.style.width = lastState.w + 'px';
+    separatorWin.style.height = lastState.h + 'px';
+    separatorEl.loop = false;
+    separatorEl.currentTime = 0;
+    separatorEl.playbackRate = WORK_RATE;
+    separatorEl.play().catch(() => {});
+    separatorEl.classList.add('visible');
+    let slid = false, ended = false, done = false;
+    const finish = () => {
+      if (done || !slid || !ended) return;
+      done = true;
+      separatorEl.classList.remove('visible');
+      separatorEl.pause();
+      separatorEl.loop = true;
+      separatorEl.playbackRate = 1;
+      offX['cyan-shape'] = 0;
+      offX.separator = 1;
+      navWorking = false;
+      animating = false;
+      goTo(BOTONERA); // fades the bar (WORK with it) out
+      setTimeout(() => { navEl.classList.remove('working'); setNavProgress(0); }, 350);
+    };
+    slideX({ separator: [1, 0], 'cyan-shape': [0, -1] }, () => { slid = true; finish(); });
+    separatorEl.addEventListener('ended', () => { ended = true; finish(); }, { once: true });
+    (function progress() {
+      if (done) return;
+      const d = separatorEl.duration;
+      setNavProgress(d ? Math.min(1, separatorEl.currentTime / d) : 0);
+      requestAnimationFrame(progress);
+    })();
+    // safety net in case 'ended' never fires (clip not loaded, etc.)
+    setTimeout(() => { ended = true; finish(); }, ((separatorEl.duration || 2.2) / WORK_RATE + 1) * 1000);
+  }
+  function onSwipe(dir) {
+    if (!PORTRAIT || locked || animating) return;
+    if (current === SQUARE && shown === 'cyan-shape') {
+      if (dir === 'left') swipeWork(); else swipeContact(true);
+    } else if (current === SQUARE) {
+      if (dir === 'left') swipeContact(false);
+    } else if (current === BOTONERA && dir === 'right') {
+      goTo(SQUARE);
+    }
+  }
+  let swipeFrom = null, lastSwipeAt = 0;
+  if (PORTRAIT) {
+    viewport.addEventListener('pointerdown', (e) => {
+      swipeFrom = { x: e.clientX, y: e.clientY, t: performance.now() };
+    });
+    addEventListener('pointercancel', () => { swipeFrom = null; });
+    addEventListener('pointerup', (e) => {
+      if (!swipeFrom) return;
+      const dx = e.clientX - swipeFrom.x, dy = e.clientY - swipeFrom.y;
+      const dt = performance.now() - swipeFrom.t;
+      swipeFrom = null;
+      // a clear, quick, mostly horizontal flick
+      if (Math.abs(dx) < 40 || Math.abs(dx) < 1.5 * Math.abs(dy) || dt > 1000) return;
+      lastSwipeAt = performance.now();
+      onSwipe(dx < 0 ? 'left' : 'right');
+    });
+  }
+  // tapping the words does the same as swiping toward them
+  [['nav-work', () => 'left'], ['nav-contact', () => 'right'],
+   ['nav-home', () => (current === BOTONERA ? 'right' : 'left')]].forEach(([id, dir]) => {
+    document.getElementById(id).addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (performance.now() - lastSwipeAt < 400) return; // the swipe's own click
+      onSwipe(dir());
+    });
   });
 
   // navigation: from the logo, a click anywhere grows it to the square;
@@ -1758,6 +2079,19 @@
     watchProgress.style.transform = `translateX(${(p - 1) * 100}%)`;
     watchProgressText.style.transform = `translateX(${(1 - p) * 100}%)`;
   }
+  // the hit area in #watch's own (unscaled) px: the square is 19px with
+  // its center at 9.5; the open triangle reaches 9.5 * 2.025 each side of
+  // it, and the word's window ends WATCH_GAP left of the triangle
+  function sizeWatchHit() {
+    const tri = 9.5 * 2.025;
+    const right = 9.5 + tri;
+    const left = 9.5 - tri - WATCH_GAP - document.getElementById('watch-text').offsetWidth;
+    const extra = (right - left) * 0.1;
+    watchEl.style.setProperty('--hit-l', (left - extra) + 'px');
+    watchEl.style.setProperty('--hit-w', (right - left + 2 * extra) + 'px');
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeWatchHit);
+  sizeWatchHit();
   let watchOpen = false;
   function stopOnda() {
     if (!onda || !ondaPlaying) return;
