@@ -231,6 +231,19 @@
   /* same button as "Home" (over Contact's gray): same size, weight and
      alignment, in white */
   #contact-button.home { color: #fff; }
+  /* hovered (desktop, square): bold, while the WATCH! panel rises */
+  #contact-button.hover { font-weight: 700; }
+  /* desktop, square: the hover/click areas for Contact (left half of the
+     hueco) and WATCH! (right half), as tall as the green panel + its
+     calle - over everything, placed in setState */
+  .bottom-hit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    cursor: pointer;
+    display: none;
+  }
+  .bottom-hit.on { display: block; }
 
   /* the globe: fixed size (the video's own frame), moved/rotated/scaled
      only through transform. It sits between the shapes and the white
@@ -362,6 +375,18 @@
     pointer-events: none;
   }
   #separator.visible { visibility: visible; }
+  /* with the WATCH! panel up, it and the text block lift to stay
+     centered in what's left of the hueco above the panel (the video's top
+     gets cropped) - on the separate translate property, so setState's
+     transforms stay put. Same timing as the panel. */
+  /* (Contact's hover lifts the same way - the globe and its dot burst
+     instead of the athletes) */
+  #separator, #content, #globe, #onda { translate: 0 0; transition: translate 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .watch-lift #separator, .watch-lift #content,
+  .contact-lift #globe, .contact-lift #onda, .contact-lift #content {
+    translate: 0 var(--lift);
+    transition: translate 0.35s cubic-bezier(0.42, 0, 1, 1);
+  }
   /* portrait, botonera -> square: a white calle-wide band sweeping the
      hueco left to right, as if a new background pushed the old one out
      (both cyan, so only their dividing line shows). Over the shapes,
@@ -389,6 +414,47 @@
     pointer-events: none;
   }
   .touchnav #separator-win { overflow: hidden; }
+  /* WATCH! hover (desktop): a green panel rising into the bottom of the
+     hueco, with a white calle above it and its own rounded corners - the
+     cyan (and the athletes over it) get a new rounded bottom edge there.
+     It sits OVER the video, so it crops it instead of pushing it.
+     #watch-panel is placed at the hueco's bottom-left in setState; its
+     inner part slides (translate only) from below the hueco, where the
+     white bottom bar hides it. 1px wider than the hueco on each side,
+     tucked under the bars like the shapes, so no hairline of the cyan
+     can show at its (fractional) side edges. */
+  #watch-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition: visibility 0s linear 0.3s;
+  }
+  #watch-panel.open { visibility: visible; transition-delay: 0s; }
+  #watch-panel-in {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(var(--ph) + var(--pg) + var(--r));
+    transform: translateY(calc(var(--ph) + var(--pg) + var(--r) + 2px));
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+  #watch-panel.open #watch-panel-in {
+    transform: none;
+    transition: transform 0.35s cubic-bezier(0.42, 0, 1, 1);
+  }
+  #watch-panel-in > div { position: absolute; }
+  /* the calle (white behind the panel, so its top corners show white) */
+  .wp-white { left: 0; right: 0; bottom: 0; height: calc(var(--ph) + var(--pg)); background: #fff; }
+  .wp-green { left: 1px; right: 1px; bottom: 0; height: var(--ph); background: #d8f784; border-radius: var(--r); }
+  /* the cyan's new bottom corners: white outside a quarter circle */
+  .wp-cap { top: 0; width: calc(var(--r) + 1px); height: calc(var(--r) + 1px); }
+  .wp-cap-l { left: 0; background: radial-gradient(circle at 100% 0%, transparent calc(var(--r) - 0.5px), #fff calc(var(--r) + 0.5px)); }
+  .wp-cap-r { right: 0; background: radial-gradient(circle at 0% 0%, transparent calc(var(--r) - 0.5px), #fff calc(var(--r) + 0.5px)); }
 
   /* portrait navigation bar, centered at the bottom of the hueco where
      Contact and WATCH! sit in landscape: <<< CONTACT | WORK >>>, or
@@ -577,6 +643,22 @@
     will-change: transform;
     pointer-events: none;
   }
+  /* the header's own rounded top corners (radius --r, the hueco's, so
+     with the calle around them they run concentric with the outline's
+     inner curve: or - t = r + gap): white outside a quarter circle, like
+     the hueco's corners. Over the header and its preview. */
+  .header-corner {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc(var(--r) + 1px);
+    height: calc(var(--r) + 1px);
+    --stops: transparent calc(var(--r) - 0.5px), #fff calc(var(--r) + 0.5px);
+    will-change: transform;
+    pointer-events: none;
+  }
+  #header-corner-tl { background: radial-gradient(circle at 100% 100%, var(--stops)); }
+  #header-corner-tr { background: radial-gradient(circle at 0% 100%, var(--stops)); }
   .outline-mask {
     position: absolute;
     left: 0;
@@ -1127,6 +1209,10 @@
 
     <div id="fake-push"></div>
     <div id="separator-win"><video id="separator" muted loop playsinline></video></div>
+    <div id="watch-panel"><div id="watch-panel-in">
+      <div class="wp-white"></div><div class="wp-green"></div>
+      <div class="wp-cap wp-cap-l"></div><div class="wp-cap wp-cap-r"></div>
+    </div></div>
 
     <div id="content">
       <img class="bracket" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
@@ -1149,6 +1235,8 @@
     <div class="piece corner" id="corner-br"></div>
     <div id="header"></div>
     <div id="header-preview"><video id="header-preview-video" muted loop playsinline preload="none"></video><div id="header-crt"></div></div>
+    <div class="header-corner" id="header-corner-tl"></div>
+    <div class="header-corner" id="header-corner-tr"></div>
     <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png" alt="">
     <div class="logo-window" id="logo-white-win"><img class="logo-text" id="logo-white" src="assets/images/logo-desarme/text-white.png" alt="" style="opacity:0"></div>
     <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png" alt=""></div>
@@ -1181,6 +1269,8 @@
     <div id="nav" class="m-square"><span class="nav-chevs" id="nav-chevs-l"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span><span class="nav-word" id="nav-contact">Contact</span><span id="nav-sep">|</span><span class="nav-word" id="nav-work">Work<span id="nav-work-fill"><span>Work</span></span></span><span class="nav-word" id="nav-home">Home</span><span class="nav-chevs" id="nav-chevs-r"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span></div>
     <div id="watch-text-clip"><span id="watch-text">WATCH!<span id="watch-progress"><span id="watch-progress-text">WATCH!</span></span></span></div>
     <div id="watch"><div id="watch-shape"></div></div>
+    <div class="bottom-hit" id="contact-hit"></div>
+    <div class="bottom-hit" id="watch-hit"></div>
   </div>
   </div>
   <div class="video-overlay" id="video-overlay">
@@ -1413,6 +1503,18 @@
   const watchClip = document.getElementById('watch-text-clip');
   const separatorEl = document.getElementById('separator');
   const separatorWin = document.getElementById('separator-win');
+  const watchPanel = document.getElementById('watch-panel');
+  // the green panel's height: twice WATCH!/Contact's distance from the
+  // hueco's bottom (54 * UI), so both sit centered on it
+  const WATCH_PANEL_H = 2 * 54 * UI;
+  let watchPanelSize = '';
+  // the text block's WATCH! lift, when it's carried into a transition (see
+  // goTo's liftFrom) instead of easing back on its own first
+  let contentLift = 0;
+  let contactHover = false; // Contact's hover is on (see openContactHover)
+  const contactHit = document.getElementById('contact-hit');
+  const watchHit = document.getElementById('watch-hit');
+  let bottomHitSize = '';
   const navEl = document.getElementById('nav');
   let navAnchor = null, navY = 0; // see placeNav
   let navCap = null; // the capitals' middle, from the bar's top (see measureNavAnchor)
@@ -1656,6 +1758,8 @@
   }
   const headerEl = document.getElementById('header');
   const maskTL = document.getElementById('outline-mask-tl');
+  const headerCornerTL = document.getElementById('header-corner-tl');
+  const headerCornerTR = document.getElementById('header-corner-tr');
   const maskTR = document.getElementById('outline-mask-tr');
   const logoBlack = document.getElementById('logo-black');
   const logoWhite = document.getElementById('logo-white');
@@ -1714,10 +1818,34 @@
     navY = watchCY;
     placeNav();
     // separator preview: cover the hueco (like object-fit: cover), inside
-    // its window at the hueco's top-left (see #separator-win)
-    const sk = Math.max(w / 1090, h / 974);
+    // its window at the hueco's top-left (see #separator-win). The file's
+    // last 2 rows are a dark encoder seam, so it covers with 972 rows and
+    // leaves those two hanging below the hueco, clipped.
+    const sk = Math.max(w / 1090, h / 972);
     separatorWin.style.transform = t(L + offX.separator * pushX, Tp + shapeOffset['cyan-shape'] * push);
-    separatorEl.style.transform = `${t(w / 2 - 1090 * sk / 2, h / 2 - 974 * sk / 2)} scale(${sk})`;
+    separatorEl.style.transform = `${t(w / 2 - 1090 * sk / 2, h / 2 - 972 * sk / 2)} scale(${sk})`;
+    // the hover areas: each half of the hueco, panel + calle tall
+    const hitY = B - WATCH_PANEL_H - gap + shapeOffset['cyan-shape'] * push;
+    contactHit.style.transform = t(L + cyanX, hitY);
+    watchHit.style.transform = t(CX + cyanX, hitY);
+    const hitSize = `${w}|${gap}`;
+    if (hitSize !== bottomHitSize) {
+      bottomHitSize = hitSize;
+      [contactHit, watchHit].forEach((el) => {
+        el.style.width = (w / 2) + 'px';
+        el.style.height = (WATCH_PANEL_H + gap) + 'px';
+      });
+    }
+    // WATCH! panel: on the hueco's bottom edge, riding with the cyan
+    watchPanel.style.transform = t(L - 1, Tp + h + shapeOffset['cyan-shape'] * push);
+    const wpSize = `${w}|${state.r}|${state.gap}`;
+    if (wpSize !== watchPanelSize) {
+      watchPanelSize = wpSize;
+      watchPanel.style.width = (w + 2) + 'px';
+      watchPanel.style.setProperty('--r', state.r + 'px');
+      watchPanel.style.setProperty('--pg', state.gap + 'px');
+      watchPanel.style.setProperty('--ph', WATCH_PANEL_H + 'px');
+    }
 
     // brackets + tagline ride along with the cyan (Contact push), and the
     // whole block is scaled around the center so that, from the square
@@ -1725,7 +1853,15 @@
     // and the right one's with WATCH!'s right edge (both logoInset in from
     // the hueco's sides). Eased in with the logo's own move (lp).
     const ks = state.ksv ?? blockScaleFor(state);
-    contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
+    // at the botonera the block (the row of numbers, on CY) moves down to
+    // sit centered between the cyan's top edge and the top of the globe
+    // (half sunk into the hueco's bottom edge) - measured on the FINAL
+    // botonera and eased in as the header forms, so it only ever moves
+    // one way. Landscape only: portrait's dial has its own placement.
+    const hfb = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
+    const sb = STATES[BOTONERA], sbTop = sb.cy - sb.h / 2, sbBot = sb.cy + sb.h / 2;
+    const botDy = PORTRAIT ? 0 : ((sbTop + (sbBot - GLOBE_DIAMETER / 2)) / 2 - CY) * hfb;
+    contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push + botDy + contentLift)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
     const bx = state.bx ?? (L + 3);
     let lbx = bx, rbx = 1920 - bx - 24.2, bk = 1;
     if (TOUCH) {
@@ -1802,16 +1938,23 @@
     const snap = (v) => Math.round(v / U) * U;
     const x0 = snap(L - gap - T), y0 = snap(Tp - gap - hh - T);
     const x1 = snap(Rt + gap + T), y1 = snap(B + gap + T);
-    // header: inside the outline, above the hueco's calle - and tucked one
-    // screen pixel UNDER the outline's stroke on the left, right and top
-    // (black on black), so no antialiased seam can open up between them
-    // on any screen or browser. Its bottom edge stays on the calle.
+    // header: a box like the hueco, inside the outline with the same calle
+    // (gap) all around - sides on the hueco's own (L, Rt), top one calle
+    // below the outline's inner edge, bottom one calle above the hueco.
+    // Rounded top corners (header-corner), square bottom ones.
     const oL = x0, oR = x1, oT = y0;
-    headerBox.x = x0 + T - U;
-    headerBox.y = y0 + T - U;
-    headerBox.w = (x1 - T + U) - headerBox.x;
-    headerBox.h = (Tp - gap) - headerBox.y;
-    headerEl.style.transform = `${t(headerBox.x, headerBox.y)} scale(${headerBox.w / 100}, ${Math.max(0, headerBox.h) / 100})`;
+    headerBox.x = L;
+    headerBox.y = Tp - hh;
+    headerBox.w = w;
+    headerBox.h = Math.max(0, hh - gap);
+    headerEl.style.transform = `${t(headerBox.x, headerBox.y)} scale(${headerBox.w / 100}, ${headerBox.h / 100})`;
+    headerCornerTL.style.transform = t(L - 1, headerBox.y - 1);
+    headerCornerTR.style.transform = t(Rt - r, headerBox.y - 1);
+    const hcOn = headerBox.h > 0 ? '' : 'hidden';
+    if (headerCornerTL.style.visibility !== hcOn) {
+      headerCornerTL.style.visibility = hcOn;
+      headerCornerTR.style.visibility = hcOn;
+    }
     maskTL.style.transform = t(oL, oT);
     maskTR.style.transform = t(oR - or, oT);
     // "Diego Tavella": lp 0 = centered at 1.1x (logo size, between the
@@ -1883,6 +2026,8 @@
     };
   }
   const ease = bezier(0.65, 0, 0.35, 1);
+  // the widening's share of the square -> botonera move (see goTo)
+  const W_LEAD = 0.75;
 
   // everything is driven from ONE rAF loop: one set of values per frame,
   // every piece and the outline set from it. The outline resizes, which
@@ -1898,6 +2043,11 @@
     const idle = !animating;
     // portrait: the nav bar takes over from Contact and WATCH!
     contactButton.classList.toggle('visible', !TOUCH && current === SQUARE && idle);
+    if (!contactButton.classList.contains('visible') || shown !== 'cyan-shape') closeContactHover();
+    // (canHover may not be known yet on the first call - it's set later)
+    const hits = canHoverReady && canHover && contactButton.classList.contains('visible');
+    contactHit.classList.toggle('on', hits);
+    watchHit.classList.toggle('on', hits && shown === 'cyan-shape');
     updateNav();
     // WATCH! at the square (only with the cyan up - not on Contact's
     // gray), the back arrow at the botonera
@@ -1908,7 +2058,10 @@
   }
 
   let transitionRunning = false; // goTo's own loop is setting state each frame
-  function goTo(next) {
+  // liftFrom: the text block's current WATCH! lift (px, see closeWatch),
+  // taken over and eased out along with the move, so the block goes
+  // straight from where it is to where it's headed - no drop back first
+  function goTo(next, liftFrom = 0) {
     if (animating) return;
     animating = true;
     transitionRunning = true;
@@ -1929,16 +2082,26 @@
     const fakePush = TOUCH && current === BOTONERA && next === SQUARE;
     if (fakePush) fakePushEl.classList.add('on');
     const start = performance.now();
+    // a move takes its target's duration - except botonera -> square,
+    // which mirrors the way in (the square's own 1370 is for the grow from
+    // the logo, far too slow here)
+    const dur = current === BOTONERA && next === SQUARE ? a.duration : b.duration;
     (function frame(now) {
-      const p = Math.min(1, (now - start) / b.duration);
+      const p = Math.min(1, (now - start) / dur);
       const e = ease(p);
       if (fakePush) fakePushP = e;
       const mix = (k) => a[k] + (b[k] - a[k]) * e;
+      // square -> botonera: the rect widens AHEAD of the height/header
+      // change - its own progress runs W_LEAD faster and lands first
+      const ew = current === SQUARE && next === BOTONERA ? ease(Math.min(1, p / W_LEAD)) : e;
       if (hidingGlobe) globeScale = 1 - e;
-      setState({ w: mix('w'), h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: mix('lp'), lg: mix('lg'), ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bo: mix('bo'), bt: mix('bt') });
+      contentLift = liftFrom * (1 - e);
+      setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: mix('lp'), lg: mix('lg'), ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bo: mix('bo'), bt: mix('bt') });
       // tagline + globe come in a bit BEFORE the square settles, like the
       // current site (its tagline fires ~700ms before the grow ends)
-      if (next === SQUARE && !taglineShown && (now - start) >= b.duration - TAGLINE_LEAD_MS) {
+      // - at most half the move early, so on the short way back from the
+      // botonera it still waits for the botonera to come apart
+      if (next === SQUARE && !taglineShown && (now - start) >= dur - Math.min(TAGLINE_LEAD_MS, dur / 2)) {
         playTagline();
         if (globeScale === 0) showGlobe();
       }
@@ -2690,6 +2853,8 @@
     [armH, armV, tagPlus].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
     tagPlus.classList.remove('visible', 'spin');
   }
+
+
   // square -> botonera: the words slide back in behind the plus, both at
   // the same pace, while the plus stays
   // and becomes the botonera's middle bar
@@ -2756,6 +2921,30 @@
     e.stopPropagation(); // don't also advance to the next state
     pushShapes();
   });
+  // Contact's hover (desktop, square, over the cyan): WATCH!'s green
+  // panel rises and the globe + text block lift with it, the way the
+  // athletes do on WATCH! - no clip, no triangle; the word goes bold
+  function openContactHover() {
+    if (TOUCH || contactHover || current !== SQUARE || animating || shown !== 'cyan-shape') return;
+    contactHover = true;
+    contactButton.classList.add('hover');
+    watchPanel.classList.add('open');
+    stage.style.setProperty('--lift', -(WATCH_PANEL_H + lastState.gap) / 2 + 'px');
+    stage.classList.add('contact-lift');
+  }
+  function closeContactHover() {
+    if (!contactHover) return;
+    contactHover = false;
+    contactButton.classList.remove('hover');
+    watchPanel.classList.remove('open');
+    stage.classList.remove('contact-lift');
+  }
+  contactButton.addEventListener('mouseenter', openContactHover);
+  contactButton.addEventListener('mouseleave', closeContactHover);
+  // the bottom halves stand in for both buttons (see .bottom-hit)
+  contactHit.addEventListener('mouseenter', openContactHover);
+  contactHit.addEventListener('mouseleave', closeContactHover);
+  contactHit.addEventListener('click', (e) => { e.stopPropagation(); contactButton.click(); });
 
   // --- portrait: swipe navigation ---
   // At the square, swipe left = WORK: the athletes clip pushes in from
@@ -2974,7 +3163,11 @@
       })();
       // safety net in case 'ended' never fires (clip not loaded, etc.)
       setTimeout(finish, ((separatorEl.duration || 2.2) + 1) * 1000);
-    } else if (current === SQUARE) { closeWatch(); goTo(BOTONERA); }
+    } else if (current === SQUARE) {
+      const lift = watchOpen && stage.classList.contains('watch-lift') ? -(WATCH_PANEL_H + lastState.gap) / 2 : 0;
+      closeWatch(true);
+      goTo(BOTONERA, lift);
+    }
     else if (current === BOTONERA) goTo(SQUARE);
   });
 
@@ -3101,22 +3294,40 @@
     separatorEl.classList.add('visible');
     // desktop only - on the tablet the blend's per-frame compositing
     // isn't worth it
-    if (canHover) contentEl.classList.add('overlay');
+    if (canHover) {
+      contentEl.classList.add('overlay');
+      watchPanel.classList.add('open');
+      // half of what the panel + its calle take off the hueco's height
+      stage.style.setProperty('--lift', -(WATCH_PANEL_H + lastState.gap) / 2 + 'px');
+      stage.classList.add('watch-lift');
+    }
     if (globe) globe.el.style.visibility = 'hidden'; // a cut, like the current site
   }
-  function closeWatch() {
+  // carry: the text block keeps its lift for goTo to take over (see
+  // goTo's liftFrom) - its own ease back is skipped
+  function closeWatch(carry) {
     if (!watchOpen) return;
     watchOpen = false;
+    if (carry) contentEl.style.transition = 'none';
     watchEl.classList.remove('triangle');
     watchClip.classList.remove('open');
     separatorEl.classList.remove('visible');
     contentEl.classList.remove('overlay');
+    watchPanel.classList.remove('open');
+    stage.classList.remove('watch-lift');
+    if (carry) {
+      void contentEl.offsetWidth; // apply the cut before the transition's back
+      contentEl.style.transition = '';
+    }
     separatorEl.pause();
     if (globe) globe.el.style.visibility = '';
   }
   if (canHover) {
     watchEl.addEventListener('mouseenter', openWatch);
     watchEl.addEventListener('mouseleave', closeWatch);
+    watchHit.addEventListener('mouseenter', openWatch);
+    watchHit.addEventListener('mouseleave', () => closeWatch());
+    watchHit.addEventListener('click', (e) => { e.stopPropagation(); watchEl.click(); });
   }
 
   // scale the 1920x1080 stage to fit, centered
