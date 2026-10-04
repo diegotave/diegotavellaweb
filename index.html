@@ -359,13 +359,17 @@
   #intro-ticker-strip span::after { content: '\2022'; padding-left: 0.35em; }
   /* the strip is two identical halves: sliding by one half loops */
   @keyframes intro-ticker { to { transform: translateX(-50%); } }
+  /* drawn at its full size (51px x INTRO_COUNT_K) and scaled down from
+     there, on its own layer - so growing it just scales a bitmap instead
+     of redrawing the text every frame */
   #intro-count {
     position: absolute;
     left: 0;
     top: 0;
-    font: 700 51px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font: 700 190.2px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
     color: #80dfff;
     white-space: nowrap;
+    will-change: transform;
   }
 
   /* the logo's brackets (black, like the current site). Sized at the old
@@ -1780,7 +1784,7 @@
   function placeCount(h) {
     const hSq = STATES[1].h; // (STATES[1] = the square)
     const q = hSq > introCountH0 ? Math.min(1, Math.max(0, (h - introCountH0) / (hSq - introCountH0))) : 1;
-    const k = INTRO_COUNT_K * (0.1 + 0.9 * q);
+    const k = 0.1 + 0.9 * q; // (of its CSS size, which is already INTRO_COUNT_K's)
     introCount.style.transform = `translate(${960 + 28}px, ${CY + 2}px) translate(-50%, -50%) scale(${k})`;
   }
   // introPending: clicked, waiting for "Diego Tavella" to leave the
@@ -1956,7 +1960,8 @@
   // tall as the hueco (setState), centered on it, under the text block -
   // see #intro-video
   const INTRO_DESKTOP = { src: 'assets/videos/rendering_intro.webm?v=5', frameW: 622, frameH: 622, centerX: 298, centerY: 302 };
-  const INTRO_TOUCH = { src: 'assets/videos/rendering_intro_stacked.mp4?v=5', frameW: 622, frameH: 622, centerX: 298, centerY: 302 };
+  // (touch: at 75% - less to upload to the GPU every frame on the tablet)
+  const INTRO_TOUCH = { src: 'assets/videos/rendering_intro_stacked.mp4?v=6', frameW: 466, frameH: 466, centerX: 298 * 0.75, centerY: 302 * 0.75, k: 0.75 };
   let introOn = false;
   introVideo = createAlphaVideo({
     id: 'intro-video', desktop: INTRO_DESKTOP, touch: INTRO_TOUCH, loop: false,
@@ -1965,7 +1970,8 @@
   });
   // centered on the hueco, its 1080 frame as tall as it
   function placeIntroVideo(st, cyanX = 0) {
-    introVideo.el.style.transform = `translate(${CX - 298 + cyanX}px, ${(st.cy ?? CY) - 302}px) scale(${st.h / 1080})`;
+    const c = introVideo.cfg, k = c.k || 1;
+    introVideo.el.style.transform = `translate(${CX - c.centerX + cyanX}px, ${(st.cy ?? CY) - c.centerY}px) scale(${st.h / 1080 / k})`;
   }
   function showIntroVideo(on) {
     introOn = on;
@@ -2246,8 +2252,13 @@
       const y0 = CY - 124.3 / 2 * bk, y1 = CY + 124.3 / 2 * bk;
       const nx = Math.max(x0, Math.min(960, x1)), ny = Math.max(y0, Math.min(CY, y1));
       const fx = Math.max(Math.abs(x0 - 960), Math.abs(x1 - 960)), fy = Math.max(Math.abs(y0 - CY), Math.abs(y1 - CY));
-      const allOut = Math.hypot(nx - 960, ny - CY) >= ringB;
-      const allIn = Math.hypot(fx, fy) <= ringB;
+      let allOut = Math.hypot(nx - 960, ny - CY) >= ringB;
+      let allIn = Math.hypot(fx, fy) <= ringB;
+      // (touch: a plain swap as its center crosses - see the logo's)
+      if (TOUCH && !allIn && !allOut) {
+        allIn = Math.abs(cxB - 960) < ringB;
+        allOut = !allIn;
+      }
       // the circle in the image's own px
       const R = ringB / bk, rcx = (960 - cxB) / bk + w / 2, rcy = 124.3 / 2;
       const key = `${bo}|` + (allIn ? 'in' : allOut ? 'out' : `${R.toFixed(2)}|${rcx.toFixed(2)}`);
@@ -2378,8 +2389,14 @@
     const lw = 131 * ls, lh = 72 * ls;
     const nx = Math.max(lx, Math.min(ccx, lx + lw)), ny = Math.max(ly, Math.min(ccy, ly + lh));
     const fx = Math.max(Math.abs(lx - ccx), Math.abs(lx + lw - ccx)), fy = Math.max(Math.abs(ly - ccy), Math.abs(ly + lh - ccy));
-    const allOut = Math.hypot(nx - ccx, ny - ccy) >= ringR; // nearest point outside
-    const allIn = Math.hypot(fx, fy) <= ringR;              // farthest corner inside
+    let allOut = Math.hypot(nx - ccx, ny - ccy) >= ringR; // nearest point outside
+    let allIn = Math.hypot(fx, fy) <= ringR;              // farthest corner inside
+    // (touch: no masks repainting every frame - it just swaps as the
+    // logo's center crosses the circle)
+    if (TOUCH && !allIn && !allOut) {
+      allIn = Math.hypot(lx + lw / 2 - ccx, ly + lh / 2 - ccy) < ringR;
+      allOut = !allIn;
+    }
     const green = (allIn ? 0 : 1) * (1 - hf);
     if (green !== lastGreen) {
       logoGreen.style.opacity = String(green);
@@ -2491,7 +2508,10 @@
     // start the globe video as the square transition BEGINS, while it's
     // still invisible, so it's already running smoothly by the time it
     // scales in at the end
-    if (next === SQUARE && globeScale === 0 && globe) {
+    // (touch, logo -> square: not while the intro clip plays - two alpha
+    // videos decoding and uploading at once is too much for the tablet;
+    // the globe only comes in after it anyway)
+    if (next === SQUARE && globeScale === 0 && globe && !(TOUCH && current === 0)) {
       globeStarting = true;
       globe.play();
     }
@@ -2501,7 +2521,16 @@
     // out of the way; the tagline and the globe wait for them (see
     // startIntro)
     const intro = current === 0 && next === SQUARE;
-    if (intro) { introPending = true; introRunning = true; }
+    if (intro) {
+      introPending = true;
+      introRunning = true;
+      // the ticker is measured and built now, before anything moves (it
+      // lays the tagline out - a layout pass better not taken mid-move);
+      // shown just for that, never painted
+      introTickerLayer.classList.add('on');
+      buildTicker();
+      introTickerLayer.classList.remove('on');
+    }
     const start = performance.now();
     // a move takes its target's duration - except botonera -> square,
     // which mirrors the way in (the square's own 1370 is for the grow from
@@ -2552,10 +2581,9 @@
     introTickerLayer.style.transform = contentEl.style.transform;
     introCount.textContent = '0%';
     showIntroOverlays(true);
-    buildTicker();
     placeTicker(lastBracketL, lastBracketR);
     const media = introVideo.media;
-    let counting = true, done = false;
+    let counting = true, done = false, shownPct = 0;
     // it doesn't tick through every number: it jumps in uneven steps (like
     // a real render's progress), each held until the clip's clock gets
     // there - fewer, longer-lived numbers, still 100% at INTRO_COUNT_S
@@ -2568,7 +2596,7 @@
       const raw = Math.min(1, media.currentTime / INTRO_COUNT_S) * 100;
       let pct = 0;
       for (const v of steps) if (v <= raw) pct = v;
-      introCount.textContent = pct + '%';
+      if (pct !== shownPct) { shownPct = pct; introCount.textContent = pct + '%'; }
       if (pct < 100) { requestAnimationFrame(count); return; }
       counting = false;
       introCountLayer.classList.remove('on');
@@ -4018,12 +4046,25 @@
     const box = document.getElementById('fps');
     if (!new URLSearchParams(location.search).has('fps')) { box.remove(); return; }
     let frames = 0, last = performance.now(), prev = last, worstGap = 0;
+    // the intro, from the logo's tap until the globe has grown in: its
+    // worst frame and its stalls (frames over 34ms - at least one lost),
+    // kept on screen until the next intro
+    const intro = { on: false, worst: 0, stalls: 0, line: '' };
     (function tick(now) {
       frames++;
-      worstGap = Math.max(worstGap, now - prev);
+      const gap = now - prev;
+      worstGap = Math.max(worstGap, gap);
       prev = now;
+      const inIntro = introRunning || (current === 0 && animating) || (globeGrowing && current === SQUARE);
+      if (inIntro && !intro.on) { intro.on = true; intro.worst = 0; intro.stalls = 0; }
+      if (intro.on) {
+        intro.worst = Math.max(intro.worst, gap);
+        if (gap > 34) intro.stalls++;
+        intro.line = `\nintro: peor ${Math.round(intro.worst)}ms  tirones ${intro.stalls}${inIntro ? ' ...' : ''}`;
+        if (!inIntro) intro.on = false;
+      }
       if (now - last >= 1000) {
-        box.textContent = Math.round(frames * 1000 / (now - last)) + ' fps  min ' + Math.round(1000 / worstGap) + globeLine();
+        box.textContent = Math.round(frames * 1000 / (now - last)) + ' fps  min ' + Math.round(1000 / worstGap) + globeLine() + intro.line;
         frames = 0; last = now; worstGap = 0;
       }
       requestAnimationFrame(tick);
