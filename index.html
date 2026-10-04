@@ -578,11 +578,14 @@
      "|" and HOME */
   #nav-contact, #nav-work { font-size: 34.3px; }
   #nav-contact { font-weight: 400; }
-  /* the botonera's <<< HOME (back from the dial) in black */
-  /* the botonera's way back: in the accent, like desktop's back arrow */
-  #nav.m-bot #nav-home, #nav.m-bot #nav-chevs-l { color: #ff4fd8; }
-  /* at the square, Work and its >>> in dark gray (Contact stays white) */
-  #nav.m-square #nav-work, #nav.m-square #nav-chevs-r { color: #333; }
+  /* the botonera's way back: the WORK the sweep ended on stays put (white,
+     bold) through the move and, there, turns into HOME in its place - a
+     plain swap - with <<< beside it */
+  #nav.m-bot #nav-home, #nav.m-bot #nav-chevs-l { color: #fff; }
+  #nav.m-bot #nav-home { font-weight: 700; font-size: 34.3px; }
+  /* at the square, Work and its >>> in the accent (Contact stays white) -
+     still and under the WORK sweep's white fill alike */
+  #nav.m-square #nav-work, #nav.m-square #nav-chevs-r { color: #ff4fd8; }
   #nav .nav-word { cursor: pointer; padding: 10px; margin: -10px; }
   #nav-work { font-weight: 700; position: relative; }
   #nav-sep { margin: 0 0.5em; opacity: 0.6; }
@@ -597,7 +600,7 @@
   /* during the WORK swipe everything but WORK fades out */
   #nav.working #nav-chevs-l, #nav.working #nav-chevs-r,
   #nav.working #nav-contact, #nav.working #nav-sep { opacity: 0; }
-  /* Work (gray) fills in white as the clip plays - same trick as WATCH!'s
+  /* Work (accent) fills in white as the clip plays - same trick as WATCH!'s
      #watch-progress (a window sliding right, its copy sliding back) */
   #nav-work-fill {
     position: absolute;
@@ -610,7 +613,7 @@
   }
   #nav-work-fill > span {
     display: block;
-    color: #fff; /* (fills the gray Work in white) */
+    color: #fff; /* (fills the accent Work in white) */
     transform: translateX(100%);
   }
 
@@ -627,6 +630,30 @@
     background: #fff;
     opacity: 0;
     will-change: transform, opacity;
+  }
+  /* the dial's end marks (touch): a small triangle before 01, pointing
+     the way to scroll, and one after 08 pointing back - laid out like a
+     number (see renderDial), in the accent */
+  .dial-tri {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 46.8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #botonera.live .dial-tri { pointer-events: auto; }
+  .dial-tri::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    background: #ff4fd8;
+    /* pointing right; turned per dial direction in JS */
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    transform: rotate(var(--rot, 0deg));
   }
   .bot-cell {
     position: absolute;
@@ -2741,31 +2768,60 @@
   // bracket and down from the bottom one. Elastic, one number at a time:
   // a drag stretches toward the next number but never a whole row, and
   // on release it springs onto it (or back). Transform + opacity only.
-  let dialPos = 0;   // the number in the window (0 = 01), fractional while moving
+  // It runs from DIAL_MIN to DIAL_MAX: a triangle before 01 (where it
+  // starts - nothing selected yet - pointing the way to scroll) and one
+  // after 08 (pointing back; tapping it rolls the dial back to the start).
+  const DIAL_MIN = -1, DIAL_MAX = 8;
+  let dialPos = DIAL_MIN; // the item in the window (0 = 01), fractional while moving
   let dialRun = 0;   // bumped to stop a running settle
   const dialBars = [];
+  const dialTris = []; // [{ el, n }]
   if (TOUCH) {
-    for (let k = 0; k < 7; k++) {
+    // a bar between every two items, triangles included
+    for (let k = DIAL_MIN; k < DIAL_MAX; k++) {
       const bar = document.createElement('div');
       bar.className = 'bot-bar';
       botoneraEl.appendChild(bar);
-      dialBars.push(bar);
+      dialBars.push({ el: bar, k });
     }
+    // forward: down the column / right along the row; back: the opposite
+    const fwd = DIAL_HORIZ ? 0 : 90;
+    [[DIAL_MIN, fwd], [DIAL_MAX, fwd + 180]].forEach(([n, rot]) => {
+      const el = document.createElement('div');
+      el.className = 'dial-tri';
+      el.style.width = BOT_GAP + 'px';
+      el.style.setProperty('--rot', rot + 'deg');
+      botoneraEl.appendChild(el);
+      dialTris.push({ el, n });
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!botoneraEl.classList.contains('live')) return;
+        if (performance.now() - dialDraggedAt < 350) return; // the drag's own click
+        // like a number: out of the window, it turns the dial to it; in it,
+        // the first one steps on to 01 and the last one rolls back home
+        if (Math.round(dialPos) !== n) dialTo(n);
+        else dialTo(n === DIAL_MIN ? 0 : DIAL_MIN);
+      });
+    });
   }
   function renderDial() {
     // (along = the dial's own axis: down the column, or across the row)
     const half = DIAL_PITCH / 2;
     const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / (DIAL_FADE * DIAL_PITCH));
     const near = Math.round(dialPos);
-    botCells.forEach((cell, n) => {
+    const place = (el, n) => {
       const along = (n - dialPos) * DIAL_PITCH, d = Math.abs(along);
       const grow = d <= half ? 1 + (DIAL_NUM_K - 1) * (1 - d / half) : 1;
       const x = DIAL_HORIZ ? 960 + along : 960, y = DIAL_HORIZ ? CY : CY + along;
-      cell.style.transform = `translate(${x - BOT_GAP / 2}px, ${y - 23.4}px) scale(${grow * DIAL_ITEM_K})`;
-      cell.style.opacity = d <= half ? 1 - 0.4 * (d / half) : outside(d);
+      el.style.transform = `translate(${x - BOT_GAP / 2}px, ${y - 23.4}px) scale(${grow * DIAL_ITEM_K})`;
+      el.style.opacity = d <= half ? 1 - 0.4 * (d / half) : outside(d);
+    };
+    botCells.forEach((cell, n) => {
+      place(cell, n);
       cell.classList.toggle('sel', n === near);
     });
-    dialBars.forEach((bar, k) => {
+    dialTris.forEach(({ el, n }) => place(el, n));
+    dialBars.forEach(({ el: bar, k }) => {
       const along = (k + 0.5 - dialPos) * DIAL_PITCH, d = Math.abs(along);
       bar.style.transform = DIAL_HORIZ
         ? `translate(${960 + along - 1}px, ${CY - 23.4}px) scale(1, ${DIAL_ITEM_K})`
@@ -2783,7 +2839,8 @@
       dialPos = p < 1 ? from + (target - from) * dialSpring(p) : target;
       renderDial();
       if (p < 1) { requestAnimationFrame(frame); return; }
-      if (target !== selectedCell) selectCell(target);
+      if (target < 0 || target > 7) deselectDial();
+      else if (target !== selectedCell) selectCell(target);
     })(start);
   }
   let dialDrag = null, dialDraggedAt = 0;
@@ -2811,7 +2868,7 @@
       const r = -along / rowPx();
       let disp = r / (1 + Math.abs(r)); // follows less and less, never a whole row
       const to = dialDrag.pos0 + disp;
-      if (to < 0 || to > 7) disp *= 0.35; // past 01 / 08: stiffer
+      if (to < DIAL_MIN || to > DIAL_MAX) disp *= 0.35; // past the triangles: stiffer
       dialPos = dialDrag.pos0 + disp;
       renderDial();
     });
@@ -2822,7 +2879,7 @@
       if (d.moved) dialDraggedAt = performance.now();
       const disp = dialPos - d.pos0;
       const step = Math.abs(disp) > 0.3 ? Math.sign(disp) : 0;
-      dialTo(Math.max(0, Math.min(7, d.pos0 + step)));
+      dialTo(Math.max(DIAL_MIN, Math.min(DIAL_MAX, d.pos0 + step)));
     };
     addEventListener('pointerup', release);
     addEventListener('pointercancel', release);
@@ -2837,6 +2894,12 @@
   function clearSelection() {
     selectedCell = -1;
     botCells.forEach((c) => c.classList.remove('sel'));
+  }
+  // the dial on a triangle: no video, so no info or preview in the header
+  function deselectDial() {
+    clearSelection();
+    headerInfo.classList.remove('visible');
+    hidePreview();
   }
   // the videos and their info, from the current site's BOTONERA_VIDEOS
   // (src + per-video framing: startAt seconds, frameH/cropTop/cropBottom
@@ -3250,17 +3313,17 @@
   const armV = tagPlus.querySelector('.plus-arm-v');
   function buildBotonera() {
     if (TOUCH) {
-      // the plus bows out; the dial fades in on 01, which gets selected
+      // the plus bows out; the dial fades in on its first triangle, with
+      // nothing selected
       tagPlus.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' });
       dialRun++;
-      dialPos = 0;
+      dialPos = DIAL_MIN;
       renderDial();
       botoneraEl.getAnimations().forEach((a) => a.cancel());
       botoneraEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BOT_FORM_MS + BOT_FADE_MS, easing: 'ease', fill: 'forwards' })
         .finished.then(() => {
           if (current !== BOTONERA && !transitionRunning) return;
           botoneraEl.classList.add('live');
-          selectCell(0);
         }).catch(() => {});
       return;
     }
@@ -3431,6 +3494,14 @@
   let navWorking = false; // keep the bar up through the WORK swipe
   function updateNav() {
     if (!TOUCH) return;
+    // (the WORK swipe keeps the bar up - WORK alone, filled white - into
+    // the botonera; there it lets go, as the word swaps for HOME)
+    if (navWorking && !animating && current === BOTONERA) {
+      navWorking = false;
+      navEl.classList.remove('working');
+      setNavProgress(0);
+      setWorkText('Work'); // (hidden now - back for the next time)
+    }
     // the mode only changes while nothing moves (the bar is faded out
     // during every other transition, so the swap is never seen)
     if (!animating) {
@@ -3470,6 +3541,37 @@
       navAnchor = from + (to - from) * easeOut(p);
       placeNav();
       if (p < 1) requestAnimationFrame(frame);
+    })(start);
+  }
+  // WORK's letters, both copies (the accent one and the white fill)
+  const navWorkEl = document.getElementById('nav-work');
+  function setWorkText(t) {
+    navWorkEl.firstChild.nodeValue = t;
+    navFillText.textContent = t;
+  }
+  // slot machine: each letter spins through random ones and stops on the
+  // target's, left to right (SCRAMBLE_STOP_MS apart), then the word eases
+  // to stay centered on its new width
+  const SCRAMBLE_FIRST_MS = 140, SCRAMBLE_STOP_MS = 110, SCRAMBLE_TICK_MS = 45;
+  function scrambleWork(target) {
+    const up = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', low = up.toLowerCase();
+    const start = performance.now();
+    let lastTick = -1;
+    (function frame(now) {
+      const t = now - start;
+      const tick = Math.floor(t / SCRAMBLE_TICK_MS);
+      let done = true;
+      if (tick !== lastTick) {
+        lastTick = tick;
+        setWorkText([...target].map((ch, i) => {
+          if (t >= SCRAMBLE_FIRST_MS + i * SCRAMBLE_STOP_MS) return ch;
+          done = false;
+          const set = ch === ch.toUpperCase() ? up : low;
+          return set[Math.floor(Math.random() * set.length)];
+        }).join(''));
+      } else done = false;
+      if (!done) { requestAnimationFrame(frame); return; }
+      slideNavAnchor(navWorkEl.offsetLeft + navWorkEl.offsetWidth / 2, 160);
     })(start);
   }
   function setNavProgress(p) {
@@ -3543,10 +3645,9 @@
       separatorEl.playbackRate = 1;
       offX['cyan-shape'] = 0;
       offX.separator = 1;
-      navWorking = false;
       animating = false;
-      goTo(BOTONERA); // fades the bar (WORK with it) out
-      setTimeout(() => { navEl.classList.remove('working'); setNavProgress(0); }, 350);
+      goTo(BOTONERA); // the bar (WORK) stays up through it - see updateNav
+      scrambleWork('Home');
     };
     slideX({ separator: [1, 0], 'cyan-shape': [0, -1] }, () => { slid = true; finish(); });
     separatorEl.addEventListener('ended', () => { ended = true; finish(); }, { once: true });
@@ -3588,7 +3689,7 @@
     });
   }
   // tapping the words does the same as swiping toward them
-  [['nav-work', () => 'left'], ['nav-contact', () => 'right'],
+  [['nav-work', () => (current === BOTONERA ? 'right' : 'left')], ['nav-contact', () => 'right'],
    ['nav-home', () => (current === BOTONERA ? 'right' : 'left')]].forEach(([id, dir]) => {
     document.getElementById(id).addEventListener('click', (e) => {
       e.stopPropagation();
