@@ -97,7 +97,7 @@
   #cyan-shape { --c: #80dfff; }
   /* parked just above the hueco (hidden under the top white bar) until
      the Contact push slides it in - see pushShapes */
-  #gray-shape { --c: #333; }
+  #gray-shape { --c: #000; }
 
   /* WATCH! - same look and behavior as the current site's: a small black
      square blinking at the hueco's bottom right; hovered, it becomes a
@@ -150,13 +150,14 @@
   #watch.triangle #watch-shape {
     clip-path: polygon(0% 0%, 100% 50%, 100% 50%, 0% 100%);
     transform: scale(2.025);
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 19 19' preserveAspectRatio='none'%3E%3Cpolygon points='0,0 19,9.5 0,19' fill='%23e02020'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 19 19' preserveAspectRatio='none'%3E%3Cpolygon points='0,0 19,9.5 0,19' fill='%23fff'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
     animation: none;
     opacity: 1;
   }
   #watch.back #watch-shape {
     clip-path: polygon(0% 0%, 100% 50%, 100% 50%, 0% 100%);
     transform: scale(1.5) rotate(-180deg);
+    background: #ff4fd8;
     animation: none;
     opacity: 1;
   }
@@ -231,8 +232,20 @@
   /* same button as "Home" (over Contact's gray): same size, weight and
      alignment, in white */
   #contact-button.home { color: #fff; }
-  /* hovered (desktop, square): bold, while the WATCH! panel rises */
-  #contact-button.hover { font-weight: 700; }
+  /* hovered (desktop, square): bold, while the WATCH! panel rises - a
+     crossfade between a regular and a bold copy laid on it (the weight
+     itself can't animate) */
+  #contact-button .cb-reg, #contact-button .cb-bold { transition: opacity 0.45s ease; }
+  #contact-button .cb-bold {
+    position: absolute;
+    left: 10px; /* the button's padding */
+    top: 10px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #contact-button.hover .cb-reg { opacity: 0; }
+  #contact-button.hover .cb-bold { opacity: 1; }
   /* desktop, square: the hover/click areas for Contact (left half of the
      hueco) and WATCH! (right half), as tall as the green panel + its
      calle - over everything, placed in setState */
@@ -288,6 +301,73 @@
     mix-blend-mode: overlay;
   }
 
+  /* logo -> square: the intro clip, played once from the logo's click,
+     under the text block. As tall as the hueco (its full 1080 frame),
+     growing with it; the white pieces clip it to the hueco. Built by
+     createAlphaVideo. */
+  #intro-video {
+    position: absolute;
+    left: 0;
+    top: 0;
+    visibility: hidden;
+    will-change: transform;
+    pointer-events: none;
+  }
+  #intro-video.on { visibility: visible; }
+  /* the intro's overlays, both laid over the clip in their own layers
+     NEXT TO #content (copying its transform in setState) and shown only
+     while the counter runs (see startIntro):
+     - a "rendering" ticker scrolling right to left between the brackets,
+       in "motion graphics"'s size and weight, overlaid like the text
+       block on WATCH! (touch: no blend - compositing a screen-sized
+       blended layer every frame made the intro stutter on the tablet);
+     - the counter, 0% -> 100% (see INTRO_COUNT_S) in the cyan, over it */
+  .intro-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: 0 0;
+    pointer-events: none;
+    display: none;
+  }
+  .intro-layer.on { display: block; }
+  #intro-ticker-layer { mix-blend-mode: overlay; }
+  .touchnav #intro-ticker-layer { mix-blend-mode: normal; }
+  #intro-ticker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+  }
+  #intro-ticker-strip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 300;
+    line-height: 1;
+    color: #000;
+    white-space: nowrap;
+    will-change: transform;
+    animation: intro-ticker var(--tick-s, 6s) linear infinite;
+  }
+  /* each item: the word, then the dot centered in the space after it */
+  #intro-ticker-strip span { padding-right: 0.35em; }
+  #intro-ticker-strip span::after { content: '\2022'; padding-left: 0.35em; }
+  /* the strip is two identical halves: sliding by one half loops */
+  @keyframes intro-ticker { to { transform: translateX(-50%); } }
+  #intro-count {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font: 700 51px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #80dfff;
+    white-space: nowrap;
+  }
+
   /* the logo's brackets (black, like the current site). Sized at the old
      site's 1.1x. */
   .bracket {
@@ -297,8 +377,18 @@
     height: 124.3px;
     will-change: transform, opacity;
   }
-  #bracket-left { width: 25.3px; }
-  #bracket-right { width: 24.2px; }
+  /* the botonera's thin end brackets, white (the PNGs are gray) */
+  #bracket-left-thin, #bracket-right-thin { filter: brightness(0) invert(1); }
+  /* on the WATCH!/Contact hovers the white brackets step back a little
+     (they read too strong over the clip / the lifted block) */
+  #bracket-left-w, #bracket-right-w { transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .watch-lift #bracket-left-w, .watch-lift #bracket-right-w,
+  .contact-lift #bracket-left-w, .contact-lift #bracket-right-w {
+    opacity: 0.45 !important;
+    transition: opacity 0.35s cubic-bezier(0.42, 0, 1, 1);
+  }
+  #bracket-left, #bracket-left-w { width: 25.3px; }
+  #bracket-right, #bracket-right-w { width: 24.2px; }
 
   /* "Video Editor | motion graphics" - same type and color as the current
      site. Each word sits in a window covering only its own side of the
@@ -348,8 +438,8 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    background: #000;
-    transition: transform 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #ff4fd8;
+    transition: transform 1.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 1.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
   .plus-arm-h { width: 31.2px; height: 7.15px; margin: -3.575px 0 0 -15.6px; }
   .plus-arm-v { width: 7.15px; height: 31.2px; margin: -15.6px 0 0 -3.575px; }
@@ -357,6 +447,10 @@
      back) - same as the current site */
   #tag-plus.spin .plus-arm-h { transform: scaleX(0); }
   #tag-plus.spin .plus-arm-v { transform: scaleY(1.5); }
+  /* in the accent as a plus, white as the spinning bar - and white at the
+     botonera, where it's the middle bar among the white ones */
+  #tag-plus.spin .plus-arm { background-color: #fff; }
+  #tag-plus.as-bar .plus-arm { background-color: #fff; transition: none; }
 
   /* separador_atletas: the WATCH! hover preview (desktop only). Fixed
      size (the video's own frame), sized to cover the hueco with scale()
@@ -450,7 +544,7 @@
   #watch-panel-in > div { position: absolute; }
   /* the calle (white behind the panel, so its top corners show white) */
   .wp-white { left: 0; right: 0; bottom: 0; height: calc(var(--ph) + var(--pg)); background: #fff; }
-  .wp-green { left: 1px; right: 1px; bottom: 0; height: var(--ph); background: #d8f784; border-radius: var(--r); }
+  .wp-green { left: 1px; right: 1px; bottom: 0; height: var(--ph); background: #ff4fd8; border-radius: var(--r); }
   /* the cyan's new bottom corners: white outside a quarter circle */
   .wp-cap { top: 0; width: calc(var(--r) + 1px); height: calc(var(--r) + 1px); }
   .wp-cap-l { left: 0; background: radial-gradient(circle at 100% 0%, transparent calc(var(--r) - 0.5px), #fff calc(var(--r) + 0.5px)); }
@@ -485,7 +579,8 @@
   #nav-contact, #nav-work { font-size: 34.3px; }
   #nav-contact { font-weight: 400; }
   /* the botonera's <<< HOME (back from the dial) in black */
-  #nav.m-bot #nav-home, #nav.m-bot #nav-chevs-l { color: #000; }
+  /* the botonera's way back: in the accent, like desktop's back arrow */
+  #nav.m-bot #nav-home, #nav.m-bot #nav-chevs-l { color: #ff4fd8; }
   /* at the square, Work and its >>> in dark gray (Contact stays white) */
   #nav.m-square #nav-work, #nav.m-square #nav-chevs-r { color: #333; }
   #nav .nav-word { cursor: pointer; padding: 10px; margin: -10px; }
@@ -529,7 +624,7 @@
     top: 0;
     width: 2px;
     height: 46.8px;
-    background: #000;
+    background: #fff;
     opacity: 0;
     will-change: transform, opacity;
   }
@@ -708,6 +803,75 @@
     pointer-events: none;
     will-change: transform;
   }
+  /* "Diego Tavella" in the green of the WATCH!/Contact panel, over the
+     white one at the square (opacity: lg, gone as the header forms - see
+     setState); in the white's own window, so it never shows above the
+     header's edge. On those hovers it's wiped away bottom to top, at the
+     panel's own pace, uncovering the white: an inner window rises while
+     the image counter-moves (translate only). */
+  #logo-green {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 131px;
+    height: 72px;
+    overflow: hidden;
+    transform-origin: 0 0;
+    opacity: 0;
+  }
+  #logo-green-wipe {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+  #logo-green-wipe img {
+    display: block;
+    width: 131px;
+    height: 72px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+  #logo-green.wiped #logo-green-wipe { transform: translateY(-100%); }
+  #logo-green.wiped #logo-green-wipe img { transform: translateY(100%); }
+  #logo-green.wiped #logo-green-wipe,
+  #logo-green.wiped #logo-green-wipe img { transition: transform 0.35s cubic-bezier(0.42, 0, 1, 1); }
+  /* the white copy, clipped to just what the wipe has uncovered while the
+     accent one is fully up (.under) - stacked whole, the white's
+     antialiased edges showed as a light fringe around the accent letters
+     (on Contact's dark gray). Same two-window wipe, mirrored, same
+     timings, so the two edges always meet. .instant: toggled by setState,
+     no animation. */
+  #logo-white-box {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 131px;
+    height: 72px;
+    overflow: hidden;
+    transform-origin: 0 0;
+  }
+  #logo-white-wipe {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.42, 0, 1, 1);
+  }
+  #logo-white-wipe img {
+    display: block;
+    width: 131px;
+    height: 72px;
+    will-change: transform;
+    transition: transform 0.35s cubic-bezier(0.42, 0, 1, 1);
+  }
+  #logo-white-box.under #logo-white-wipe { transform: translateY(100%); }
+  #logo-white-box.under #logo-white-wipe img { transform: translateY(-100%); }
+  #logo-white-box.under #logo-white-wipe,
+  #logo-white-box.under #logo-white-wipe img { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  #logo-white-box.instant #logo-white-wipe,
+  #logo-white-box.instant #logo-white-wipe img { transition: none; }
   /* hovered number's video, previewed inside the header: over the black,
      under "Diego Tavella", the video info and the outline (whose masks
      round its top corners for free). A plain rectangular window the
@@ -1217,6 +1381,8 @@
     <div id="content">
       <img class="bracket" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
       <img class="bracket" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png" alt="">
+      <img class="bracket" id="bracket-left-w" src="assets/images/logo-desarme/bracket-left-white.png" alt="" style="opacity:0">
+      <img class="bracket" id="bracket-right-w" src="assets/images/logo-desarme/bracket-right-white.png" alt="" style="opacity:0">
       <div class="tag-window" id="tag-left-window"><div class="tag" id="tag-left">Video Editor</div></div>
       <div class="tag-window" id="tag-right-window"><div class="tag" id="tag-right">motion graphics</div></div>
       <div id="tag-plus"><div class="plus-arm plus-arm-h"></div><div class="plus-arm plus-arm-v"></div></div>
@@ -1224,6 +1390,8 @@
       <img class="bracket" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png" alt="" style="opacity:0">
       <div id="botonera"></div>
     </div>
+    <div class="intro-layer" id="intro-ticker-layer"><div id="intro-ticker"><div id="intro-ticker-strip"></div></div></div>
+    <div class="intro-layer" id="intro-count-layer"><div id="intro-count">0%</div></div>
 
     <div class="piece bar bar-h" id="bar-top"></div>
     <div class="piece bar bar-h" id="bar-bottom"></div>
@@ -1238,7 +1406,7 @@
     <div class="header-corner" id="header-corner-tl"></div>
     <div class="header-corner" id="header-corner-tr"></div>
     <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png" alt="">
-    <div class="logo-window" id="logo-white-win"><img class="logo-text" id="logo-white" src="assets/images/logo-desarme/text-white.png" alt="" style="opacity:0"></div>
+    <div class="logo-window" id="logo-white-win"><div id="logo-white-box"><div id="logo-white-wipe"><img id="logo-white" src="assets/images/logo-desarme/text-white.png" alt="" style="opacity:0"></div></div><div id="logo-green"><div id="logo-green-wipe"><img src="assets/images/logo-desarme/text-magenta.png" alt=""></div></div></div>
     <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png" alt=""></div>
     <div id="header-info">
       <div id="header-info-lines">
@@ -1265,7 +1433,7 @@
       <img id="idle-logo" src="assets/images/logo-desarme/text-white.png" alt="" style="width:131px;height:72px">
     </div>
     <div id="idle-hit"></div>
-    <div id="contact-button">Contact</div>
+    <div id="contact-button"><span class="cb-reg">Contact</span><span class="cb-bold" aria-hidden="true">Contact</span></div>
     <div id="nav" class="m-square"><span class="nav-chevs" id="nav-chevs-l"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span><span class="nav-word" id="nav-contact">Contact</span><span id="nav-sep">|</span><span class="nav-word" id="nav-work">Work<span id="nav-work-fill"><span>Work</span></span></span><span class="nav-word" id="nav-home">Home</span><span class="nav-chevs" id="nav-chevs-r"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span></div>
     <div id="watch-text-clip"><span id="watch-text">WATCH!<span id="watch-progress"><span id="watch-progress-text">WATCH!</span></span></span></div>
     <div id="watch"><div id="watch-shape"></div></div>
@@ -1512,7 +1680,99 @@
   // goTo's liftFrom) instead of easing back on its own first
   let contentLift = 0;
   let contactHover = false; // Contact's hover is on (see openContactHover)
+  // the intro: its clip plays once from the logo's click; the counter
+  // runs 0% (the clip's first frame) -> 100% at INTRO_COUNT_S (2s 10f at
+  // 29.97), on the clip's own clock, and then cuts to the tagline; the
+  // globe cuts in when the clip ends
+  const INTRO_COUNT_S = 2 + 10 / 29.97;
+  // the counter's jumps: COUNT_STEP_MIN to COUNT_STEP_MAX percent each
+  const COUNT_STEP_MIN = 3, COUNT_STEP_MAX = 11;
+  const INTRO_CLIP_S = 2.769; // the clip's length (safety net, see startIntro)
+  const introCount = document.getElementById('intro-count');
+  const introCountLayer = document.getElementById('intro-count-layer');
+  const introTickerLayer = document.getElementById('intro-ticker-layer');
+  const introTicker = document.getElementById('intro-ticker');
+  const introTickerStrip = document.getElementById('intro-ticker-strip');
+  // the ticker: TICKER_GAP clear of each bracket's inner edge (content
+  // px), scrolling at TICKER_SPEED content px per second
+  const TICKER_GAP = 30;
+  const TICKER_SPEED = 140;
+  let tickerH = 0;
+  let lastBracketL = 0, lastBracketR = 0; // the brackets' x, from setState
+  let tickerL = 0, tickerW = 0; // the ticker's window, content px
+  function placeTicker(lbx, rbx) {
+    const l = lbx + 25.3 + TICKER_GAP, r = rbx - TICKER_GAP;
+    tickerL = l;
+    tickerW = Math.max(0, r - l);
+    introTicker.style.transform = `translate(${l}px, ${CY - tickerH / 2}px)`;
+    introTicker.style.width = tickerW + 'px';
+  }
+  // the tagline's words, sliding out from the plus, sweep the ticker away
+  // from the center to both brackets: a gap opening in its mask, at the
+  // words' own pace (TAGLINE_SWAP_MS, CSS 'ease')
+  function sweepTicker() {
+    const c = 960 - tickerL;
+    const start = performance.now();
+    (function frame(now) {
+      const p = Math.min(1, (now - start) / TAGLINE_SWAP_MS);
+      const e = easeCss(p);
+      const a = c * (1 - e), b = c + (tickerW - c) * e;
+      const m = `linear-gradient(to right, #000 ${a}px, transparent ${a}px, transparent ${b}px, #000 ${b}px)`;
+      introTicker.style.webkitMaskImage = m;
+      introTicker.style.maskImage = m;
+      if (p < 1) { requestAnimationFrame(frame); return; }
+      introTickerLayer.classList.remove('on');
+      introTicker.style.webkitMaskImage = '';
+      introTicker.style.maskImage = '';
+    })(start);
+  }
+  // (re)built at each intro: "motion graphics"'s current size, and enough
+  // items for each half of the strip to outrun the widest window
+  function buildTicker() {
+    layoutTagline();
+    const size = parseFloat(tagRight.style.fontSize) || 64;
+    introTickerStrip.style.fontSize = size + 'px';
+    tickerH = Math.ceil(size * 1.25);
+    introTicker.style.height = tickerH + 'px';
+    introTickerStrip.style.top = ((tickerH - size) / 2) + 'px';
+    introTickerStrip.innerHTML = '<span>rendering</span>';
+    const item = introTickerStrip.firstChild.offsetWidth || size * 6;
+    const n = Math.ceil(1920 / item) + 1;
+    introTickerStrip.innerHTML = '<span>rendering</span>'.repeat(2 * n);
+    introTickerStrip.style.setProperty('--tick-s', (n * item / TICKER_SPEED) + 's');
+  }
+  function showIntroOverlays(on) {
+    introCountLayer.classList.toggle('on', on);
+    introTickerLayer.classList.toggle('on', on);
+  }
+  // white, a touch right of the block's center (content px); it's born
+  // at 10% of its size on the clip's first frame and grows with the clip,
+  // reaching INTRO_COUNT_K as the hueco reaches the square's height
+  const INTRO_COUNT_K = 3.73;
+  let introCountH0 = 0; // the hueco's height on the clip's first frame
+  function placeCount(h) {
+    const hSq = STATES[1].h; // (STATES[1] = the square)
+    const q = hSq > introCountH0 ? Math.min(1, Math.max(0, (h - introCountH0) / (hSq - introCountH0))) : 1;
+    const k = INTRO_COUNT_K * (0.1 + 0.9 * q);
+    introCount.style.transform = `translate(${960 + 28}px, ${CY + 2}px) translate(-50%, -50%) scale(${k})`;
+  }
+  // introPending: clicked, waiting for "Diego Tavella" to leave the
+  // brackets' area (see setState) before the clip starts
+  let introRunning = false, introPending = false;
+  // logo -> square: "Diego Tavella"'s rise (and its turn to white) runs
+  // LOGO_LEAD faster than the rest of the move
+  const LOGO_LEAD = 0.6;
+  let introVideo = null; // see createAlphaVideo, below
   const contactHit = document.getElementById('contact-hit');
+  // the pointer's last spot (desktop), to tell whether it's on an area
+  // that isn't listening yet - see pushShapes
+  let pointerX = -1, pointerY = -1;
+  addEventListener('mousemove', (e) => { pointerX = e.clientX; pointerY = e.clientY; }, { passive: true });
+  function pointerOn(el) {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && pointerX >= r.left && pointerX <= r.right && pointerY >= r.top && pointerY <= r.bottom;
+  }
+  let pushingHome = false; // a Home push carrying Contact's hover in
   const watchHit = document.getElementById('watch-hit');
   let bottomHitSize = '';
   const navEl = document.getElementById('nav');
@@ -1522,6 +1782,10 @@
   const bracketRight = document.getElementById('bracket-right');
   const bracketLeftThin = document.getElementById('bracket-left-thin');
   const bracketRightThin = document.getElementById('bracket-right-thin');
+  const bracketLeftW = document.getElementById('bracket-left-w');
+  const bracketRightW = document.getElementById('bracket-right-w');
+  // the brackets' black -> white circle (see setState), content px
+  const BRACKET_RING_R = 380;
   const shapeParts = {};
   for (const id in shapeOffset) {
     const root = document.getElementById(id);
@@ -1659,6 +1923,33 @@
     insertAt: separatorWin,
     keepPlaying: () => globeScale > 0 || globeStarting,
   });
+  // the intro clip ("rendering" + props), cropped to its content: the
+  // 1080x1080 export's 622x622 square at (242, 238), so its own center
+  // (540, 540) sits at (298, 302) here. Its full 1080 frame is kept as
+  // tall as the hueco (setState), centered on it, under the text block -
+  // see #intro-video
+  const INTRO_DESKTOP = { src: 'assets/videos/rendering_intro.webm?v=5', frameW: 622, frameH: 622, centerX: 298, centerY: 302 };
+  const INTRO_TOUCH = { src: 'assets/videos/rendering_intro_stacked.mp4?v=5', frameW: 622, frameH: 622, centerX: 298, centerY: 302 };
+  let introOn = false;
+  introVideo = createAlphaVideo({
+    id: 'intro-video', desktop: INTRO_DESKTOP, touch: INTRO_TOUCH, loop: false,
+    insertAt: document.getElementById('content'),
+    keepPlaying: () => introOn,
+  });
+  // centered on the hueco, its 1080 frame as tall as it
+  function placeIntroVideo(st, cyanX = 0) {
+    introVideo.el.style.transform = `translate(${CX - 298 + cyanX}px, ${(st.cy ?? CY) - 302}px) scale(${st.h / 1080})`;
+  }
+  function showIntroVideo(on) {
+    introOn = on;
+    introVideo.el.classList.toggle('on', on);
+    if (on) {
+      // placed right away (setState places it from the next frame on)
+      placeIntroVideo(lastState);
+      introVideo.media.currentTime = 0;
+      introVideo.play();
+    } else introVideo.pause();
+  }
   // the onda (dot burst) accent: plays once every ONDA_EVERY_MS, centered
   // on the globe and just BEHIND it - same as the current site. Drawn in
   // code (it used to be a video, ondablanca, cropped to a square) on a
@@ -1765,6 +2056,24 @@
   const logoWhite = document.getElementById('logo-white');
   const logoGray = document.getElementById('logo-gray');
   const logoWhiteWin = document.getElementById('logo-white-win');
+  const logoGreen = document.getElementById('logo-green');
+  const logoWhiteBox = document.getElementById('logo-white-box');
+  let lastGreen = null;
+  // the hovers' wipe of the accent logo (see #logo-green), and the white
+  // one's mirrored reveal under it (see #logo-white-box)
+  function wipeLogoGreen(on) {
+    logoGreen.classList.toggle('wiped', on);
+    if (lastGreen >= 1) logoWhiteBox.classList.toggle('under', !on);
+  }
+  // the white one hidden under the accent one only while that's fully up
+  // and unwiped - switched with no animation
+  function setWhiteUnder(under) {
+    if (logoWhiteBox.classList.contains('under') === under) return;
+    logoWhiteBox.classList.add('instant');
+    logoWhiteBox.classList.toggle('under', under);
+    void logoWhiteBox.offsetWidth;
+    logoWhiteBox.classList.remove('instant');
+  }
   const logoGrayWin = document.getElementById('logo-gray-win');
   const logoGrayLit = document.getElementById('logo-gray-lit');
   const LOGO_WIN_H = 260 * UI;
@@ -1824,10 +2133,12 @@
     const sk = Math.max(w / 1090, h / 972);
     separatorWin.style.transform = t(L + offX.separator * pushX, Tp + shapeOffset['cyan-shape'] * push);
     separatorEl.style.transform = `${t(w / 2 - 1090 * sk / 2, h / 2 - 972 * sk / 2)} scale(${sk})`;
-    // the hover areas: each half of the hueco, panel + calle tall
-    const hitY = B - WATCH_PANEL_H - gap + shapeOffset['cyan-shape'] * push;
-    contactHit.style.transform = t(L + cyanX, hitY);
-    watchHit.style.transform = t(CX + cyanX, hitY);
+    // the hover areas: each half of the hueco, panel + calle tall - fixed
+    // to the hueco (not riding with the cyan), like the buttons they stand
+    // in for: at Contact the left one is Home's
+    const hitY = B - WATCH_PANEL_H - gap;
+    contactHit.style.transform = t(L, hitY);
+    watchHit.style.transform = t(CX, hitY);
     const hitSize = `${w}|${gap}`;
     if (hitSize !== bottomHitSize) {
       bottomHitSize = hitSize;
@@ -1877,16 +2188,54 @@
     bracketRight.style.transform = `${t(rbx, CY - 124.3 / 2)} scale(${bk})`;
     bracketLeftThin.style.transform = bracketLeft.style.transform;
     bracketRightThin.style.transform = bracketRight.style.transform;
+    lastBracketL = lbx;
+    lastBracketR = rbx;
+    // the intro clip: its 1080 frame as tall as the hueco, centered on it
+    if (introVideo && introOn) {
+      placeIntroVideo(state, cyanX);
+      placeCount(h);
+      placeTicker(lbx, rbx);
+      introCountLayer.style.transform = contentEl.style.transform;
+      introTickerLayer.style.transform = contentEl.style.transform;
+    }
     const bt = String(state.bt ?? 0);
     if (bracketLeftThin.style.opacity !== bt) {
       bracketLeftThin.style.opacity = bt;
       bracketRightThin.style.opacity = bt;
     }
-    const bo = String(state.bo ?? 1);
-    if (bracketLeft.style.opacity !== bo) {
-      bracketLeft.style.opacity = bo;
-      bracketRight.style.opacity = bo;
-    }
+    // black -> white, like the logo (see there): by place - black inside
+    // an imaginary circle on the block's center, white outside it, so
+    // opening out they change along its arc. A bigger circle than the
+    // logo's (BRACKET_RING_R, content px), so it comes late in their move.
+    // It shrinks away as the header forms, so at the botonera they're
+    // white (the dial's, on touch). Masks only while the edge crosses one.
+    const bo = state.bo ?? 1;
+    const ringB = BRACKET_RING_R * (1 - (STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0));
+    bracketLeftW.style.transform = bracketLeft.style.transform;
+    bracketRightW.style.transform = bracketRight.style.transform;
+    [[bracketLeft, bracketLeftW, lbx, 25.3], [bracketRight, bracketRightW, rbx, 24.2]].forEach(([blk, wht, x, w]) => {
+      // the bracket's box in content px (scaled by bk around its center)
+      const cxB = x + w / 2, x0 = cxB - w / 2 * bk, x1 = cxB + w / 2 * bk;
+      const y0 = CY - 124.3 / 2 * bk, y1 = CY + 124.3 / 2 * bk;
+      const nx = Math.max(x0, Math.min(960, x1)), ny = Math.max(y0, Math.min(CY, y1));
+      const fx = Math.max(Math.abs(x0 - 960), Math.abs(x1 - 960)), fy = Math.max(Math.abs(y0 - CY), Math.abs(y1 - CY));
+      const allOut = Math.hypot(nx - 960, ny - CY) >= ringB;
+      const allIn = Math.hypot(fx, fy) <= ringB;
+      // the circle in the image's own px
+      const R = ringB / bk, rcx = (960 - cxB) / bk + w / 2, rcy = 124.3 / 2;
+      const key = `${bo}|` + (allIn ? 'in' : allOut ? 'out' : `${R.toFixed(2)}|${rcx.toFixed(2)}`);
+      if (blk.dataset.ck === key) return;
+      blk.dataset.ck = key;
+      const mid = !allIn && !allOut;
+      blk.style.opacity = String(allOut ? 0 : bo);
+      wht.style.opacity = String(allIn ? 0 : bo);
+      const inside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, #000 ${R - 0.5}px, transparent ${R + 0.5}px)` : '';
+      const outside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, transparent ${R - 0.5}px, #000 ${R + 0.5}px)` : '';
+      blk.style.webkitMaskImage = inside;
+      blk.style.maskImage = inside;
+      wht.style.webkitMaskImage = outside;
+      wht.style.maskImage = outside;
+    });
 
     // globe: centered on the hueco, dropped toward its bottom edge per
     // state, and carried along with the cyan when Contact pushes it out
@@ -1976,19 +2325,58 @@
     const lx = (960 - 131 * ls0 / 2) + ((oL + 59.7 * UI) - (960 - 131 * ls0 / 2)) * lp;
     const ly = (CY - 72 * ls0 / 2) + (lyTop - (CY - 72 * ls0 / 2)) * lp;
     logoBlack.style.transform = `${t(lx, ly)} scale(${ls})`;
+    // intro: the clip starts once the logo's bottom has risen above the
+    // brackets' top (the block is scaled by ks around CY)
+    if (introPending && ly + 72 * ls <= CY - 124.3 / 2 * ks) startIntro();
     // split line = the header's bottom edge (the black's sweep)
-    const hb = Tp - gap;
+    // (with no header yet there's nothing to split at: the line sits well
+    // above the logo, so the logo rising ahead of the hueco - as on the way
+    // in - never crosses it and turns gray)
+    const hb = hh > 0 ? Tp - gap : ly - 100 * UI;
     logoGrayWin.style.transform = t(lx, hb - LOGO_WIN_H); // ends at hb
     logoWhiteWin.style.transform = t(lx, hb);              // starts at hb
     logoGray.style.transform = `${t(0, ly - (hb - LOGO_WIN_H))} scale(${ls})`;
     logoGrayLit.style.transform = logoGray.style.transform;
-    logoWhite.style.transform = `${t(0, ly - hb)} scale(${ls})`;
-    if (lg !== lastLg) {
-      logoBlack.style.opacity = String(1 - lg);
-      logoWhite.style.opacity = String(lg);
-      logoGray.style.opacity = String(lg);
-      lastLg = lg;
+    logoWhiteBox.style.transform = `${t(0, ly - hb)} scale(${ls})`;
+    logoGreen.style.transform = logoWhiteBox.style.transform;
+    // black -> accent: by place, not time - an imaginary circle on the
+    // hueco's center, the size of the rendering clip's ring around the
+    // counter (288.5 px from the center of its 1080 frame, shown as tall
+    // as the square). The logo is black inside it and the accent (with the
+    // white under it) outside, so rising out of the center it changes
+    // along the circle's arc. Masks only while the edge crosses it. The
+    // accent then fades as the header forms (hf).
+    const ringR = 288.5 * STATES[1].h / 1080;
+    const ccx = CX + cyanX, ccy = cy;
+    const lw = 131 * ls, lh = 72 * ls;
+    const nx = Math.max(lx, Math.min(ccx, lx + lw)), ny = Math.max(ly, Math.min(ccy, ly + lh));
+    const fx = Math.max(Math.abs(lx - ccx), Math.abs(lx + lw - ccx)), fy = Math.max(Math.abs(ly - ccy), Math.abs(ly + lh - ccy));
+    const allOut = Math.hypot(nx - ccx, ny - ccy) >= ringR; // nearest point outside
+    const allIn = Math.hypot(fx, fy) <= ringR;              // farthest corner inside
+    const green = (allIn ? 0 : 1) * (1 - hf);
+    if (green !== lastGreen) {
+      logoGreen.style.opacity = String(green);
+      lastGreen = green;
     }
+    // the circle in the logo's own 131x72 px
+    const R = ringR / ls, rcx = (ccx - lx) / ls, rcy = (ccy - ly) / ls;
+    const key = allIn ? 'in' : allOut ? 'out' : `${R.toFixed(2)}|${rcx.toFixed(2)}|${rcy.toFixed(2)}`;
+    if (key !== lastLg) {
+      const mid = !allIn && !allOut;
+      logoBlack.style.opacity = allOut ? '0' : '1';
+      const inside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, #000 ${R - 0.5}px, transparent ${R + 0.5}px)` : '';
+      const outside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, transparent ${R - 0.5}px, #000 ${R + 0.5}px)` : '';
+      logoBlack.style.webkitMaskImage = inside;
+      logoBlack.style.maskImage = inside;
+      [logoWhiteBox, logoGreen].forEach((el) => {
+        el.style.webkitMaskImage = outside;
+        el.style.maskImage = outside;
+      });
+      logoWhite.style.opacity = allIn ? '0' : '1';
+      lastLg = key;
+    }
+    logoGray.style.opacity = String(lg);
+    setWhiteUnder(green >= 1 && allOut && !logoGreen.classList.contains('wiped'));
     // video info: right edge mirroring the logo's inset, centered on the
     // header's height like the logo
     const infoR = Rt - logoInset;
@@ -2043,7 +2431,8 @@
     const idle = !animating;
     // portrait: the nav bar takes over from Contact and WATCH!
     contactButton.classList.toggle('visible', !TOUCH && current === SQUARE && idle);
-    if (!contactButton.classList.contains('visible') || shown !== 'cyan-shape') closeContactHover();
+    // (kept through the Home push it was opened for - see pushShapes)
+    if (!pushingHome && (!contactButton.classList.contains('visible') || shown !== 'cyan-shape')) closeContactHover();
     // (canHover may not be known yet on the first call - it's set later)
     const hits = canHoverReady && canHover && contactButton.classList.contains('visible');
     contactHit.classList.toggle('on', hits);
@@ -2081,6 +2470,11 @@
     }
     const fakePush = TOUCH && current === BOTONERA && next === SQUARE;
     if (fakePush) fakePushEl.classList.add('on');
+    // logo -> square: the intro clip and its counter, once the logo is
+    // out of the way; the tagline and the globe wait for them (see
+    // startIntro)
+    const intro = current === 0 && next === SQUARE;
+    if (intro) { introPending = true; introRunning = true; }
     const start = performance.now();
     // a move takes its target's duration - except botonera -> square,
     // which mirrors the way in (the square's own 1370 is for the grow from
@@ -2096,12 +2490,13 @@
       const ew = current === SQUARE && next === BOTONERA ? ease(Math.min(1, p / W_LEAD)) : e;
       if (hidingGlobe) globeScale = 1 - e;
       contentLift = liftFrom * (1 - e);
-      setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: mix('lp'), lg: mix('lg'), ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bo: mix('bo'), bt: mix('bt') });
+      const el = intro ? ease(Math.min(1, p / LOGO_LEAD)) : e;
+      setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: a.lp + (b.lp - a.lp) * el, lg: a.lg + (b.lg - a.lg) * el, ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bo: mix('bo'), bt: mix('bt') });
       // tagline + globe come in a bit BEFORE the square settles, like the
       // current site (its tagline fires ~700ms before the grow ends)
       // - at most half the move early, so on the short way back from the
       // botonera it still waits for the botonera to come apart
-      if (next === SQUARE && !taglineShown && (now - start) >= dur - Math.min(TAGLINE_LEAD_MS, dur / 2)) {
+      if (!intro && next === SQUARE && !taglineShown && (now - start) >= dur - Math.min(TAGLINE_LEAD_MS, dur / 2)) {
         playTagline();
         if (globeScale === 0) showGlobe();
       }
@@ -2110,9 +2505,69 @@
       current = next;
       if (hidingGlobe && globe) globe.pause();
       transitionRunning = false;
-      animating = globeGrowing;
+      // (safety: if the logo never left the brackets, start the clip now)
+      if (introPending) startIntro();
+      animating = globeGrowing || introRunning;
       updateContactButton();
     })(start);
+  }
+
+  // the intro: the clip plays once while the counter follows its clock;
+  // at 100% the counter cuts to the tagline, and when the clip ends it
+  // cuts to the globe (whole - no grow)
+  function startIntro() {
+    introPending = false;
+    introRunning = true;
+    showIntroVideo(true);
+    introCountH0 = lastState.h;
+    placeCount(lastState.h);
+    introCountLayer.style.transform = contentEl.style.transform;
+    introTickerLayer.style.transform = contentEl.style.transform;
+    introCount.textContent = '0%';
+    showIntroOverlays(true);
+    buildTicker();
+    placeTicker(lastBracketL, lastBracketR);
+    const media = introVideo.media;
+    let counting = true, done = false;
+    // it doesn't tick through every number: it jumps in uneven steps (like
+    // a real render's progress), each held until the clip's clock gets
+    // there - fewer, longer-lived numbers, still 100% at INTRO_COUNT_S
+    const steps = [0];
+    while (steps[steps.length - 1] < 100) {
+      steps.push(Math.min(100, steps[steps.length - 1] + COUNT_STEP_MIN + Math.floor(Math.random() * (COUNT_STEP_MAX - COUNT_STEP_MIN + 1))));
+    }
+    (function count() {
+      if (!counting) return;
+      const raw = Math.min(1, media.currentTime / INTRO_COUNT_S) * 100;
+      let pct = 0;
+      for (const v of steps) if (v <= raw) pct = v;
+      introCount.textContent = pct + '%';
+      if (pct < 100) { requestAnimationFrame(count); return; }
+      counting = false;
+      introCountLayer.classList.remove('on');
+      playTagline();
+      sweepTicker();
+    })();
+    // when the clip ends: it goes with a cut, and the globe grows in from
+    // nothing, as it always did (see showGlobe)
+    const end = () => {
+      if (done) return;
+      done = true;
+      if (counting) { counting = false; introCountLayer.classList.remove('on'); playTagline(); sweepTicker(); }
+      showIntroVideo(false);
+      finishIntro();
+    };
+    media.addEventListener('ended', end, { once: true });
+    // safety net, in case the clip never plays through (not loaded, etc.)
+    setTimeout(end, (INTRO_CLIP_S + 1.5) * 1000);
+  }
+  function finishIntro() {
+    introRunning = false;
+    if (globeScale === 0) showGlobe();
+    if (!transitionRunning) {
+      animating = globeGrowing; // (showGlobe frees it once grown)
+      updateContactButton();
+    }
   }
 
   // the globe grows in from nothing as the square settles. Runs alongside
@@ -2810,7 +3265,8 @@
       return;
     }
     // the plus becomes the middle bar: arms collapse to one thin, taller,
-    // gray vertical bar
+    // gray vertical bar (black, like the other bars - see .as-bar)
+    tagPlus.classList.add('as-bar');
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
     // (portrait: a thin HORIZONTAL bar, the column's middle divider)
     armH.animate([{ transform: getComputedStyle(armH).transform }, { transform: TOUCH ? `scale(1.5, ${2 / 7.15})` : 'scaleX(0)' }], opts);
@@ -2851,7 +3307,7 @@
     });
     // the plus goes back to being a plus (playTagline shows it again)
     [armH, armV, tagPlus].forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
-    tagPlus.classList.remove('visible', 'spin');
+    tagPlus.classList.remove('visible', 'spin', 'as-bar');
   }
 
 
@@ -2897,8 +3353,13 @@
   let shown = 'cyan-shape';
   function pushShapes() {
     if (animating) return;
+    // Home with the pointer still on the bottom-left hover area: the hover
+    // starts with the push, so the cyan comes back already in it instead of
+    // landing and then moving again
+    const intoHover = shown !== 'cyan-shape' && pointerOn(contactHit);
     animating = true;
     updateContactButton();
+    if (intoHover) { pushingHome = true; openContactHover(true); }
     const outgoing = shown;
     const incoming = shown === 'cyan-shape' ? 'gray-shape' : 'cyan-shape';
     const dir = shown === 'cyan-shape' ? 1 : -1; // +1 down (Contact), -1 up (Home)
@@ -2911,10 +3372,13 @@
       setState(lastState);
       if (p < 1) { requestAnimationFrame(frame); return; }
       shown = incoming;
-      contactButton.textContent = shown === 'cyan-shape' ? 'Contact' : 'Home';
+      contactButton.querySelectorAll('span').forEach((el) => { el.textContent = shown === 'cyan-shape' ? 'Contact' : 'Home'; });
       contactButton.classList.toggle('home', shown !== 'cyan-shape');
       animating = false;
+      pushingHome = false;
       updateContactButton();
+      // (if the pointer left the area during the push, no mouseleave came)
+      if (intoHover && !pointerOn(contactHit)) closeContactHover();
     })(start);
   }
   contactButton.addEventListener('click', (e) => {
@@ -2924,19 +3388,25 @@
   // Contact's hover (desktop, square, over the cyan): WATCH!'s green
   // panel rises and the globe + text block lift with it, the way the
   // athletes do on WATCH! - no clip, no triangle; the word goes bold
-  function openContactHover() {
-    if (TOUCH || contactHover || current !== SQUARE || animating || shown !== 'cyan-shape') return;
+  // force: from pushShapes, on the way back Home (see intoHover there)
+  function openContactHover(force) {
+    if (TOUCH || contactHover) return;
+    if (force !== true && (current !== SQUARE || animating || shown !== 'cyan-shape')) return;
     contactHover = true;
     contactButton.classList.add('hover');
     watchPanel.classList.add('open');
+    wipeLogoGreen(true);
     stage.style.setProperty('--lift', -(WATCH_PANEL_H + lastState.gap) / 2 + 'px');
     stage.classList.add('contact-lift');
   }
   function closeContactHover() {
-    if (!contactHover) return;
+    // (not mid Home push: its area hiding fires a mouseleave - see
+    // pushShapes, which checks the pointer itself at the end)
+    if (!contactHover || pushingHome) return;
     contactHover = false;
     contactButton.classList.remove('hover');
     watchPanel.classList.remove('open');
+    wipeLogoGreen(false);
     stage.classList.remove('contact-lift');
   }
   contactButton.addEventListener('mouseenter', openContactHover);
@@ -3297,6 +3767,7 @@
     if (canHover) {
       contentEl.classList.add('overlay');
       watchPanel.classList.add('open');
+      wipeLogoGreen(true);
       // half of what the panel + its calle take off the hueco's height
       stage.style.setProperty('--lift', -(WATCH_PANEL_H + lastState.gap) / 2 + 'px');
       stage.classList.add('watch-lift');
@@ -3314,6 +3785,7 @@
     separatorEl.classList.remove('visible');
     contentEl.classList.remove('overlay');
     watchPanel.classList.remove('open');
+    wipeLogoGreen(false);
     stage.classList.remove('watch-lift');
     if (carry) {
       void contentEl.offsetWidth; // apply the cut before the transition's back
