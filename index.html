@@ -322,9 +322,11 @@
      while the counter runs (see startIntro):
      - a "rendering" ticker scrolling right to left between the brackets,
        in "motion graphics"'s size and weight, overlaid like the text
-       block on WATCH! (touch: no blend - compositing a screen-sized
-       blended layer every frame made the intro stutter on the tablet);
-     - the counter, 0% -> 100% (see INTRO_COUNT_S) in the cyan, over it */
+       block on WATCH! (touch too: there it only starts once the move
+       to the square is over, so the blend doesn't land on the move);
+     - the counter, 0% -> 100% (see INTRO_COUNT_S) in the cyan - UNDER
+       the ticker (in the background's color, over it it read as the
+       ticker being cut away) */
   .intro-layer {
     position: absolute;
     left: 0;
@@ -337,7 +339,6 @@
   }
   .intro-layer.on { display: block; }
   #intro-ticker-layer { mix-blend-mode: overlay; }
-  .touchnav #intro-ticker-layer { mix-blend-mode: normal; }
   #intro-ticker {
     position: absolute;
     left: 0;
@@ -608,6 +609,58 @@
      and the cyan's new bottom edge square too */
   .wp-white { left: 0; right: 0; bottom: 0; height: calc(var(--ph) + var(--pg)); background: #fff; }
   .wp-green { left: 1px; right: 1px; bottom: 0; height: var(--ph); background: #ff4fd8; }
+  /* the botonera's version (desktop, hovering a number): light gray, half
+     the header tall - room for text about the video, later. The dial stays
+     put; the globe and the back arrow rise to sit on the cyan's new base */
+  #watch-panel.bot { --ph: var(--ph-bot); }
+  #watch-panel.bot .wp-green { background: #d9d9d9; }
+  /* its text: three lines, black, left edge on "Diego Tavella"'s
+     (--tl, set in setState), centered on the panel's height; typed in fast
+     as it rises (see openBotPanel) */
+  /* an invisible window just around the text block (--wm: ~2vh of
+     margin; --iw/--ih: the block's size, measured in measureBotInfo) - the
+     text sliding from number to number shows only inside it */
+  .wp-win {
+    --wm: calc(21.6px * var(--ui, 1));
+    position: absolute;
+    left: calc(var(--tl, 40px) - var(--wm));
+    top: 50%;
+    width: calc(var(--iw, 400px) + 2 * var(--wm));
+    height: calc(var(--ih, 80px) + 2 * var(--wm));
+    transform: translateY(-50%);
+    overflow: hidden;
+  }
+  .wp-info {
+    position: absolute;
+    left: var(--wm);
+    top: 50%;
+    transform: translateY(-50%);
+    translate: 0 0;
+    display: none;
+    font: 400 calc(20px * var(--ui, 1))/1.05 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    text-transform: uppercase;
+    color: #000;
+    white-space: nowrap;
+  }
+  .wp-info > div { min-height: 1.05em; }
+  /* bold on top, then medium, then regular */
+  .wp-info > div:nth-child(1) { font-weight: 700; }
+  .wp-info > div:nth-child(2) { font-weight: 500; }
+  /* (web: the last line lighter still) */
+  html:not(.touchnav) .wp-info > div:nth-child(3) { font-weight: 300; }
+  #watch-panel.bot .wp-info { display: block; }
+  #watch-panel.bot .wp-info + .wp-info { visibility: hidden; } /* (the incoming one, between slides) */
+  /* touch: it rises with the dial's own pace and ease (it starts as the
+     dial heads for a number - see dialTo) */
+  .touchnav #watch-panel.bot.open #watch-panel-in { transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.3, 1); }
+  .touchnav .bot-lift #globe, .touchnav .bot-lift #nav { transition: opacity 0.3s ease, translate 0.45s cubic-bezier(0.2, 0.7, 0.3, 1); }
+  #watch { translate: 0 0; transition: translate 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  /* (touch: the nav's <<< Home is the way back - it rises too) */
+  .bot-lift #globe, .bot-lift #watch, .bot-lift #nav {
+    translate: 0 var(--blift);
+    transition: translate 0.35s cubic-bezier(0.42, 0, 1, 1);
+  }
+  .bot-lift #nav { transition: opacity 0.3s ease, translate 0.35s cubic-bezier(0.42, 0, 1, 1); }
 
   /* portrait navigation bar, centered at the bottom of the hueco where
      Contact and WATCH! sit in landscape: <<< CONTACT | WORK >>>, or
@@ -625,7 +678,8 @@
     user-select: none;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s ease;
+    translate: 0 0;
+    transition: opacity 0.3s ease, translate 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform, opacity;
     transform-origin: 0 0; /* scaled from its own corner - see placeNav */
   }
@@ -755,6 +809,8 @@
   /* portrait dial: each cell's opacity is set by renderDial, and the
      number in the window only turns bold */
   .touchnav .bot-num { opacity: 1; }
+  /* portrait tablet: the numbers around the window a weight up, to show */
+  .tablet.portrait .bot-cell:not(.sel) .bot-num { font-weight: 300; }
   /* the dial lying down (touch, landscape): the other numbers a bit
      heavier than the row's usual thin - their fade stays the same */
   .dial-h .bot-num { font-weight: 300; }
@@ -864,6 +920,10 @@
      PNG is 131x72, placed with translate + scale. No will-change on
      purpose: it's small, so letting it re-rasterize at its final scale
      keeps it as sharp as it can be at rest. */
+  /* touch: each logo copy on its own layer - rastered once and scaled by
+     the GPU as it grows/rises (the images are 4x, so it stays sharp);
+     redrawn every frame they made the tablet stutter */
+  .touchnav .logo-text, .touchnav #logo-white-box, .touchnav #logo-green { will-change: transform; }
   .logo-text {
     position: absolute;
     left: 0;
@@ -1488,7 +1548,7 @@
     <div id="fake-push"></div>
     <div id="separator-win"><video id="separator" muted loop playsinline></video></div>
     <div id="watch-panel"><div id="watch-panel-in">
-      <div class="wp-white"></div><div class="wp-green"></div>
+      <div class="wp-white"></div><div class="wp-green"><div class="wp-win"><div class="wp-info"><div></div><div></div><div></div></div><div class="wp-info"><div></div><div></div><div></div></div></div></div>
     </div></div>
 
     <div id="content">
@@ -1504,8 +1564,8 @@
       <img class="bracket" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png?v=2" alt="" style="opacity:0">
       <div id="botonera"></div>
     </div>
-    <div class="intro-layer" id="intro-ticker-layer"><div id="intro-ticker"><div id="intro-ticker-sq"><div id="intro-ticker-strip"></div></div></div></div>
     <div class="intro-layer" id="intro-count-layer"><div id="intro-count">0%</div></div>
+    <div class="intro-layer" id="intro-ticker-layer"><div id="intro-ticker"><div id="intro-ticker-sq"><div id="intro-ticker-strip"></div></div></div></div>
 
     <div class="piece bar bar-h" id="bar-top"></div>
     <div class="piece bar bar-h" id="bar-bottom"></div>
@@ -1519,9 +1579,9 @@
     <div id="header-preview"><video id="header-preview-video" muted loop playsinline preload="none"></video><div id="header-crt"></div></div>
     <div class="header-corner" id="header-corner-tl"></div>
     <div class="header-corner" id="header-corner-tr"></div>
-    <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png?v=2" alt="">
-    <div class="logo-window" id="logo-white-win"><div id="logo-white-box"><div id="logo-white-wipe"><img id="logo-white" src="assets/images/logo-desarme/text-white.png?v=2" alt="" style="opacity:0"></div></div><div id="logo-green"><div id="logo-green-wipe"><img src="assets/images/logo-desarme/text-magenta.png?v=2" alt=""></div></div></div>
-    <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png?v=2" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png?v=2" alt=""></div>
+    <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png?v=3" alt="">
+    <div class="logo-window" id="logo-white-win"><div id="logo-white-box"><div id="logo-white-wipe"><img id="logo-white" src="assets/images/logo-desarme/text-white.png?v=3" alt="" style="opacity:0"></div></div><div id="logo-green"><div id="logo-green-wipe"><img src="assets/images/logo-desarme/text-magenta.png?v=3" alt=""></div></div></div>
+    <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png?v=3" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png?v=3" alt=""></div>
     <div id="header-info">
       <div id="header-info-lines">
         <div id="header-info-edition">EDITION</div>
@@ -1544,7 +1604,7 @@
       <div id="idle-rect"></div>
       <img id="idle-bracket-left" src="assets/images/logo-desarme/bracket-left-white.png?v=2" alt="" style="width:25.3px;height:124.3px">
       <img id="idle-bracket-right" src="assets/images/logo-desarme/bracket-right-white.png?v=2" alt="" style="width:24.2px;height:124.3px">
-      <img id="idle-logo" src="assets/images/logo-desarme/text-white.png?v=2" alt="" style="width:131px;height:72px">
+      <img id="idle-logo" src="assets/images/logo-desarme/text-white.png?v=3" alt="" style="width:131px;height:72px">
     </div>
     <div id="idle-hit"></div>
     <div id="contact-button"><span class="cb-reg">Contact</span><span class="cb-bold" aria-hidden="true">Contact</span></div>
@@ -1714,12 +1774,12 @@
   const GLOBE_IN_MS = 750;    // scale-in once the square is reached
   // fdo_02, color-inverted (baked into the files - no CSS filter), cropped to the globe + satellite orbit
   // (672x528 out of 1920x1080 - measured over EVERY frame, with margin, so the satellite's whole orbit fits), one exact 181-frame loop cycle repeated 4x (24s - the browser's own loop restart costs a frame or two, so it should happen as rarely as possible), so there are far fewer pixels to decode
-  const GLOBE_DESKTOP = { src: 'assets/videos/fdo_02_inv_web.webm?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
+  const GLOBE_DESKTOP = { src: 'assets/videos/fdo_02_inv_web.webm?v=7', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
   const ONDA_EVERY_MS = 8000;
   // (touch: at 75% - 504x396 a half - a lighter upload to the GPU every
   // frame on the tablet; all its numbers scaled with it, so it shows the
   // same)
-  const GLOBE_TOUCH = { src: 'assets/videos/fdo_02_inv_stacked.mp4?v=7', frameW: 504, frameH: 396, centerX: 298 * 0.75, centerY: 262 * 0.75, diameter: 370 * 0.75 };
+  const GLOBE_TOUCH = { src: 'assets/videos/fdo_02_inv_stacked.mp4?v=8', frameW: 504, frameH: 396, centerX: 298 * 0.75, centerY: 262 * 0.75, diameter: 370 * 0.75 };
 
   const stage = document.getElementById('stage');
   // everything that spans the stage's height, and the tagline row, follow
@@ -1804,6 +1864,98 @@
   const separatorEl = document.getElementById('separator');
   const separatorWin = document.getElementById('separator-win');
   const watchPanel = document.getElementById('watch-panel');
+  // the botonera's panel (desktop): up while a number is hovered - a short
+  // grace on leaving, so going from one number to the next keeps it up
+  let botPanelOpen = false, botPanelTimer = null, lastInfoLeft = null;
+  let botHoverCell = -1; // desktop: the number last hovered
+  // its text (placeholder for now), typed in fast each time it opens
+  // per video (k: 0 = 01) - placeholder for now
+  const botInfoText = (k) => ['esto es info de texto', `sobre el video ${String(k + 1).padStart(2, '0')}. a definir`, 'gracias totales.'];
+  let botInfoIdx = 0; // the video whose text is showing
+  const BOT_TYPE_MS = 10; // per character
+  const botInfoBlocks = [...watchPanel.querySelectorAll('.wp-info')];
+  let botInfoCur = 0; // which block is showing
+  const botInfoLinesOf = (k) => botInfoBlocks[k].querySelectorAll('div');
+  let botInfoLines = botInfoLinesOf(0);
+  // touch, number to number: the text moves on like the dial does - the
+  // shown block slides out along the dial's axis and the next one in
+  // behind it, inside the panel's invisible window (see .wp-win)
+  // the text block's size for its window (all lines in full)
+  function measureBotInfo(k) {
+    const b = botInfoBlocks[1 - botInfoCur];
+    botInfoLinesOf(1 - botInfoCur).forEach((el, i) => { el.textContent = botInfoText(k)[i]; });
+    watchPanel.style.setProperty('--iw', b.offsetWidth + 'px');
+    watchPanel.style.setProperty('--ih', b.offsetHeight + 'px');
+  }
+  function slideBotInfo(dir, k) {
+    if (!botPanelOpen || !dir) return;
+    botTypeRun++; // (a slide shows it whole)
+    const a = botInfoBlocks[botInfoCur], b = botInfoBlocks[1 - botInfoCur];
+    botInfoLinesOf(botInfoCur).forEach((el, i) => { el.textContent = botInfoText(botInfoIdx)[i]; });
+    botInfoLinesOf(1 - botInfoCur).forEach((el, i) => { el.textContent = botInfoText(k)[i]; });
+    // (the window wide enough for either)
+    watchPanel.style.setProperty('--iw', Math.max(a.offsetWidth, b.offsetWidth) + 'px');
+    botInfoIdx = k;
+    const d = DIAL_HORIZ ? a.parentNode.offsetWidth : a.parentNode.offsetHeight; // (the window's size)
+    const at = (v) => (DIAL_HORIZ ? `${v}px 0` : `0 ${v}px`);
+    // touch: the dial's own spring (dialSpring, 520ms) - the same small
+    // overshoot and settle as the numbers; web: a much more damped one
+    // (it travels the window's whole width there - the dial's overshoot
+    // read as exaggerated), sampled into keyframes
+    const spring = TOUCH ? dialSpring : (p) => 1 - Math.exp(-9 * p) * Math.cos(7 * p);
+    const N = 24;
+    const keys = (from, to) => Array.from({ length: N + 1 }, (_, i) => ({ translate: at(from + (to - from) * spring(i / N)) }));
+    const opts = { duration: 520, easing: 'linear' };
+    [a, b].forEach((el) => el.getAnimations().forEach((x) => x.cancel()));
+    b.style.visibility = 'visible';
+    a.animate(keys(0, -dir * d), opts);
+    b.animate(keys(dir * d, 0), opts).finished.then(() => {
+      a.style.visibility = 'hidden';
+      botInfoCur = 1 - botInfoCur;
+      botInfoLines = botInfoLinesOf(botInfoCur);
+    }).catch(() => {});
+  }
+  let botTypeRun = 0;
+  function typeBotInfo(k) {
+    botInfoIdx = k;
+    const BOT_INFO = botInfoText(k);
+    const run = ++botTypeRun;
+    botInfoLines.forEach((el) => { el.textContent = ''; });
+    const total = BOT_INFO.reduce((n, t) => n + t.length, 0);
+    const start = performance.now() + 120; // once the panel is on its way up
+    (function frame(now) {
+      if (run !== botTypeRun) return;
+      let shown = Math.max(0, Math.floor((now - start) / BOT_TYPE_MS));
+      BOT_INFO.forEach((t, i) => {
+        const n = Math.min(t.length, shown);
+        if (botInfoLines[i].textContent.length !== n) botInfoLines[i].textContent = t.slice(0, n);
+        shown -= n;
+      });
+      if (Math.floor((now - start) / BOT_TYPE_MS) < total) requestAnimationFrame(frame);
+    })(performance.now());
+  }
+  function openBotPanel(k = 0) {
+    clearTimeout(botPanelTimer);
+    if (botPanelOpen || current !== BOTONERA || animating) return;
+    botPanelOpen = true;
+    watchPanel.classList.add('bot', 'open');
+    measureBotInfo(k);
+    typeBotInfo(k);
+    stage.style.setProperty('--blift', -(STATES[BOTONERA].hh / 2 + STATES[BOTONERA].gap) + 'px');
+    stage.classList.add('bot-lift');
+  }
+  function closeBotPanel(now) {
+    clearTimeout(botPanelTimer);
+    const close = () => {
+      if (!botPanelOpen) return;
+      botPanelOpen = false;
+      botHoverCell = -1;
+      botTypeRun++; // (stop typing)
+      watchPanel.classList.remove('open');
+      stage.classList.remove('bot-lift');
+    };
+    if (now === true) close(); else botPanelTimer = setTimeout(close, 120);
+  }
   // the green panel's height: twice WATCH!/Contact's distance from the
   // hueco's bottom (54 * UI), so both sit centered on it
   const WATCH_PANEL_H = 2 * 54 * UI;
@@ -1812,6 +1964,14 @@
   // goTo's liftFrom) instead of easing back on its own first
   let contentLift = 0;
   let contactHover = false; // Contact's hover is on (see openContactHover)
+  // ahead of the first tap: decode the logo/bracket images (they're 4x - a
+  // first-show decode right at the start of the move made it stutter)
+  document.querySelectorAll('img[src*="logo-desarme"]').forEach((img) => {
+    if (img.decode) img.decode().catch(() => {});
+  });
+  // DEBUG: ?off=clip,ticker,count switches parts of the intro off (they
+  // still run, just unseen) - to find what makes the tablet stutter
+  const DEBUG_OFF = new Set((new URLSearchParams(location.search).get('off') || '').split(','));
   // the intro: its clip plays once from the logo's click; the counter
   // runs 0% (the clip's first frame) -> 100% at INTRO_COUNT_S (2s 10f at
   // 29.97), on the clip's own clock, and then cuts to the tagline; the
@@ -1873,7 +2033,7 @@
     layoutTagline();
     const size = parseFloat(tagRight.style.fontSize) || 64;
     introTickerStrip.style.fontSize = size + 'px';
-    tickerH = Math.ceil(size * 1.25);
+    tickerH = Math.ceil(size * 1.6); // (room for the g's tail)
     introTicker.style.height = tickerH + 'px';
     introTickerStrip.style.top = ((tickerH - size) / 2) + 'px';
     introTickerStrip.innerHTML = '<span>rendering</span>';
@@ -1882,9 +2042,19 @@
     introTickerStrip.innerHTML = '<span>rendering</span>'.repeat(2 * n);
     introTickerStrip.style.setProperty('--tick-s', (n * item / TICKER_SPEED) + 's');
   }
+  // the ticker (and the tagline layout it measures) built ahead of time -
+  // once the fonts are in - so the tap doesn't pay for it; shown just for
+  // the measuring, never painted
+  let tickerBuilt = false;
+  function prebuildTicker() {
+    introTickerLayer.classList.add('on');
+    buildTicker();
+    introTickerLayer.classList.remove('on');
+    tickerBuilt = true;
+  }
   function showIntroOverlays(on) {
-    introCountLayer.classList.toggle('on', on);
-    introTickerLayer.classList.toggle('on', on);
+    introCountLayer.classList.toggle('on', on && !DEBUG_OFF.has('count'));
+    introTickerLayer.classList.toggle('on', on && !DEBUG_OFF.has('ticker'));
   }
   // white, a touch right of the block's center (content px); it's born
   // at 10% of its size on the clip's first frame and grows with the clip,
@@ -1892,7 +2062,6 @@
   const INTRO_COUNT_K = 3.73;
   let introCountH0 = 0; // the hueco's height on the clip's first frame
   function placeCount(h) {
-    if (TOUCH) h = STATES[1].h; // (touch: full size, like the clip)
     const hSq = STATES[1].h; // (STATES[1] = the square)
     const q = hSq > introCountH0 ? Math.min(1, Math.max(0, (h - introCountH0) / (hSq - introCountH0))) : 1;
     const k = 0.1 + 0.9 * q; // (of its CSS size, which is already INTRO_COUNT_K's)
@@ -1904,6 +2073,11 @@
   // logo -> square: "Diego Tavella"'s rise (and its turn to white) runs
   // LOGO_LEAD faster than the rest of the move
   const LOGO_LEAD = 0.6;
+  // touch: the logo/bracket copies waiting to show sit at a nearly-nil
+  // opacity rather than 0 - so the tablet has their layers ready from the
+  // start, instead of building them the moment they turn up mid-move
+  const HIDDEN_OP = TOUCH ? '0.003' : '0';
+  const TOUCH_INTRO_MS = 685; // touch: the logo -> square move, twice as quick (see goTo)
   let introVideo = null; // see createAlphaVideo, below
   const contactHit = document.getElementById('contact-hit');
   // the pointer's last spot (desktop), to tell whether it's on an area
@@ -2085,14 +2259,12 @@
   // centered by its content instead)
   const INTRO_CONTENT_DX = PORTRAIT ? -13 : 0;
   function placeIntroVideo(st, cyanX = 0) {
-    // (touch: held at its final size - the square's - and only uncovered
-    // by the opening hueco, not grown with it: one thing less per frame)
-    const c = introVideo.cfg, k = c.k || 1, s = (TOUCH ? STATES[1].h : st.h) / 1080;
+    const c = introVideo.cfg, k = c.k || 1, s = st.h / 1080;
     introVideo.el.style.transform = `translate(${CX - c.centerX + cyanX + INTRO_CONTENT_DX * s}px, ${(st.cy ?? CY) - c.centerY}px) scale(${s / k})`;
   }
   function showIntroVideo(on) {
     introOn = on;
-    introVideo.el.classList.toggle('on', on);
+    introVideo.el.classList.toggle('on', on && !DEBUG_OFF.has('clip'));
     if (on) {
       // placed right away (setState places it from the next frame on)
       placeIntroVideo(lastState);
@@ -2194,7 +2366,13 @@
   // a state's block scale: a number, null (= the square's, see above), or
   // 'fit' (portrait botonera: the widest that keeps the thin brackets
   // 40px inside the hueco)
-  const DIAL_PORTRAIT_K = 2.5;
+  // (a tablet - short side 600+ CSS px - a bit smaller, so the numbers
+  // around the window still show, and those a touch stronger - see
+  // DIAL_DIM and .tablet; a phone keeps it big)
+  const TABLET = Math.min(innerWidth, innerHeight) >= 600;
+  if (TOUCH && TABLET) document.documentElement.classList.add('tablet');
+  const DIAL_PORTRAIT_K = TABLET ? 1.8 : 2.5;
+  const DIAL_DIM = PORTRAIT && TABLET ? 0.85 : 0.6; // the numbers' top opacity outside the window
   const STACK_BLOCK_DY = 50; // portrait square: the text block's drop, stage px
   function blockScaleFor(st) {
     if (typeof st.ks === 'number') return st.ks;
@@ -2311,6 +2489,8 @@
       watchPanel.style.setProperty('--r', state.r + 'px');
       watchPanel.style.setProperty('--pg', state.gap + 'px');
       watchPanel.style.setProperty('--ph', WATCH_PANEL_H + 'px');
+      watchPanel.style.setProperty('--ph-bot', (STATES[BOTONERA].hh / 2) + 'px');
+      watchPanel.style.setProperty('--ui', UI); // (the info text scales like the rest of the UI)
     }
 
     // brackets + tagline ride along with the cyan (Contact push), and the
@@ -2392,8 +2572,8 @@
       if (blk.dataset.ck === key) return;
       blk.dataset.ck = key;
       const mid = !allIn && !allOut;
-      blk.style.opacity = String(allOut ? 0 : bo);
-      wht.style.opacity = String(allIn ? 0 : bo);
+      blk.style.opacity = allOut || !bo ? (bo ? HIDDEN_OP : '0') : String(bo);
+      wht.style.opacity = allIn || !bo ? (bo ? HIDDEN_OP : '0') : String(bo);
       const inside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, #000 ${R - 0.5}px, transparent ${R + 0.5}px)` : '';
       const outside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, transparent ${R - 0.5}px, #000 ${R + 0.5}px)` : '';
       blk.style.webkitMaskImage = inside;
@@ -2490,11 +2670,17 @@
     const ls = ls0 + (ls1 - ls0) * lp;
     const lyTop = (oT + 59.7 * UI) + ((headerMid - 36 * ls1) - (oT + 59.7 * UI)) * hf;
     const lx = (960 - 131 * ls0 / 2) + ((oL + 59.7 * UI) - (960 - 131 * ls0 / 2)) * lp;
+    // the botonera panel's text starts where "Diego Tavella" does (the
+    // panel's fill starts at the hueco's left edge, L)
+    const tl = (oL + 59.7 * UI) - L;
+    if (tl !== lastInfoLeft) { watchPanel.style.setProperty('--tl', tl + 'px'); lastInfoLeft = tl; }
     const ly = (CY - 72 * ls0 / 2) + (lyTop - (CY - 72 * ls0 / 2)) * lp;
     logoBlack.style.transform = `${t(lx, ly)} scale(${ls})`;
     // intro: the clip starts once the logo's bottom has risen above the
-    // brackets' top (the block is scaled by ks around CY)
-    if (introPending && ly + 72 * ls <= CY - 124.3 / 2 * ks) startIntro();
+    // brackets' top (the block is scaled by ks around CY). (Touch: only
+    // once the move is over - goTo starts it then - so the tablet never
+    // composites the clip and the growing rect at once.)
+    if (!TOUCH && introPending && ly + 72 * ls <= CY - 124.3 / 2 * ks) startIntro();
     // split line = the header's bottom edge (the black's sweep)
     // (with no header yet there's nothing to split at: the line sits well
     // above the logo, so the logo rising ahead of the hueco - as on the way
@@ -2527,7 +2713,7 @@
     }
     const green = (allIn ? 0 : 1) * (1 - hf);
     if (green !== lastGreen) {
-      logoGreen.style.opacity = String(green);
+      logoGreen.style.opacity = green > 0 ? String(green) : HIDDEN_OP;
       lastGreen = green;
     }
     // the circle in the logo's own 131x72 px
@@ -2535,7 +2721,7 @@
     const key = allIn ? 'in' : allOut ? 'out' : `${R.toFixed(2)}|${rcx.toFixed(2)}|${rcy.toFixed(2)}`;
     if (key !== lastLg) {
       const mid = !allIn && !allOut;
-      logoBlack.style.opacity = allOut ? '0' : '1';
+      logoBlack.style.opacity = allOut ? HIDDEN_OP : '1';
       const inside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, #000 ${R - 0.5}px, transparent ${R + 0.5}px)` : '';
       const outside = mid ? `radial-gradient(circle ${R}px at ${rcx}px ${rcy}px, transparent ${R - 0.5}px, #000 ${R + 0.5}px)` : '';
       logoBlack.style.webkitMaskImage = inside;
@@ -2544,7 +2730,7 @@
         el.style.webkitMaskImage = outside;
         el.style.maskImage = outside;
       });
-      logoWhite.style.opacity = allIn ? '0' : '1';
+      logoWhite.style.opacity = allIn ? HIDDEN_OP : '1';
       lastLg = key;
     }
     logoGray.style.opacity = String(lg);
@@ -2615,6 +2801,8 @@
     const watchOn = !TOUCH && idle && ((current === SQUARE && shown === 'cyan-shape') || current === BOTONERA);
     watchEl.classList.toggle('visible', watchOn);
     watchEl.classList.toggle('back', current === BOTONERA);
+    if (current !== BOTONERA || !idle) closeBotPanel(true);
+    watchPanel.classList.toggle('bot', current === BOTONERA);
     if (!watchOn) closeWatch();
   }
 
@@ -2655,15 +2843,15 @@
       // the ticker is measured and built now, before anything moves (it
       // lays the tagline out - a layout pass better not taken mid-move);
       // shown just for that, never painted
-      introTickerLayer.classList.add('on');
-      buildTicker();
-      introTickerLayer.classList.remove('on');
+      if (!tickerBuilt) prebuildTicker();
     }
     const start = performance.now();
     // a move takes its target's duration - except botonera -> square,
     // which mirrors the way in (the square's own 1370 is for the grow from
     // the logo, far too slow here)
-    const dur = current === BOTONERA && next === SQUARE ? a.duration : b.duration;
+    // (touch, logo -> square: much quicker - the clip only starts after it)
+    const dur = current === BOTONERA && next === SQUARE ? a.duration
+      : TOUCH && intro ? TOUCH_INTRO_MS : b.duration;
     (function frame(now) {
       const p = Math.min(1, (now - start) / dur);
       const e = ease(p);
@@ -2689,7 +2877,8 @@
       current = next;
       if (hidingGlobe && globe) globe.pause();
       transitionRunning = false;
-      // (safety: if the logo never left the brackets, start the clip now)
+      // (touch: the clip starts here, the move done; elsewhere a safety -
+      // if the logo never left the brackets, start it now)
       if (introPending) startIntro();
       animating = globeGrowing || introRunning;
       updateContactButton();
@@ -2913,10 +3102,20 @@
       }
       tagLeftX = -STACK_GAP - iT.bottom;
       tagRightX = STACK_GAP - iB.top + STACK_BOTTOM_LOW;
+      // the whole stack (words, plus, dashes) shifted so its ink sits
+      // centered on the brackets' height (they're centered on CY)
+      const stackShift = -((tagLeftX + iT.top) + (tagRightX + iB.bottom)) / 2;
+      tagLeftX += stackShift;
+      tagRightX += stackShift;
+      const plusY = STACK_PLUS_LOW + stackShift;
+      // the words' windows split on the plus's line - each word slides out
+      // from there (see the portrait clips by the tag windows)
+      document.getElementById('tag-left-window').style.clipPath = `inset(0 0 ${STAGE_H - (CY + plusY)}px 0)`;
+      document.getElementById('tag-right-window').style.clipPath = `inset(${CY + plusY}px 0 0 0)`;
       // the dashes: on the plus's horizontal arm's line, each half as wide
       // as half of Video Editor
-      tagDashes.style.transform = `translate(0, ${CY + STACK_PLUS_LOW - 1.8}px)`;
-      tagPlus.style.top = (CY + STACK_PLUS_LOW) + 'px';
+      tagDashes.style.transform = `translate(0, ${CY + plusY - 1.8}px)`;
+      tagPlus.style.top = (CY + plusY) + 'px';
       tagDashes.style.setProperty('--dw', (tagLeft.offsetWidth / 2) + 'px');
       // the square's brackets: the same PNGs scaled up whole (no stretch)
       // to frame the stack, STACK_PAD above and below its ink, and brought
@@ -3016,8 +3215,17 @@
     cell.appendChild(num);
     botoneraEl.appendChild(cell);
     botCells.push(cell);
-    cell.addEventListener('mouseenter', () => { if (!TOUCH) { showHeaderInfo(i - 1); showPreview(i - 1); } });
-    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); } });
+    cell.addEventListener('mouseenter', () => {
+      if (TOUCH) return;
+      showHeaderInfo(i - 1);
+      showPreview(i - 1);
+      // already up (straight from another number): the text moves on in
+      // the pointer's direction - out that way, the next one in behind it
+      if (botPanelOpen && botHoverCell >= 0 && botHoverCell !== i - 1) slideBotInfo(-Math.sign(i - 1 - botHoverCell), i - 1);
+      openBotPanel(i - 1);
+      botHoverCell = i - 1;
+    });
+    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); closeBotPanel(); } });
     cell.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!botoneraEl.classList.contains('live')) return;
@@ -3077,7 +3285,7 @@
   function renderDial() {
     // (along = the dial's own axis: down the column, or across the row)
     const half = DIAL_PITCH / 2;
-    const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / dialFadeLen());
+    const outside = (d) => DIAL_DIM * Math.max(0, 1 - (d - half) / dialFadeLen());
     const near = Math.round(dialPos);
     const place = (el, n) => {
       const along = (n - dialPos) * DIAL_PITCH, d = Math.abs(along);
@@ -3112,6 +3320,13 @@
   const dialSpring = (p) => 1 - Math.exp(-6 * p) * Math.cos(9 * p);
   function dialTo(target) {
     const from = dialPos, start = performance.now(), run = ++dialRun;
+    // (touch: the info panel moves with the dial - up as it heads for a
+    // number, down for a triangle, its text sliding number to number)
+    const onNum = (n) => n >= 0 && n <= 7;
+    if (onNum(target)) {
+      if (!botPanelOpen) openBotPanel(target);
+      else if (onNum(Math.round(from)) && Math.round(from) !== target) slideBotInfo(Math.sign(target - from), target);
+    } else closeBotPanel(true);
     (function frame(now) {
       if (run !== dialRun) return;
       const p = Math.min(1, (now - start) / 520);
@@ -3169,6 +3384,9 @@
     botCells.forEach((c, n) => c.classList.toggle('sel', n === index));
     showHeaderInfo(index);
     showPreview(index);
+    // touch: the dial on a number brings the info panel up (the hover
+    // does it on desktop)
+    if (TOUCH) openBotPanel(index);
   }
   function clearSelection() {
     selectedCell = -1;
@@ -3177,6 +3395,7 @@
   // the dial on a triangle: no video, so no info or preview in the header
   function deselectDial() {
     clearSelection();
+    closeBotPanel(); // (on a triangle: no panel)
     headerInfo.classList.remove('visible');
     hidePreview();
   }
@@ -3630,6 +3849,7 @@
     }).catch(() => {});
   }
   function teardownBotonera() {
+    closeBotPanel(true);
     botoneraEl.classList.remove('live');
     headerInfo.classList.remove('visible');
     hidePreview();
@@ -4147,6 +4367,8 @@
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(sizeWatchHit);
   // (the nav's anchor too - it was measured with whatever font was there)
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { navAnchor = null; placeNav(); });
+  // (and the intro's ticker, ready before the first tap - see prebuildTicker)
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (!tickerBuilt && current === 0) prebuildTicker(); });
   sizeWatchHit();
   let watchOpen = false;
   function stopOnda() {
