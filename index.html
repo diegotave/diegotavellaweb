@@ -1625,7 +1625,10 @@
   // (672x528 out of 1920x1080 - measured over EVERY frame, with margin, so the satellite's whole orbit fits), one exact 181-frame loop cycle repeated 4x (24s - the browser's own loop restart costs a frame or two, so it should happen as rarely as possible), so there are far fewer pixels to decode
   const GLOBE_DESKTOP = { src: 'assets/videos/fdo_02_inv_web.webm?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
   const ONDA_EVERY_MS = 8000;
-  const GLOBE_TOUCH = { src: 'assets/videos/fdo_02_inv_stacked.mp4?v=6', frameW: 672, frameH: 528, centerX: 298, centerY: 262, diameter: 370 };
+  // (touch: at 75% - 504x396 a half - a lighter upload to the GPU every
+  // frame on the tablet; all its numbers scaled with it, so it shows the
+  // same)
+  const GLOBE_TOUCH = { src: 'assets/videos/fdo_02_inv_stacked.mp4?v=7', frameW: 504, frameH: 396, centerX: 298 * 0.75, centerY: 262 * 0.75, diameter: 370 * 0.75 };
 
   const stage = document.getElementById('stage');
   // everything that spans the stage's height, and the tagline row, follow
