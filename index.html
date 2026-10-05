@@ -272,6 +272,9 @@
     pointer-events: none;
   }
   #onda.visible { opacity: 1; }
+  /* portrait: the globe a bit see-through, behind the stacked tagline (a
+     fixed opacity - composited, no repaint) */
+  .portrait #globe { opacity: 0.6; }
   #globe {
     position: absolute;
     left: 0;
@@ -341,6 +344,10 @@
     top: 0;
     overflow: hidden;
   }
+  /* portrait: the ticker leaves by squashing flat onto its middle line as
+     the stacked words part up and down (see sweepTicker) */
+  #intro-ticker-sq { position: absolute; inset: 0; }
+  #intro-ticker-sq.squash { transform: scaleY(0); transition: transform 0.8s ease; }
   #intro-ticker-strip {
     position: absolute;
     left: 0;
@@ -411,6 +418,10 @@
   }
   #tag-left-window { left: 0; }
   #tag-right-window { left: 965px; }
+  /* portrait: the words stacked - each window the full width, one above
+     the plus and one below it (clipped in JS, see layoutTagline) */
+  .portrait .tag-window { width: 1920px; }
+  .portrait #tag-right-window { left: 0; }
   .tag {
     position: absolute;
     left: 0;
@@ -455,6 +466,53 @@
      botonera, where it's the middle bar among the white ones */
   #tag-plus.spin .plus-arm { background-color: #fff; }
   #tag-plus.as-bar .plus-arm { background-color: #fff; transition: none; }
+  /* portrait: with the words stacked the bar lies down - the horizontal
+     arm stretches and the vertical one goes - and it's a plain, quicker
+     change, no turning (see the spin in playTagline) */
+  .portrait .plus-arm { transition: transform 0.5s ease; }
+  /* touch: accent <-> white by cut, no color transition (lighter) */
+  .touchnav .plus-arm { transition-property: transform; }
+  /* ...and instead of a bar it turns into a row of dashes, born at the
+     center and running out to both sides (two half-rows, each revealed
+     by a sliding window - transform only); the plus itself folds away.
+     Placed in setState/layoutTagline (--dw: each half's width). */
+  .portrait #tag-plus.spin .plus-arm-h { transform: scaleX(0); }
+  #tag-dashes {
+    position: absolute;
+    left: 960px;
+    top: 0;
+    width: 0;
+    height: 3.6px;
+    display: none;
+    pointer-events: none;
+  }
+  .portrait #tag-dashes { display: block; }
+  /* gone (no fold) once the tagline comes apart - see collapseTagline */
+  .portrait #tag-dashes.off { display: none; }
+  .td-win {
+    position: absolute;
+    top: 0;
+    width: var(--dw, 200px);
+    height: 3.6px;
+    overflow: hidden;
+    transition: transform 0.5s ease;
+  }
+  .td-r { left: 0; }
+  .td-l { right: 0; }
+  .td-in { width: 100%; height: 100%; transition: transform 0.5s ease; }
+  /* (each half starts on half a dash, so the two halves' first dashes
+     meet into one ordinary 14px dash at the center) */
+  .td-r .td-in { background: repeating-linear-gradient(to right, #fff 0 7px, transparent 7px 17px, #fff 17px 24px); }
+  .td-l .td-in { background: repeating-linear-gradient(to left, #fff 0 7px, transparent 7px 17px, #fff 17px 24px); }
+  /* folded into the center */
+  .td-r { transform: translateX(-100%); }
+  .td-r .td-in { transform: translateX(100%); }
+  .td-l { transform: translateX(100%); }
+  .td-l .td-in { transform: translateX(-100%); }
+  /* out, while the plus is "a bar" */
+  #tag-plus.spin ~ #tag-dashes .td-win,
+  #tag-plus.spin ~ #tag-dashes .td-in { transform: none; }
+  .portrait #tag-plus.spin .plus-arm-v { transform: scaleY(0); }
 
   /* separador_atletas: the WATCH! hover preview (desktop only). Fixed
      size (the video's own frame), sized to cover the hueco with scale()
@@ -1033,8 +1091,36 @@
     visibility: visible;
     transition: opacity 0.2s ease, visibility 0s;
   }
-  #idle.on.hovered {
+  /* desktop hover: just the outline - white inside, black frame, black
+     logo and brackets (the cyan only comes on with the click's bounce) */
+  #idle.hovered #idle-rect, #idle.lit #idle-rect {
+    background: #fff;
+    box-shadow: inset 0 0 0 var(--ot) #000;
+  }
+  #idle.hovered > img, #idle.lit > img { filter: brightness(0); }
+  /* the click: the cyan inside (past the outline and its calle) lights up
+     with a fluorescent flicker - a few uneven blinks, then steady */
+  #idle-rect::after {
+    content: '';
+    position: absolute;
+    inset: var(--oi, 0);
+    border-radius: var(--ir, 0);
+    background: #80dfff;
     opacity: 0;
+  }
+  #idle.lit #idle-rect::after { animation: idle-flicker 0.52s linear forwards; }
+  @keyframes idle-flicker {
+    0%   { opacity: 0;    animation-timing-function: steps(1, end); }
+    7%   { opacity: 1;    animation-timing-function: steps(1, end); }
+    12%  { opacity: 0;    animation-timing-function: steps(1, end); }
+    22%  { opacity: 0.55; animation-timing-function: steps(1, end); }
+    27%  { opacity: 0;    animation-timing-function: steps(1, end); }
+    41%  { opacity: 1;    animation-timing-function: steps(1, end); }
+    47%  { opacity: 0.3;  animation-timing-function: steps(1, end); }
+    55%  { opacity: 1;    animation-timing-function: steps(1, end); }
+    62%  { opacity: 0.8;  animation-timing-function: steps(1, end); }
+    68%  { opacity: 1; }
+    100% { opacity: 1; }
   }
   /* the tap bounce scales around the button's center; .instant drops the
      fade so the color swap at the end of the bounce is a clean cut */
@@ -1410,18 +1496,19 @@
     </div></div>
 
     <div id="content">
-      <img class="bracket" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png" alt="">
-      <img class="bracket" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png" alt="">
-      <img class="bracket" id="bracket-left-w" src="assets/images/logo-desarme/bracket-left-white.png" alt="" style="opacity:0">
-      <img class="bracket" id="bracket-right-w" src="assets/images/logo-desarme/bracket-right-white.png" alt="" style="opacity:0">
+      <img class="bracket" id="bracket-left" src="assets/images/logo-desarme/bracket-left.png?v=2" alt="">
+      <img class="bracket" id="bracket-right" src="assets/images/logo-desarme/bracket-right.png?v=2" alt="">
+      <img class="bracket" id="bracket-left-w" src="assets/images/logo-desarme/bracket-left-white.png?v=2" alt="" style="opacity:0">
+      <img class="bracket" id="bracket-right-w" src="assets/images/logo-desarme/bracket-right-white.png?v=2" alt="" style="opacity:0">
       <div class="tag-window" id="tag-left-window"><div class="tag" id="tag-left">Video Editor</div></div>
       <div class="tag-window" id="tag-right-window"><div class="tag" id="tag-right">motion graphics</div></div>
       <div id="tag-plus"><div class="plus-arm plus-arm-h"></div><div class="plus-arm plus-arm-v"></div></div>
-      <img class="bracket" id="bracket-left-thin" src="assets/images/logo-desarme/bracket-left-thin.png" alt="" style="opacity:0">
-      <img class="bracket" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png" alt="" style="opacity:0">
+      <div id="tag-dashes"><div class="td-win td-l"><div class="td-in"></div></div><div class="td-win td-r"><div class="td-in"></div></div></div>
+      <img class="bracket" id="bracket-left-thin" src="assets/images/logo-desarme/bracket-left-thin.png?v=2" alt="" style="opacity:0">
+      <img class="bracket" id="bracket-right-thin" src="assets/images/logo-desarme/bracket-right-thin.png?v=2" alt="" style="opacity:0">
       <div id="botonera"></div>
     </div>
-    <div class="intro-layer" id="intro-ticker-layer"><div id="intro-ticker"><div id="intro-ticker-strip"></div></div></div>
+    <div class="intro-layer" id="intro-ticker-layer"><div id="intro-ticker"><div id="intro-ticker-sq"><div id="intro-ticker-strip"></div></div></div></div>
     <div class="intro-layer" id="intro-count-layer"><div id="intro-count">0%</div></div>
 
     <div class="piece bar bar-h" id="bar-top"></div>
@@ -1436,9 +1523,9 @@
     <div id="header-preview"><video id="header-preview-video" muted loop playsinline preload="none"></video><div id="header-crt"></div></div>
     <div class="header-corner" id="header-corner-tl"></div>
     <div class="header-corner" id="header-corner-tr"></div>
-    <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png" alt="">
-    <div class="logo-window" id="logo-white-win"><div id="logo-white-box"><div id="logo-white-wipe"><img id="logo-white" src="assets/images/logo-desarme/text-white.png" alt="" style="opacity:0"></div></div><div id="logo-green"><div id="logo-green-wipe"><img src="assets/images/logo-desarme/text-magenta.png" alt=""></div></div></div>
-    <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png" alt=""></div>
+    <img class="logo-text" id="logo-black" src="assets/images/logo-desarme/text.png?v=2" alt="">
+    <div class="logo-window" id="logo-white-win"><div id="logo-white-box"><div id="logo-white-wipe"><img id="logo-white" src="assets/images/logo-desarme/text-white.png?v=2" alt="" style="opacity:0"></div></div><div id="logo-green"><div id="logo-green-wipe"><img src="assets/images/logo-desarme/text-magenta.png?v=2" alt=""></div></div></div>
+    <div class="logo-window" id="logo-gray-win"><img class="logo-text" id="logo-gray" src="assets/images/logo-desarme/text-gray.png?v=2" alt="" style="opacity:0"><img class="logo-text" id="logo-gray-lit" src="assets/images/logo-desarme/text-white.png?v=2" alt=""></div>
     <div id="header-info">
       <div id="header-info-lines">
         <div id="header-info-edition">EDITION</div>
@@ -1459,9 +1546,9 @@
     <div id="idle-back"></div>
     <div id="idle">
       <div id="idle-rect"></div>
-      <img id="idle-bracket-left" src="assets/images/logo-desarme/bracket-left-white.png" alt="" style="width:25.3px;height:124.3px">
-      <img id="idle-bracket-right" src="assets/images/logo-desarme/bracket-right-white.png" alt="" style="width:24.2px;height:124.3px">
-      <img id="idle-logo" src="assets/images/logo-desarme/text-white.png" alt="" style="width:131px;height:72px">
+      <img id="idle-bracket-left" src="assets/images/logo-desarme/bracket-left-white.png?v=2" alt="" style="width:25.3px;height:124.3px">
+      <img id="idle-bracket-right" src="assets/images/logo-desarme/bracket-right-white.png?v=2" alt="" style="width:24.2px;height:124.3px">
+      <img id="idle-logo" src="assets/images/logo-desarme/text-white.png?v=2" alt="" style="width:131px;height:72px">
     </div>
     <div id="idle-hit"></div>
     <div id="contact-button"><span class="cb-reg">Contact</span><span class="cb-bold" aria-hidden="true">Contact</span></div>
@@ -1559,8 +1646,14 @@
   // logo (72 x 1.4) + 59.7 tall, then the calle, then the hueco.
   // bo:   brackets' opacity (hidden at the botonera for now - the current
   //       site turns them into the botonera bars there, not built yet)
+  // portrait: the logo-size start (rect, brackets, logo, the tap button)
+  // at twice the original size (the logo/bracket images are 4x). (The
+  // landscape state below only feeds portrait's #idle button there - see
+  // placeIdle - so it's scaled too; landscape itself stays as it was.)
+  const LOGO_K = PORTRAIT ? 2 : 1;
   const LANDSCAPE_STATES = [
-    { w: 200, h: 139, cy: 540, r: 1, rt: 1, hh: 0, lp: 0, lg: 0, gap: 7, or: 1, drop: 0, bi: 3, bx: 863, ks: 1, bo: 1, bt: 0, duration: 700 },          // logo size
+    // logo size - LOGO_K times the original (its brackets/logo by ks)
+    { w: 200 * LOGO_K, h: 139 * LOGO_K, cy: 540, r: LOGO_K, rt: LOGO_K, hh: 0, lp: 0, lg: 0, gap: 7 * LOGO_K, or: LOGO_K, drop: 0, bi: 3 * LOGO_K, bx: 863, ks: LOGO_K, bo: 1, bt: 0, duration: 700 },
     { w: 950, h: 950, cy: 540, r: 12, rt: 12, hh: 0, lp: 1, lg: 1, gap: 14, or: 29, drop: 0, bi: 18.4, bx: 503.4, ks: null, bo: 1, bt: 0, duration: 1370 },    // square
     { w: 1715.3, h: 732.8, cy: 648.6, r: 12, rt: 0, hh: 217.2, lp: 1, lg: 1, gap: 14, or: 29, drop: 1, bi: 18.4, bx: 417, ks: null, bo: 0, bt: 0.6, duration: 700 },    // botonera
   ];
@@ -1581,8 +1674,10 @@
     const h = STAGE_H - 2 * (mY + gap + T0);
     const hh = 217.2 * UI;
     return [
-      { w: 200 * UI, h: 139 * UI, cy: CY, r: 1, rt: 1, hh: 0, lp: 0, lg: 0, gap: 7 * UI, or: 1, drop: 0, bi: 3, bx: 863, ks: UI, bo: 1, bt: 0, duration: 700 },
-      { w, h, cy: CY, r: 12 * UI, rt: 12 * UI, hh: 0, lp: 1, lg: 1, gap, or: 29 * UI, drop: 0, bi: 18.4, bx: 503.4, ks: null, bo: 1, bt: 0, duration: 1370 },
+      { w: 200 * UI * LOGO_K, h: 139 * UI * LOGO_K, cy: CY, r: LOGO_K, rt: LOGO_K, hh: 0, lp: 0, lg: 0, gap: 7 * UI * LOGO_K, or: LOGO_K, drop: 0, bi: 3 * LOGO_K, bx: 863, ks: UI * LOGO_K, bo: 1, bt: 0, duration: 700 },
+      // (bx and bks - the brackets' scale - are fitted to the stacked
+      // tagline in layoutTagline)
+      { w, h, cy: CY, r: 12 * UI, rt: 12 * UI, hh: 0, lp: 1, lg: 1, gap, or: 29 * UI, drop: 0, bi: 18.4, bx: 503.4, bks: 1, ks: null, bo: 1, bt: 0, duration: 1370 },
       { w, h: h - hh - gap, cy: CY + (hh + gap) / 2, r: 12 * UI, rt: 0, hh, lp: 1, lg: 1, gap, or: 29 * UI, drop: 1, bi: 18.4, bx: 417, ks: 'fit', bo: 1, bt: 0, duration: 700 },
     ];
   }
@@ -1618,7 +1713,7 @@
   // recombined by a tiny WebGL shader - see setupGlobe.
   // bump ?v= whenever a video file is replaced under the same name, or a
   // browser that cached the old one keeps showing it
-  const GLOBE_DIAMETER = PORTRAIT ? 730 : 392; // design px (landscape matches the current site)
+  const GLOBE_DIAMETER = PORTRAIT ? 730 * 1.15 : 392; // design px (landscape matches the current site; portrait 15% up)
   const GLOBE_ROTATE = 0;     // deg - the export already has the tilt it needs
   const GLOBE_IN_MS = 750;    // scale-in once the square is reached
   // fdo_02, color-inverted (baked into the files - no CSS filter), cropped to the globe + satellite orbit
@@ -1636,6 +1731,13 @@
   stage.style.height = STAGE_H + 'px';
   document.querySelectorAll('#content, .tag-window, #idle').forEach((el) => { el.style.height = STAGE_H + 'px'; });
   document.querySelectorAll('.tag, #tag-plus').forEach((el) => { el.style.top = CY + 'px'; });
+  // portrait: the top word's window ends at the center, the bottom one's
+  // starts there - each word slides out of the middle
+  if (PORTRAIT) {
+    const cut = 0;
+    document.getElementById('tag-left-window').style.clipPath = `inset(0 0 ${STAGE_H - (CY - cut)}px 0)`;
+    document.getElementById('tag-right-window').style.clipPath = `inset(${CY + cut}px 0 0 0)`;
+  }
   // the logo's white/gray split windows have to fit the UI-scaled logo
   document.querySelectorAll('.logo-window').forEach((el) => {
     el.style.width = (200 * UI) + 'px';
@@ -1732,10 +1834,10 @@
   const TICKER_GAP = 30;
   const TICKER_SPEED = 140;
   let tickerH = 0;
-  let lastBracketL = 0, lastBracketR = 0; // the brackets' x, from setState
+  let lastBracketL = 0, lastBracketR = 0, lastBracketK = 1; // the brackets' x and scale, from setState
   let tickerL = 0, tickerW = 0; // the ticker's window, content px
-  function placeTicker(lbx, rbx) {
-    const l = lbx + 25.3 + TICKER_GAP, r = rbx - TICKER_GAP;
+  function placeTicker(lbx, rbx, bk = 1) {
+    const l = lbx + 12.65 + 12.65 * bk + TICKER_GAP, r = rbx + 12.1 - 12.1 * bk - TICKER_GAP;
     tickerL = l;
     tickerW = Math.max(0, r - l);
     introTicker.style.transform = `translate(${l}px, ${CY - tickerH / 2}px)`;
@@ -1745,6 +1847,15 @@
   // from the center to both brackets: a gap opening in its mask, at the
   // words' own pace (TAGLINE_SWAP_MS, CSS 'ease')
   function sweepTicker() {
+    if (PORTRAIT) {
+      const sq = document.getElementById('intro-ticker-sq');
+      sq.classList.add('squash');
+      setTimeout(() => {
+        introTickerLayer.classList.remove('on');
+        sq.classList.remove('squash'); // (hidden by now - back for next time)
+      }, TAGLINE_SWAP_MS);
+      return;
+    }
     const c = 960 - tickerL;
     const start = performance.now();
     (function frame(now) {
@@ -1785,6 +1896,7 @@
   const INTRO_COUNT_K = 3.73;
   let introCountH0 = 0; // the hueco's height on the clip's first frame
   function placeCount(h) {
+    if (TOUCH) h = STATES[1].h; // (touch: full size, like the clip)
     const hSq = STATES[1].h; // (STATES[1] = the square)
     const q = hSq > introCountH0 ? Math.min(1, Math.max(0, (h - introCountH0) / (hSq - introCountH0))) : 1;
     const k = 0.1 + 0.9 * q; // (of its CSS size, which is already INTRO_COUNT_K's)
@@ -1977,7 +2089,9 @@
   // centered by its content instead)
   const INTRO_CONTENT_DX = PORTRAIT ? -13 : 0;
   function placeIntroVideo(st, cyanX = 0) {
-    const c = introVideo.cfg, k = c.k || 1, s = st.h / 1080;
+    // (touch: held at its final size - the square's - and only uncovered
+    // by the opening hueco, not grown with it: one thing less per frame)
+    const c = introVideo.cfg, k = c.k || 1, s = (TOUCH ? STATES[1].h : st.h) / 1080;
     introVideo.el.style.transform = `translate(${CX - c.centerX + cyanX + INTRO_CONTENT_DX * s}px, ${(st.cy ?? CY) - c.centerY}px) scale(${s / k})`;
   }
   function showIntroVideo(on) {
@@ -2033,7 +2147,9 @@
       ondaEl.style.width = st.w + 'px';
       ondaEl.style.height = st.h + 'px';
     }
-    const ox = bw / 2, oy = bh / 2 + (st.drop || 0) * bh / 2;
+    // (portrait's square: dropped with the globe - see stackDy; in the
+    // canvas' real px)
+    const ox = bw / 2, oy = bh / 2 + (st.drop || 0) * bh / 2 + (PORTRAIT ? STACK_BLOCK_DY * (st.lp ?? 0) * dev : 0);
     // end: the hueco's farthest corner from the center - the burst is over
     // once its first ring passes it, and no ring beyond it is ever drawn
     // (past the original's frame the dots grow huge - e^(r/380))
@@ -2082,9 +2198,12 @@
   // a state's block scale: a number, null (= the square's, see above), or
   // 'fit' (portrait botonera: the widest that keeps the thin brackets
   // 40px inside the hueco)
+  const DIAL_PORTRAIT_K = 2.5;
+  const STACK_BLOCK_DY = 50; // portrait square: the text block's drop, stage px
   function blockScaleFor(st) {
     if (typeof st.ks === 'number') return st.ks;
-    if (st.ks === 'fit') return Math.min(blockScaleSquare(), (st.w / 2 - 40) / (960 - st.bx));
+    // (portrait's botonera: the dial at DIAL_PORTRAIT_K of that)
+    if (st.ks === 'fit') return Math.min(blockScaleSquare(), (st.w / 2 - 40) / (960 - st.bx)) * DIAL_PORTRAIT_K;
     return blockScaleSquare();
   }
   const headerEl = document.getElementById('header');
@@ -2208,11 +2327,14 @@
     // sit centered between the cyan's top edge and the top of the globe
     // (half sunk into the hueco's bottom edge) - measured on the FINAL
     // botonera and eased in as the header forms, so it only ever moves
-    // one way. Landscape only: portrait's dial has its own placement.
+    // one way. (Portrait too: its dial centered in that same space.)
     const hfb = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
     const sb = STATES[BOTONERA], sbTop = sb.cy - sb.h / 2, sbBot = sb.cy + sb.h / 2;
-    const botDy = PORTRAIT ? 0 : ((sbTop + (sbBot - GLOBE_DIAMETER / 2)) / 2 - CY) * hfb;
-    contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push + botDy + contentLift)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
+    const botDy = ((sbTop + (sbBot - GLOBE_DIAMETER / 2)) / 2 - CY) * hfb;
+    // (portrait, at the square: the stacked block a little lower - eased in
+    // with the logo's move, handed back to botDy as the header forms)
+    const stackDy = PORTRAIT ? STACK_BLOCK_DY * (state.lp ?? 0) * (1 - hfb) : 0;
+    contentEl.style.transform = `${t(cyanX, shapeOffset['cyan-shape'] * push + botDy + contentLift + stackDy)} translate(960px, ${CY}px) scale(${ks}) translate(-960px, ${-CY}px)`;
     const bx = state.bx ?? (L + 3);
     let lbx = bx, rbx = 1920 - bx - 24.2, bk = 1;
     if (TOUCH) {
@@ -2220,7 +2342,8 @@
       // forms (square -> botonera)
       // (growing to DIAL_K around their own centers on the way)
       const hb0 = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
-      bk = 1 + (DIAL_K - 1) * hb0;
+      const bks = state.bks ?? 1; // (portrait's square: scaled up to frame the stack)
+      bk = bks + (DIAL_K - bks) * hb0;
       lbx += ((960 - DIAL_HALF_W - 25.3 * (DIAL_K + 1) / 2) - lbx) * hb0;
       rbx += ((960 + DIAL_HALF_W + 24.2 * (DIAL_K - 1) / 2) - rbx) * hb0;
     }
@@ -2230,11 +2353,12 @@
     bracketRightThin.style.transform = bracketRight.style.transform;
     lastBracketL = lbx;
     lastBracketR = rbx;
+    lastBracketK = bk;
     // the intro clip: its 1080 frame as tall as the hueco, centered on it
     if (introVideo && introOn) {
       placeIntroVideo(state, cyanX);
       placeCount(h);
-      placeTicker(lbx, rbx);
+      placeTicker(lbx, rbx, bk);
       introCountLayer.style.transform = contentEl.style.transform;
       introTickerLayer.style.transform = contentEl.style.transform;
     }
@@ -2261,9 +2385,9 @@
       const fx = Math.max(Math.abs(x0 - 960), Math.abs(x1 - 960)), fy = Math.max(Math.abs(y0 - CY), Math.abs(y1 - CY));
       let allOut = Math.hypot(nx - 960, ny - CY) >= ringB;
       let allIn = Math.hypot(fx, fy) <= ringB;
-      // (touch: a plain swap as its center crosses - see the logo's)
-      if (TOUCH && !allIn && !allOut) {
-        allIn = Math.abs(cxB - 960) < ringB;
+      // (touch: no circle - a plain cut once the logo is up)
+      if (TOUCH) {
+        allIn = (state.lg ?? 0) < 1;
         allOut = !allIn;
       }
       // the circle in the image's own px
@@ -2286,7 +2410,9 @@
     // state, and carried along with the cyan when Contact pushes it out
     if (globe) {
       const gx = CX + cyanX;
-      const gy = cy + (state.drop || 0) * h / 2 + shapeOffset['cyan-shape'] * push;
+      // (+ stackDy: portrait's square drops it with the text block, so it
+      // stays centered between the brackets)
+      const gy = cy + (state.drop || 0) * h / 2 + shapeOffset['cyan-shape'] * push + stackDy;
       const k = (GLOBE_DIAMETER / globe.cfg.diameter) * globeScale;
       globe.el.style.transform =
         `${t(gx - globe.cfg.centerX, gy - globe.cfg.centerY)} rotate(${GLOBE_ROTATE}deg) scale(${k})`;
@@ -2364,7 +2490,7 @@
     const hf = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
     const hk = 1 - (1 - HEADER_TEXT_K) * hf;
     const headerMid = headerBox.y + headerBox.h / 2;
-    const ls0 = 1.1 * UI, ls1 = 1.4 * UI * hk;
+    const ls0 = 1.1 * UI * LOGO_K, ls1 = 1.4 * UI * hk;
     const ls = ls0 + (ls1 - ls0) * lp;
     const lyTop = (oT + 59.7 * UI) + ((headerMid - 36 * ls1) - (oT + 59.7 * UI)) * hf;
     const lx = (960 - 131 * ls0 / 2) + ((oL + 59.7 * UI) - (960 - 131 * ls0 / 2)) * lp;
@@ -2398,10 +2524,9 @@
     const fx = Math.max(Math.abs(lx - ccx), Math.abs(lx + lw - ccx)), fy = Math.max(Math.abs(ly - ccy), Math.abs(ly + lh - ccy));
     let allOut = Math.hypot(nx - ccx, ny - ccy) >= ringR; // nearest point outside
     let allIn = Math.hypot(fx, fy) <= ringR;              // farthest corner inside
-    // (touch: no masks repainting every frame - it just swaps as the
-    // logo's center crosses the circle)
-    if (TOUCH && !allIn && !allOut) {
-      allIn = Math.hypot(lx + lw / 2 - ccx, ly + lh / 2 - ccy) < ringR;
+    // (touch: no circle at all - a plain cut halfway up its rise)
+    if (TOUCH) {
+      allIn = lg < 0.5;
       allOut = !allIn;
     }
     const green = (allIn ? 0 : 1) * (1 - hf);
@@ -2554,7 +2679,7 @@
       if (hidingGlobe) globeScale = 1 - e;
       contentLift = liftFrom * (1 - e);
       const el = intro ? ease(Math.min(1, p / LOGO_LEAD)) : e;
-      setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: a.lp + (b.lp - a.lp) * el, lg: a.lg + (b.lg - a.lg) * el, ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bo: mix('bo'), bt: mix('bt') });
+      setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: a.lp + (b.lp - a.lp) * el, lg: a.lg + (b.lg - a.lg) * el, ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bks: (a.bks ?? 1) + ((b.bks ?? 1) - (a.bks ?? 1)) * e, bo: mix('bo'), bt: mix('bt') });
       // tagline + globe come in a bit BEFORE the square settles, like the
       // current site (its tagline fires ~700ms before the grow ends)
       // - at most half the move early, so on the short way back from the
@@ -2588,7 +2713,7 @@
     introTickerLayer.style.transform = contentEl.style.transform;
     introCount.textContent = '0%';
     showIntroOverlays(true);
-    placeTicker(lastBracketL, lastBracketR);
+    placeTicker(lastBracketL, lastBracketR, lastBracketK);
     const media = introVideo.media;
     let counting = true, done = false, shownPct = 0;
     // it doesn't tick through every number: it jumps in uneven steps (like
@@ -2624,6 +2749,30 @@
     setTimeout(end, (INTRO_CLIP_S + 1.5) * 1000);
   }
   function finishIntro() {
+    if (globeScale === 0 && globe && TOUCH) {
+      // touch: the globe wasn't warmed up during the clip (one alpha video
+      // at a time), so its decoder starts cold here and drops its first
+      // frames while its clock runs on - a visible skid. It starts playing
+      // still invisible, and only grows in once it's handing over frames
+      // steadily (a few in a row, or a short timeout).
+      globe.play();
+      globeStarting = true;
+      let seen = 0, go = false;
+      const grow = () => {
+        if (go) return;
+        go = true;
+        introRunning = false;
+        showGlobe();
+        if (!transitionRunning) { animating = globeGrowing; updateContactButton(); }
+      };
+      if ('requestVideoFrameCallback' in globe.media) {
+        globe.media.requestVideoFrameCallback(function onFrame() {
+          if (++seen >= GLOBE_WARM_FRAMES) grow(); else globe.media.requestVideoFrameCallback(onFrame);
+        });
+      }
+      setTimeout(grow, 400);
+      return;
+    }
     introRunning = false;
     if (globeScale === 0) showGlobe();
     if (!transitionRunning) {
@@ -2631,6 +2780,7 @@
       updateContactButton();
     }
   }
+  const GLOBE_WARM_FRAMES = 4; // see finishIntro
 
   // the globe grows in from nothing as the square settles. Runs alongside
   // goTo's own loop - while that's running it already re-renders every
@@ -2708,9 +2858,97 @@
     const rightCenter = ((960 + PLUS_HALF) + BRACKET_RIGHT_INNER) / 2;
     tagLeftX = leftCenter - tagLeft.offsetWidth / 2;
     tagRightX = rightCenter - tagRight.offsetWidth / 2;
+    if (PORTRAIT) {
+      // stacked: Video Editor above the plus, motion graphics below it,
+      // each centered - tagLeftX/tagRightX become their Y offsets from the
+      // plus (see tagTransform). Video Editor a bit bigger and motion
+      // graphics a bit smaller than in a row (STACK_TOP_K / STACK_BOTTOM_K)
+      tagLeft.style.fontSize = (fontOf(tagLeft) * STACK_TOP_K) + 'px';
+      tagRight.style.fontSize = (fontOf(tagRight) * STACK_BOTTOM_K) + 'px';
+      // motion graphics' space between its words falls right under the
+      // plus's upright arm - half of it by nudging the tracking (motion a
+      // touch looser, graphics a touch tighter, spread over every letter)
+      // and half by shifting the word a little, so neither shows
+      {
+        const txt = tagRight.textContent, sp = txt.indexOf(' ');
+        if (sp > 0) {
+          if (!tagRight.firstElementChild) tagRight.innerHTML = `<span>${txt.slice(0, sp)}</span> <span>${txt.slice(sp + 1)}</span>`;
+          const [w1, w2] = tagRight.children;
+          const cs = getComputedStyle(tagRight), ls = parseFloat(cs.letterSpacing) || 0;
+          const ctx = document.createElement('canvas').getContext('2d');
+          ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          const a = ctx.measureText(w1.textContent).width, b = ctx.measureText(w2.textContent).width;
+          const half = (a + b) / 2, k = STACK_TRACK_SHARE;
+          const da = k * (half - a), db = k * (half - b); // what the tracking takes
+          w1.style.letterSpacing = (ls + da / w1.textContent.length) + 'px';
+          w2.style.letterSpacing = (ls + db / w2.textContent.length) + 'px';
+          // the rest by the word's own place: its space's center on 960
+          const spW = ctx.measureText(' ').width + ls;
+          stackBottomX = 960 - (a + ls * w1.textContent.length + da + spW / 2);
+        } else stackBottomX = null;
+      }
+      // placed by their INK, not their boxes (a box holds room for
+      // descenders etc.): Video Editor's lowest ink and motion graphics'
+      // highest each STACK_GAP from the center - close, the plus laid
+      // over them
+      const ink = (el) => {
+        const cs = getComputedStyle(el), size = parseFloat(cs.fontSize);
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const m = ctx.measureText(el.textContent);
+        const fa = m.fontBoundingBoxAscent ?? size * 0.8, fd = m.fontBoundingBoxDescent ?? size * 0.2;
+        const base = (size - (fa + fd)) / 2 + fa; // baseline from the box's top (line-height 1)
+        // ink top / bottom, from the box's center
+        const xh = ctx.measureText('x').actualBoundingBoxAscent;
+        return { top: base - m.actualBoundingBoxAscent - size / 2, bottom: base + m.actualBoundingBoxDescent - size / 2, xTop: base - xh - size / 2 };
+      };
+      const iT = ink(tagLeft), iB = ink(tagRight);
+      // Video Editor shifted so the space between its two words sits on
+      // the center: the plus's upright arm passes through it, clear of
+      // the letters
+      {
+        const cs = getComputedStyle(tagLeft), txt = tagLeft.textContent;
+        const ls = parseFloat(cs.letterSpacing) || 0;
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const sp = txt.indexOf(' ');
+        const w = (t) => ctx.measureText(t).width + ls * t.length;
+        stackTopX = sp > 0 ? 960 - (w(txt.slice(0, sp)) + w(txt.slice(0, sp + 1))) / 2 : null;
+      }
+      tagLeftX = -STACK_GAP - iT.bottom;
+      tagRightX = STACK_GAP - iB.top + STACK_BOTTOM_LOW;
+      // the dashes: on the plus's horizontal arm's line, each half as wide
+      // as half of Video Editor
+      tagDashes.style.transform = `translate(0, ${CY + STACK_PLUS_LOW - 1.8}px)`;
+      tagPlus.style.top = (CY + STACK_PLUS_LOW) + 'px';
+      tagDashes.style.setProperty('--dw', (tagLeft.offsetWidth / 2) + 'px');
+      // the square's brackets: the same PNGs scaled up whole (no stretch)
+      // to frame the stack, STACK_PAD above and below its ink, and brought
+      // in to STACK_SIDE from the wider word. (The PNG's ink is 115.5 tall
+      // in its 124.3 box; the left one's cap ends 10.45 right of its
+      // center.)
+      const reach = Math.max(-(tagLeftX + iT.top), tagRightX + iB.bottom); // the stack's ink, either side of the plus
+      const F = (2 * reach + 2 * STACK_PAD) / 115.5;
+      const innerL = 960 - Math.max(tagLeft.offsetWidth, tagRight.offsetWidth) / 2 - STACK_SIDE;
+      STATES[SQUARE].bks = F;
+      STATES[SQUARE].bx = innerL - 12.65 - 10.45 * F;
+    }
   }
-  // x is in stage px; the right word's window starts at 965
-  const tagTransform = (el, x) => `translate(${x - (el === tagRight ? 965 : 0)}px, -50%)`;
+  // portrait's stacked tagline: each word's ink from the center, room
+  // above/below the stack inside the brackets, and the brackets' distance
+  // from the wider word (content px)
+  const STACK_GAP = 4, STACK_PAD = 34, STACK_SIDE = 56;
+  const STACK_TOP_K = 1.2, STACK_BOTTOM_K = 0.9;
+  // a little lower than that: motion graphics, and the plus with its dashes
+  const STACK_BOTTOM_LOW = 5, STACK_PLUS_LOW = 6;
+  const tagDashes = document.getElementById('tag-dashes');
+  let stackTopX = null, stackBottomX = null; // portrait: the words' left edges (see layoutTagline)
+  const STACK_TRACK_SHARE = 0.5; // how much of motion graphics' alignment its tracking takes
+  // x is in stage px; the right word's window starts at 965. (Portrait:
+  // x is the word's Y offset from the plus, and it's centered across.)
+  const tagTransform = (el, x) => (PORTRAIT
+    ? `translate(${(el === tagLeft ? stackTopX : stackBottomX) ?? 960 - el.offsetWidth / 2}px, calc(-50% + ${x}px))`
+    : `translate(${x - (el === tagRight ? 965 : 0)}px, -50%)`);
   const placeTag = (el, x) => { el.style.transform = tagTransform(el, x); };
   let spinTimer = null, spinTurns = 0;
   // onda accent loop: first burst right as the tagline finishes arming,
@@ -2732,6 +2970,7 @@
   }
   function playTagline() {
     taglineShown = true;
+    tagDashes.classList.remove('off');
     setTimeout(startOndaLoop, TAGLINE_SWAP_MS);
     layoutTagline();
     // each word starts where the OTHER one ends up (hidden behind its own
@@ -2746,7 +2985,7 @@
     tagPlus.classList.add('visible');
     spinTimer = setTimeout(function spin() {
       spinTurns += 1;
-      tagPlus.style.transform = `translate(-50%, -50%) rotate(${spinTurns * 720}deg)`;
+      if (!PORTRAIT) tagPlus.style.transform = `translate(-50%, -50%) rotate(${spinTurns * 720}deg)`;
       tagPlus.classList.toggle('spin');
       spinTimer = setTimeout(spin, SPIN_MS);
     }, 800);
@@ -2842,7 +3081,7 @@
   function renderDial() {
     // (along = the dial's own axis: down the column, or across the row)
     const half = DIAL_PITCH / 2;
-    const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / (DIAL_FADE * DIAL_PITCH));
+    const outside = (d) => 0.6 * Math.max(0, 1 - (d - half) / dialFadeLen());
     const near = Math.round(dialPos);
     const place = (el, n) => {
       const along = (n - dialPos) * DIAL_PITCH, d = Math.abs(along);
@@ -2863,6 +3102,15 @@
         : `translate(959px, ${CY + along - 23.4}px) rotate(90deg)`;
       bar.style.opacity = d <= half ? 0.6 : outside(d); // never above 60%
     });
+  }
+  // how far past the window the column fades out, content px. Lying down,
+  // DIAL_FADE rows; upright, it's gone before it reaches the header above
+  // or the globe below (the dial sits centered between them - see botDy)
+  function dialFadeLen() {
+    if (DIAL_HORIZ) return DIAL_FADE * DIAL_PITCH;
+    const sb = STATES[BOTONERA];
+    const room = ((sb.cy + sb.h / 2 - GLOBE_DIAMETER / 2) - (sb.cy - sb.h / 2)) / 2 / blockScaleFor(sb);
+    return Math.max(DIAL_PITCH / 4, room - DIAL_PITCH / 2 - 23.4 * DIAL_ITEM_K - 16);
   }
   // damped spring, 0 -> 1 with a small overshoot (the elastic stop)
   const dialSpring = (p) => 1 - Math.exp(-6 * p) * Math.cos(9 * p);
@@ -3414,6 +3662,7 @@
   // and becomes the botonera's middle bar
   function collapseTagline() {
     taglineShown = false;
+    tagDashes.classList.add('off');
     clearTimeout(spinTimer);
     const hide = (el, fromX, toX, ms) => {
       el.getAnimations().forEach((a) => a.cancel());
@@ -3422,6 +3671,16 @@
         .finished.then(() => { el.classList.remove('visible'); el.getAnimations().forEach((a) => a.cancel()); })
         .catch(() => {});
     };
+    if (PORTRAIT) {
+      // stacked, folding back into the plus they'd pile up on each other -
+      // they just go, and the dial forms on its own
+      [tagLeft, tagRight].forEach((el) => {
+        el.getAnimations().forEach((a) => a.cancel());
+        el.classList.remove('visible');
+      });
+      buildBotonera();
+      return;
+    }
     hide(tagLeft, tagLeftX, tagRightX, TAGLINE_SWAP_MS);
     // same duration for both, so they finish hiding together (the current
     // site gave the right one 1300ms, which read as it lagging behind)
@@ -3431,6 +3690,7 @@
 
   function hideTagline() {
     taglineShown = false;
+    tagDashes.classList.add('off');
     clearTimeout(spinTimer);
     [tagLeft, tagRight].forEach((el) => {
       el.getAnimations().forEach((a) => a.cancel());
@@ -3737,8 +3997,7 @@
   // from there WATCH! goes to the botonera, and its back arrow returns
   document.addEventListener('click', () => {
     if (locked || current !== 0 || animating) return;
-    if (canHover) goTo(SQUARE);
-    else bounceThenGrow();
+    bounceThenGrow();
   });
   // on touch screens (no hover) the separator plays ONCE, start to end, on
   // tap instead - triangle, "WATCH!" and the whole clip - and then the
@@ -3804,20 +4063,27 @@
     place(idleHit, real);
     place(idleBack, real);
     document.getElementById('idle-rect').style.borderRadius = st.or + 'px';
-    const by = CY - 124.3 / 2;
+    // (hover/lit: the outline's thickness, and the cyan's inset and radius)
+    idleEl.style.setProperty('--ot', (T / UI) + 'px');
+    idleEl.style.setProperty('--oi', (T / UI + st.gap) + 'px');
+    idleEl.style.setProperty('--ir', st.r + 'px');
+    // (brackets and logo at the state's block scale, around the center)
+    const k = typeof st.ks === 'number' ? st.ks : 1;
+    const by = CY - 124.3 * k / 2;
     idleEl.style.transformOrigin = `960px ${CY}px`;
     idleEl.style.transform = `scale(${UI})`;
-    document.getElementById('idle-bracket-left').style.transform = `translate(${st.bx}px, ${by}px)`;
-    document.getElementById('idle-bracket-right').style.transform = `translate(${1920 - st.bx - 24.2}px, ${by}px)`;
+    document.getElementById('idle-bracket-left').style.transform = `translate(${960 + (st.bx - 960) * k}px, ${by}px) scale(${k})`;
+    document.getElementById('idle-bracket-right').style.transform = `translate(${960 + (1920 - st.bx - 24.2 - 960) * k}px, ${by}px) scale(${k})`;
+    const lk = 1.1 * k;
     document.getElementById('idle-logo').style.transform =
-      `translate(${960 - 131 * 1.1 / 2}px, ${CY - 72 * 1.1 / 2}px) scale(1.1)`;
+      `translate(${960 - 131 * lk / 2}px, ${CY - 72 * lk / 2}px) scale(${lk})`;
   }
   function updateIdle() {
     const on = current === 0 && !animating;
     idleEl.classList.toggle('on', on);
     idleHit.classList.toggle('on', on);
-    // the white backing only matters for the touch bounce
-    idleBack.classList.toggle('on', on && !canHover);
+    // the white backing behind the bouncing button
+    idleBack.classList.toggle('on', on);
     if (!on) idleEl.classList.remove('hovered');
   }
   if (canHover) {
@@ -3830,17 +4096,21 @@
   // touch: tap -> the black button bounces (presses in, springs slightly
   // past its size, settles) -> as it settles it cuts to the real colors
   // with the outline -> the grow to the square starts
-  const BOUNCE_MS = 380;
+  const BOUNCE_MS = 560;
   function bounceThenGrow() {
     animating = true;
     idleEl.classList.remove('instant');
+    // desktop: the cyan lights up (flickering) with the bounce
+    if (canHover) idleEl.classList.add('lit');
     const anim = idleEl.animate([
       { transform: `scale(${UI})` },
-      { transform: `scale(${UI * 0.9})`, offset: 0.35 },
-      { transform: `scale(${UI * 1.04})`, offset: 0.75 },
+      { transform: `scale(${UI * 0.84})`, offset: 0.28 },
+      { transform: `scale(${UI * 1.1})`, offset: 0.6 },
+      { transform: `scale(${UI * 0.97})`, offset: 0.82 },
       { transform: `scale(${UI})` },
     ], { duration: BOUNCE_MS, easing: 'ease-out' });
     anim.finished.then(() => {
+      idleEl.classList.remove('lit');
       idleEl.classList.add('instant');
       idleEl.classList.remove('on');
       idleBack.classList.remove('on');
