@@ -570,9 +570,9 @@
     pointer-events: none;
   }
   .touchnav #separator-win { overflow: hidden; }
-  /* WATCH! hover (desktop): a green panel rising into the bottom of the
-     hueco, with a white calle above it and its own rounded corners - the
-     cyan (and the athletes over it) get a new rounded bottom edge there.
+  /* WATCH!/Contact hover (desktop): an accent panel rising into the
+     bottom of the hueco, with a white calle above it - square corners,
+     the cyan (and the athletes over it) cut off straight there.
      It sits OVER the video, so it crops it instead of pushing it.
      #watch-panel is placed at the hueco's bottom-left in setState; its
      inner part slides (translate only) from below the hueco, where the
@@ -604,13 +604,10 @@
     transition: transform 0.35s cubic-bezier(0.42, 0, 1, 1);
   }
   #watch-panel-in > div { position: absolute; }
-  /* the calle (white behind the panel, so its top corners show white) */
+  /* the calle (white behind the panel), then the panel - square corners,
+     and the cyan's new bottom edge square too */
   .wp-white { left: 0; right: 0; bottom: 0; height: calc(var(--ph) + var(--pg)); background: #fff; }
-  .wp-green { left: 1px; right: 1px; bottom: 0; height: var(--ph); background: #ff4fd8; border-radius: var(--r); }
-  /* the cyan's new bottom corners: white outside a quarter circle */
-  .wp-cap { top: 0; width: calc(var(--r) + 1px); height: calc(var(--r) + 1px); }
-  .wp-cap-l { left: 0; background: radial-gradient(circle at 100% 0%, transparent calc(var(--r) - 0.5px), #fff calc(var(--r) + 0.5px)); }
-  .wp-cap-r { right: 0; background: radial-gradient(circle at 0% 0%, transparent calc(var(--r) - 0.5px), #fff calc(var(--r) + 0.5px)); }
+  .wp-green { left: 1px; right: 1px; bottom: 0; height: var(--ph); background: #ff4fd8; }
 
   /* portrait navigation bar, centered at the bottom of the hueco where
      Contact and WATCH! sit in landscape: <<< CONTACT | WORK >>>, or
@@ -1492,7 +1489,6 @@
     <div id="separator-win"><video id="separator" muted loop playsinline></video></div>
     <div id="watch-panel"><div id="watch-panel-in">
       <div class="wp-white"></div><div class="wp-green"></div>
-      <div class="wp-cap wp-cap-l"></div><div class="wp-cap wp-cap-r"></div>
     </div></div>
 
     <div id="content">
