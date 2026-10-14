@@ -782,7 +782,8 @@
   }
   #botonera.live .bot-cell { pointer-events: auto; }
   .bot-num {
-    height: 100%;
+    position: relative;
+    height: 46.8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -823,15 +824,26 @@
      there keeps those transitions off the tablet entirely) */
   @media (hover: hover) and (pointer: fine) {
     .bot-num {
-      transition: background-color 0.15s ease, border-radius 0.15s ease, transform 0.15s ease, color 0.15s ease;
+      transition: background-color 0.15s ease, border-radius 0.15s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.15s ease;
     }
+    /* a bit bigger, with a small elastic overshoot - its neighbors make
+       room for it (see pushFrom) */
     .bot-cell:hover .bot-num {
       opacity: 1;
-      background: #000;
       font-weight: 700;
       color: #fff;
+      transform: scale(1.38, 1.15);
+    }
+    /* the black box behind the hovered number - one for the whole row,
+       running from number to number (see pushFrom) */
+    #bot-blob {
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: #000;
       border-radius: 4px;
-      transform: scaleX(1.2);
+      opacity: 0;
+      pointer-events: none;
     }
   }
 
@@ -1966,9 +1978,8 @@
   let contactHover = false; // Contact's hover is on (see openContactHover)
   // ahead of the first tap: decode the logo/bracket images (they're 4x - a
   // first-show decode right at the start of the move made it stutter)
-  document.querySelectorAll('img[src*="logo-desarme"]').forEach((img) => {
-    if (img.decode) img.decode().catch(() => {});
-  });
+  const logoImagesDecoded = [...document.querySelectorAll('img[src*="logo-desarme"]')]
+    .map((img) => (img.decode ? img.decode().catch(() => {}) : null));
   // DEBUG: ?off=clip,ticker,count switches parts of the intro off (they
   // still run, just unseen) - to find what makes the tablet stutter
   const DEBUG_OFF = new Set((new URLSearchParams(location.search).get('off') || '').split(','));
@@ -2129,6 +2140,10 @@
   // running. Returns { el, cfg, media, play(), pause() }.
   function createAlphaVideo({ id, desktop, touch: touchCfg, loop, insertAt, keepPlaying }) {
     const touch = matchMedia('(pointer: coarse)').matches;
+    // resolves once the warm-up is done (or the video failed) - the first
+    // click waits for it, see introReady
+    let markReady;
+    const ready = new Promise((r) => { markReady = r; });
     function nativeVideo(cfg) {
       const v = document.createElement('video');
       v.id = id;
@@ -2142,20 +2157,21 @@
       v.style.transformOrigin = `${cfg.centerX}px ${cfg.centerY}px`;
       stage.insertBefore(v, insertAt);
       primeVideo(v);
-      return { el: v, cfg, media: v, play: () => v.play().catch(() => {}), pause: () => v.pause() };
+      return { el: v, cfg, media: v, ready, play: () => v.play().catch(() => {}), pause: () => v.pause() };
     }
     // warm-up: play the (still invisible) video just long enough to get
     // its first frame out, then pause. Starting the decoder cold at the
     // moment the globe appears is what dropped its first few frames on
     // the tablet.
     function primeVideo(v, onFrame) {
+      v.addEventListener('error', markReady, { once: true });
       v.addEventListener('loadeddata', () => {
-        if (keepPlaying()) return; // already showing - leave it playing
+        if (keepPlaying()) { markReady(); return; } // already showing - leave it playing
         v.play().then(() => {
-          const stop = () => { if (!keepPlaying()) v.pause(); if (onFrame) onFrame(); };
+          const stop = () => { if (!keepPlaying()) v.pause(); if (onFrame) onFrame(); markReady(); };
           if ('requestVideoFrameCallback' in v) v.requestVideoFrameCallback(stop);
           else setTimeout(stop, 100);
-        }).catch(() => {});
+        }).catch(markReady);
       }, { once: true });
     }
     if (!touch) return nativeVideo(desktop);
@@ -2231,7 +2247,7 @@
     // warm-up (see primeVideo): gets the hardware decoder AND the WebGL
     // texture/shader going before the globe is ever shown
     primeVideo(source, draw);
-    return { el: canvas, cfg, media: source, play: () => source.play().catch(() => {}), pause: () => source.pause() };
+    return { el: canvas, cfg, media: source, ready, play: () => source.play().catch(() => {}), pause: () => source.pause() };
   }
   // the globe: under the separator preview and the brackets/tagline
   globe = createAlphaVideo({
@@ -3195,6 +3211,9 @@
   const BOT_FADE_MS = 300;
   const botoneraEl = document.getElementById('botonera');
   const botBars = [], botCells = [];
+  // desktop: each number's hover area as tall as the brackets (the row
+  // itself is 46.8 - see .bot-num)
+  const BOT_HIT_H = TOUCH ? 46.8 : 124.3;
   for (let i = 1; i <= 3; i++) {
     [-1, 1].forEach((side) => {
       const bar = document.createElement('div');
@@ -3208,7 +3227,8 @@
     cell.className = 'bot-cell';
     cell.style.width = BOT_GAP + 'px';
     const cx = 960 + (i - 4.5) * BOT_GAP;
-    cell.style.transform = `translate(${cx - BOT_GAP / 2}px, ${CY - 23.4}px)`;
+    if (!TOUCH) cell.style.height = BOT_HIT_H + 'px';
+    cell.style.transform = `translate(${cx - BOT_GAP / 2}px, ${CY - BOT_HIT_H / 2}px)`;
     const num = document.createElement('div');
     num.className = 'bot-num';
     num.textContent = String(i).padStart(2, '0');
@@ -3224,8 +3244,9 @@
       if (botPanelOpen && botHoverCell >= 0 && botHoverCell !== i - 1) slideBotInfo(-Math.sign(i - 1 - botHoverCell), i - 1);
       openBotPanel(i - 1);
       botHoverCell = i - 1;
+      pushFrom(i - 1);
     });
-    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); closeBotPanel(); } });
+    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); closeBotPanel(); pushFrom(-1); } });
     cell.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!botoneraEl.classList.contains('live')) return;
@@ -3237,6 +3258,118 @@
       if (selectedCell === i - 1 && Math.round(dialPos) === i - 1) { openVideoPortrait(i - 1); return; }
       dialTo(i - 1);
     });
+  }
+  // desktop: the hovered number's slot widens by PUSH_PX and shoves the
+  // others out toward the brackets - the row squeezes evenly between the
+  // number and each bracket (which hold still), so its neighbors move
+  // the most. Each boundary (bracket, bar, the middle bar = the plus,
+  // bar, ..., bracket) rides its own spring, a bit underdamped for the
+  // elastic overshoot. The bars get it through `translate` (their
+  // `transform` belongs to the form/teardown animations); the cells are
+  // re-laid out (width too, so the hit areas follow the slots).
+  // The black box under the hovered number is ONE shared box (#bot-blob)
+  // that runs from number to number with a touch of liquid in it (after
+  // mercury, loosely): its leading edge gets there a little sooner than
+  // its trailing one, so it stretches a bit on the way and pulls back
+  // together on arrival - slightly thinner while stretched.
+  const PUSH_PX = 40, PUSH_K = 320, PUSH_C = 20;
+  const BLOB_LEAD_K = 700, BLOB_LEAD_C = 44, BLOB_TRAIL_K = 380, BLOB_TRAIL_C = 32;
+  const BLOB_SX = 1.38, BLOB_SY = 1.15; // = the hovered number's scale (CSS)
+  const pushOff = new Array(9).fill(0), pushVel = new Array(9).fill(0);
+  let pushTarget = new Array(9).fill(0), pushRaf = 0, pushLeaveTimer = null;
+  let pushH = -1; // the hovered number, -1 none
+  const blobEl = document.createElement('div');
+  blobEl.id = 'bot-blob';
+  if (!TOUCH) botoneraEl.insertBefore(blobEl, botoneraEl.firstChild);
+  const blob = { l: 0, r: 0, vl: 0, vr: 0, h: 0, vh: 0, on: false };
+  const numW = []; // each number's width, bold (measured on its first hover)
+  function pushFrom(h) {
+    if (TOUCH) return;
+    clearTimeout(pushLeaveTimer);
+    // (leaving a number: back to rest only if no other one is entered
+    // right after - straight from one to the next it just moves on)
+    if (h < 0) { pushLeaveTimer = setTimeout(() => setPushTarget(-1), 120); return; }
+    if (numW[h] == null) numW[h] = botCells[h].firstChild.offsetWidth;
+    setPushTarget(h);
+  }
+  const slotLeft = (n) => 960 + (n - 4) * BOT_GAP + pushOff[n];
+  // the blob's target edges: around number h, where its slot is right now
+  function blobGoal(h) {
+    const cx = (slotLeft(h) + slotLeft(h + 1)) / 2, half = numW[h] * BLOB_SX / 2;
+    return [cx - half, cx + half];
+  }
+  function setPushTarget(h) {
+    // fresh in (from no number): the blob grows out of the number's center
+    if (h >= 0 && !blob.on) {
+      const [l, r] = blobGoal(h), c = (l + r) / 2;
+      Object.assign(blob, { l: c, r: c, vl: 0, vr: 0, h: 0, vh: 0, on: true });
+    }
+    pushH = h;
+    // boundary k's shift: the 7 other slots each give up PUSH_PX / 7
+    pushTarget = pushOff.map((_, k) => (h < 0 ? 0 : k <= h ? -k * PUSH_PX / 7 : PUSH_PX * (8 - k) / 7));
+    if (pushRaf) return;
+    let last = performance.now();
+    pushRaf = requestAnimationFrame(function step(now) {
+      const dt = Math.min(0.032, (now - last) / 1000); last = now;
+      let moving = false;
+      const spring = (x, v, to, k, c) => {
+        v += (k * (to - x) - c * v) * dt;
+        return [x + v * dt, v, Math.abs(v) > 0.05 || Math.abs(to - x) > 0.05];
+      };
+      for (let k = 1; k < 8; k++) {
+        let m;
+        [pushOff[k], pushVel[k], m] = spring(pushOff[k], pushVel[k], pushTarget[k], PUSH_K, PUSH_C);
+        if (m) moving = true; else { pushOff[k] = pushTarget[k]; pushVel[k] = 0; }
+      }
+      if (blob.on) {
+        // going: to the hovered number; leaving: shrinking into where it is
+        let gl, gr, gh = 1;
+        if (pushH >= 0) [gl, gr] = blobGoal(pushH);
+        else { gl = gr = (blob.l + blob.r) / 2; gh = 0; }
+        // the edge on the side it's heading to leads
+        const right = gl + gr > blob.l + blob.r;
+        const [kl, cl] = right ? [BLOB_TRAIL_K, BLOB_TRAIL_C] : [BLOB_LEAD_K, BLOB_LEAD_C];
+        const [kr, cr] = right ? [BLOB_LEAD_K, BLOB_LEAD_C] : [BLOB_TRAIL_K, BLOB_TRAIL_C];
+        let ml, mr, mh;
+        [blob.l, blob.vl, ml] = spring(blob.l, blob.vl, gl, kl, cl);
+        [blob.r, blob.vr, mr] = spring(blob.r, blob.vr, gr, kr, cr);
+        [blob.h, blob.vh, mh] = spring(blob.h, blob.vh, gh, PUSH_K, PUSH_C);
+        if (ml || mr || mh) moving = true;
+        else if (pushH < 0) blob.on = false;
+      }
+      placePush();
+      pushRaf = moving ? requestAnimationFrame(step) : 0;
+    });
+  }
+  function placePush() {
+    botCells.forEach((cell, n) => {
+      const a = slotLeft(n), b = slotLeft(n + 1);
+      cell.style.width = (b - a) + 'px';
+      cell.style.transform = `translate(${a}px, ${CY - BOT_HIT_H / 2}px)`;
+    });
+    botBars.forEach((bar) => { bar.el.style.translate = `${pushOff[4 + bar.k]}px 0`; });
+    tagPlus.style.translate = pushOff[4] ? `${pushOff[4]}px 0` : '';
+    if (!blob.on) { blobEl.style.opacity = 0; return; }
+    // stretched past its resting width it gets a little thinner (never
+    // under 85%)
+    const w = Math.max(0, blob.r - blob.l);
+    const rest = pushH >= 0 ? numW[pushH] * BLOB_SX : w;
+    const thin = Math.max(0.85, Math.min(1, Math.pow(rest / Math.max(w, 1), 0.25)));
+    const hh = 46.8 * BLOB_SY * Math.max(0, blob.h) * thin;
+    blobEl.style.opacity = 1;
+    blobEl.style.width = w + 'px';
+    blobEl.style.height = hh + 'px';
+    blobEl.style.transform = `translate(${blob.l}px, ${CY - hh / 2}px)`;
+  }
+  // (the botonera coming apart: straight back to rest, no spring)
+  function resetPush() {
+    clearTimeout(pushLeaveTimer);
+    cancelAnimationFrame(pushRaf);
+    pushRaf = 0;
+    pushH = -1;
+    blob.on = false;
+    pushOff.fill(0); pushVel.fill(0); pushTarget.fill(0);
+    if (!TOUCH) placePush();
   }
   // portrait: the botonera is a DIAL. The numbers and their bars form a
   // column that slides as one block under the finger; the (bold)
@@ -3850,6 +3983,7 @@
   }
   function teardownBotonera() {
     closeBotPanel(true);
+    resetPush();
     botoneraEl.classList.remove('live');
     headerInfo.classList.remove('visible');
     hidePreview();
@@ -4211,8 +4345,24 @@
 
   // navigation: from the logo, a click anywhere grows it to the square;
   // from there WATCH! goes to the botonera, and its back arrow returns
+  // cold start (a first visit, or a browser that dropped its cache): the
+  // first click waits until the intro clip and the globe are loaded and
+  // warmed up (see primeVideo), the fonts are in and the logo images
+  // decoded - starting the intro before that is what made it all stutter.
+  // At most READY_MAX_MS; a click in the meantime is kept and runs then.
+  const READY_MAX_MS = 4000;
+  let introReady = false, clickQueued = false;
+  Promise.race([
+    Promise.all([introVideo?.ready, globe?.ready, document.fonts.ready, ...logoImagesDecoded]),
+    new Promise((r) => setTimeout(r, READY_MAX_MS)),
+  ]).then(() => {
+    introReady = true;
+    if (clickQueued && !locked && current === 0 && !animating) bounceThenGrow();
+    clickQueued = false;
+  });
   document.addEventListener('click', () => {
     if (locked || current !== 0 || animating) return;
+    if (!introReady) { clickQueued = true; return; }
     bounceThenGrow();
   });
   // on touch screens (no hover) the separator plays ONCE, start to end, on
