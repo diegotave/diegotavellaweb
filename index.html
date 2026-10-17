@@ -1554,6 +1554,21 @@
     background-clip: text;
     color: transparent;
   }
+  /* (Firefox: the letters didn't show through the clip there, only the
+     dots - so plain letters in their color, no dust) */
+  @supports (-moz-appearance: none) {
+    .gtex-row { background: none; color: var(--c); }
+    /* ...and the dust laid over the whole box instead: white specks,
+       lost on the white page, showing only on the colored letters (not
+       the botonera's - white letters on the cyan) */
+    .gtex-vp .gtex-mask::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: url("assets/images/tex-dust-specks.webp") 0 0 / var(--tms, 1920px) var(--tms, 1920px);
+      opacity: var(--tm, 0.6);
+    }
+  }
   .gtex-row .gtex-bar, .gtex-row .gtex-dot { background: var(--c); }
   .gtex-in { position: absolute; left: 0; top: 0; will-change: transform; }
   .gtex-layer { position: absolute; left: 0; top: 0; will-change: transform; }
