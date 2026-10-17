@@ -87,6 +87,21 @@
     pointer-events: none;
   }
   #cyan-tex { width: 1400px; height: 1400px; transform-origin: 0 0; will-change: transform; }
+  /* touch: just the dust's specks, already in the color difference-at-27%
+     gives them over the cyan, see-through elsewhere - drawn plain (no
+     live blend), so it can sit over the athletes clip too (#sep-tex); its
+     window square-cornered there (a plain rect clip, nothing to repaint as
+     it follows the shape) */
+  .touchnav #cyan-tex, .dial-h #cyan-tex, #sep-tex { background-image: url("assets/images/tex-dust-touch.webp"); }
+  #sep-tex {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: center / cover no-repeat url("assets/images/tex-dust-touch.webp");
+    pointer-events: none;
+    display: none;
+  }
+  #sep-tex.on { display: block; }
   #cyan-tex, #intro-tex {
     position: absolute;
     left: 0;
@@ -1516,8 +1531,8 @@
   /* the botonera's (desktop, a number hovered): its number and title, in
      white ultra light, on the cyan only - kept in the stage just over the
      cyan shape, so everything else on it stays on top */
-  #gtex-b { --c: #fff; font-size: 16px; opacity: 0.72; }
-  #gtex-b .gtex-row { font-weight: 100; }
+  #gtex-b { --c: #fff; font-size: 16px; opacity: 0.58; }
+  #gtex-b .gtex-row { font-weight: 300; }
   .gtex-rot { position: absolute; left: 0; top: 0; }
   /* each texture's box (see makeTex) - no vignette any more */
   .gtex-mask { position: absolute; left: 0; top: 0; }
@@ -2827,7 +2842,7 @@
       p.br.style.transform = t(sw - sr, sh - sr);
     }
     // the cyan's texture follows the shape (only while it's on - see updateCyanTex)
-    if (canHoverReady && canHover && !TOUCH && (current === SQUARE || current === BOTONERA)) placeCyanTex(state);
+    if (canHoverReady && (current === SQUARE || current === BOTONERA)) placeCyanTex(state);
     // capitals' vertical center on the WATCH! square's center (watchCY)
     contactButton.style.transform = `${t(L + 44 * UI, B - 54 * UI - contactCapCenter() * UI)} scale(${UI})`;
 
@@ -4508,6 +4523,7 @@
   }
   function teardownBotonera() {
     if (typeof hoverBotTex === 'function') hoverBotTex(-1);
+    if (typeof holeCyanTex === 'function') holeCyanTex(false);
     closeBotPanel(true);
     resetPush();
     botoneraEl.classList.remove('live');
@@ -4806,11 +4822,12 @@
     separatorEl.playbackRate = WORK_RATE;
     separatorEl.play().catch(() => {});
     separatorEl.classList.add('visible');
+    syncSepTex(true);
     let slid = false, ended = false, done = false;
     const finish = () => {
       if (done || !slid || !ended) return;
       done = true;
-      separatorEl.classList.remove('visible');
+      separatorEl.classList.remove('visible'); syncSepTex(false);
       separatorEl.pause();
       separatorEl.loop = true;
       separatorEl.playbackRate = 1;
@@ -5281,14 +5298,27 @@
     if (row) d += ` M${row.x0 - q},${row.y0 - q} H${row.x1 + q} V${row.y1 + q} H${row.x0 - q} Z`;
     botTex.el.style.clipPath = `path(evenodd, '${d}')`;
   }
+  // ...and the cyan's dust gets the same hole round the botonera while it
+  // shows (the numbers clear of both): cut in its window, in the window's
+  // own px (it sits on the hueco's top left)
+  function holeCyanTex(on) {
+    const win = document.getElementById('cyan-tex-win');
+    if (!win) return;
+    if (!on) { win.style.clipPath = ''; return; }
+    const st = STATES[BOTONERA], row = botRowBox(), q = TEX_PAD;
+    const L = CX - st.w / 2, Tp = (st.cy ?? CY) - st.h / 2;
+    const x0 = row.x0 - q - L, y0 = row.y0 - q - Tp, x1 = row.x1 + q - L, y1 = row.y1 + q - Tp;
+    win.style.clipPath = `path(evenodd, 'M-10,-10 H${st.w + 10} V${st.h + 10} H-10 Z M${x0},${y0} H${x1} V${y1} H${x0} Z')`;
+  }
   function hoverBotTex(index) {
     if (!canHover || TOUCH) return;
     clearTimeout(botTexTimer);
     if (index < 0) {
       // (a beat's grace: the next number's enter comes right after)
-      botTexTimer = setTimeout(() => botTex.show(false), 80);
+      botTexTimer = setTimeout(() => { botTex.show(false); holeCyanTex(false); }, 80);
       return;
     }
+    holeCyanTex(true);
     const info = VIDEO_INFO[index];
     botTex.setText(`${String(index + 1).padStart(2, '0')} ${info.title.toUpperCase()}<i class="gtex-dot"></i>`);
     if (!botTex.active()) clipBotTex();
@@ -5493,10 +5523,26 @@
     const { w, h, r } = st, rt = st.rt ?? r;
     win.style.width = w + 'px';
     win.style.height = h + 'px';
-    win.style.borderRadius = `${rt}px ${rt}px ${r}px ${r}px`;
+    win.style.borderRadius = canHover && !TOUCH ? `${rt}px ${rt}px ${r}px ${r}px` : '';
     // (as wide as the hueco - or as tall, where it's taller: portrait)
     const S = Math.max(w, h);
     win.firstChild.style.transform = `translate(${(w - S) / 2}px, ${(h - S) / 2}px) scale(${S / 1400})`;
+  }
+  // touch: the specks over the athletes clip too, while it shows - in its
+  // window, the hueco's size
+  function syncSepTex(on) {
+    if (canHover && !TOUCH) return;
+    let el = document.getElementById('sep-tex');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'sep-tex';
+      separatorWin.appendChild(el);
+    }
+    if (on && lastState) {
+      el.style.width = lastState.w + 'px';
+      el.style.height = lastState.h + 'px';
+    }
+    el.classList.toggle('on', on);
   }
   // cut: no fade - switched in the very frame the intro clip goes
   function updateCyanTex(cut = false) {
@@ -5507,19 +5553,19 @@
     // clip or WATCH!'s preview plays - their own copy does it there, so
     // their see-through parts don't get two layers of it; back on, cut, the
     // moment they go)
-    // touch: only with the shape resting - set once there, no resizing it
-    // every frame (transform-only, for the tablet) - and under the intro
-    // clip too (no live blend over the video there: the clip's see-through
-    // parts show it); cut out the moment a move starts
+    // touch: the specks version (see .touchnav #cyan-tex), following the
+    // shape through its moves as well, and under the intro clip too (its
+    // see-through parts show it)
     const desk = canHover && !TOUCH;
-    const on = (current === SQUARE || current === BOTONERA)
-      && (desk ? !introOn && !isWatchOpen() : !transitionRunning);
+    const on = (current === SQUARE || current === BOTONERA) && (desk ? !introOn && !isWatchOpen() : true);
     if (!desk && !on) cut = true;
     if (cut) cyanTex.style.transition = 'none';
     if (on && !cyanTex.dataset.loaded) {
       cyanTex.dataset.loaded = '1';
-      cyanTex.style.backgroundImage = 'url("assets/images/cyan-tex-baked.webp")';
-      cyanTex.classList.add('baked');
+      if (desk) {
+        cyanTex.style.backgroundImage = 'url("assets/images/cyan-tex-baked.webp")';
+        cyanTex.classList.add('baked');
+      } else cyanTex.classList.add('baked'); // (full strength: its strength's in the image)
     }
     if (on && lastState) placeCyanTex(lastState);
     cyanTex.classList.toggle('on', on);
@@ -5925,6 +5971,7 @@
     separatorEl.currentTime = 0;
     separatorEl.play().catch(() => {});
     separatorEl.classList.add('visible');
+    syncSepTex(true);
     // desktop only - on the tablet the blend's per-frame compositing
     // isn't worth it
     if (canHover) {
@@ -5948,7 +5995,7 @@
     if (carry) contentEl.style.transition = 'none';
     watchEl.classList.remove('triangle');
     watchClip.classList.remove('open');
-    separatorEl.classList.remove('visible');
+    separatorEl.classList.remove('visible'); syncSepTex(false);
     contentEl.classList.remove('overlay');
     watchPanel.classList.remove('open');
     wipeLogoGreen(false);
