@@ -5482,12 +5482,11 @@
     // over the shape's own parts (the fill), still inside it
     const win = cyanTex.parentNode;
     win.parentNode.appendChild(win);
-    if (!canHover || TOUCH) win.remove();
   }
   // (it can be called before the lines above have run - so it looks the
   // element up itself)
   // the window on the hueco (as the shape draws it, 1px in from its box),
-  // the texture as wide as it, centered on its height
+  // the texture covering it, centered
   function placeCyanTex(st) {
     const win = document.getElementById('cyan-tex-win');
     if (!win || !win.isConnected) return;
@@ -5495,18 +5494,27 @@
     win.style.width = w + 'px';
     win.style.height = h + 'px';
     win.style.borderRadius = `${rt}px ${rt}px ${r}px ${r}px`;
-    win.firstChild.style.transform = `translate(0, ${(h - w) / 2}px) scale(${w / 1400})`;
+    // (as wide as the hueco - or as tall, where it's taller: portrait)
+    const S = Math.max(w, h);
+    win.firstChild.style.transform = `translate(${(w - S) / 2}px, ${(h - S) / 2}px) scale(${S / 1400})`;
   }
   // cut: no fade - switched in the very frame the intro clip goes
   function updateCyanTex(cut = false) {
     const cyanTex = document.getElementById('cyan-tex');
-    if (!cyanTex || !canHover || TOUCH) return;
+    if (!cyanTex) return;
     // (on at the square and the botonera and between them - it follows the
     // shape, see placeCyanTex; off from the logo on, and while the intro
     // clip or WATCH!'s preview plays - their own copy does it there, so
     // their see-through parts don't get two layers of it; back on, cut, the
     // moment they go)
-    const on = (current === SQUARE || current === BOTONERA) && !introOn && !isWatchOpen();
+    // touch: only with the shape resting - set once there, no resizing it
+    // every frame (transform-only, for the tablet) - and under the intro
+    // clip too (no live blend over the video there: the clip's see-through
+    // parts show it); cut out the moment a move starts
+    const desk = canHover && !TOUCH;
+    const on = (current === SQUARE || current === BOTONERA)
+      && (desk ? !introOn && !isWatchOpen() : !transitionRunning);
+    if (!desk && !on) cut = true;
     if (cut) cyanTex.style.transition = 'none';
     if (on && !cyanTex.dataset.loaded) {
       cyanTex.dataset.loaded = '1';
