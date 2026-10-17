@@ -25,6 +25,9 @@
     position: fixed;
     inset: 0;
     overflow: hidden;
+    /* (white of its own: the page texture blends against it everywhere,
+       past the stage's sides too) */
+    background: #fff;
   }
   /* portrait: horizontal swipes are ours, not the browser's */
   .touchnav .viewport { touch-action: none; }
@@ -69,6 +72,42 @@
     top: 0;
     will-change: transform;
   }
+  /* a texture over the cyan - inside the cyan shape, over its fill and
+     under everything else: difference at 27%, baked into the image (see
+     #cyan-tex.baked) */
+  /* the cyan's: a window the hueco's size (set with the shape every
+     frame - it follows it through the square <-> botonera moves), the
+     texture inside it a square as wide as the hueco, centered on its
+     height - only ever scaled, never stretched */
+  #cyan-tex-win {
+    position: absolute;
+    left: 1px;
+    top: 1px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  #cyan-tex { width: 1400px; height: 1400px; transform-origin: 0 0; will-change: transform; }
+  #cyan-tex, #intro-tex {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: center / 100% 100% no-repeat;
+    mix-blend-mode: difference;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  #cyan-tex.on, #intro-tex.on { opacity: 0.27; }
+  /* the cyan's, as chosen (difference, 27%): baked into the image itself -
+     the cyan's flat, so the blend's result is just colors - drawn plain,
+     no blending to work out every frame. The panel puts it back live */
+  #cyan-tex.baked { mix-blend-mode: normal; }
+  #cyan-tex.baked.on { opacity: 1; }
+  /* (the same over the intro clip, while it plays, and over WATCH!'s
+     preview and its magenta panel while hovered - see updateOverTex) */
+  #intro-tex { background-size: cover; }
+  #intro-tex:not(.on) { transition: none; } /* (a cut, like the clip's) */
+  #intro-tex.on { transition: none; } /* (and in at once: it takes over from the cyan's, which cuts out) */
   /* each part on its OWN layer too - with only .shape promoted, every
      band resize (scale) repainted the whole hueco-sized shape layer every
      frame, which is what slowed the tablet down once the shapes got their
@@ -161,6 +200,37 @@
     animation: none;
     opacity: 1;
   }
+  /* the back arrow hovered (desktop): it moves left, leaving three copies
+     of itself behind on the way, each fainter the further back - shown
+     as it passes them, all gone at once when it comes back */
+  #watch.back.trail #watch-shape { transform: translateX(-72px) scale(1.5) rotate(-180deg); }
+  .back-ghost {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 19px;
+    height: 19px;
+    background: #ff4fd8;
+    clip-path: polygon(0% 0%, 100% 50%, 100% 50%, 0% 100%);
+    transform: translateX(var(--gx)) scale(1.5) rotate(-180deg);
+    opacity: 0;
+    display: none;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  #watch.back .back-ghost { display: block; }
+  #watch.back.trail .back-ghost { opacity: var(--go); transition-delay: var(--gd); }
+  /* once all out, the brightness runs round them: full on the arrow, then
+     the farthest copy, the next, the nearest, the arrow again - the rest
+     trailing it in the same steps (100 / 60 / 35 / 15) */
+  #watch.back.trail #watch-shape { animation: back-run-0 1s linear 0.55s infinite; }
+  #watch.back.trail #back-g1 { animation: back-run-1 1s linear 0.55s infinite; }
+  #watch.back.trail #back-g2 { animation: back-run-2 1s linear 0.55s infinite; }
+  #watch.back.trail #back-g3 { animation: back-run-3 1s linear 0.55s infinite; }
+  @keyframes back-run-0 { 0%, 100% { opacity: 1; } 25% { opacity: 0.6; } 50% { opacity: 0.35; } 75% { opacity: 0.15; } }
+  @keyframes back-run-1 { 0%, 100% { opacity: 0.6; } 25% { opacity: 0.35; } 50% { opacity: 0.15; } 75% { opacity: 1; } }
+  @keyframes back-run-2 { 0%, 100% { opacity: 0.35; } 25% { opacity: 0.15; } 50% { opacity: 1; } 75% { opacity: 0.6; } }
+  @keyframes back-run-3 { 0%, 100% { opacity: 0.15; } 25% { opacity: 1; } 50% { opacity: 0.6; } 75% { opacity: 0.35; } }
   /* the word's window: its RIGHT edge sits just left of the triangle
      (translateX(-100%) on itself), and the word slides out of it */
   #watch-text-clip {
@@ -781,6 +851,62 @@
     cursor: pointer;
   }
   #botonera.live .bot-cell { pointer-events: auto; }
+  /* desktop, the back arrow hovered: the row turns into a dial (see
+     botDial) - a magenta sweep left to right filling in the brackets,
+     bars, numbers and "HOME" as if they were hollow (no solid of its own -
+     like "Diego Tavella"'s turn), the numbers and bars running off to the
+     left and "HOME" in from the right, the brackets closing in on it;
+     the row clipped to inside the brackets */
+  #bot-dial-home {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 46.8px;
+    display: none;
+    align-items: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: 31.6px;
+    color: #000;
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+  }
+  #botonera.dial #bot-dial-home { display: flex; }
+  #bot-dial-bar { display: none; }
+  #botonera.dial #bot-dial-bar { display: block; opacity: 0.6; }
+  .dial-leaving #bot-dial-bar { opacity: 0; transition: opacity 0.3s ease; }
+  /* the sweep in the text: a hard-edged gradient clipped to the letters,
+     its edge at --sw from each one's left (set per frame) */
+  /* (full strength with the sweep - eased back to their 0.6 as it
+     leaves, so nothing jumps when the dial's over) */
+  #botonera.dial .bot-num { opacity: var(--num-op, 0.6); }
+  #botonera.dial .bot-num, #bot-dial-home {
+    background: linear-gradient(90deg, #ff4fd8 var(--sw, 0px), #000 var(--sw, 0px));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* ...and in the (thin) brackets: a magenta copy of each, masked by its
+     image, uncovered up to the sweep (clip-path, set per frame) */
+  .dial-brk {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 124.3px;
+    background: #ff4fd8;
+    -webkit-mask: var(--img) center / 100% 100% no-repeat;
+    mask: var(--img) center / 100% 100% no-repeat;
+    transform-origin: 0 0;
+    display: none;
+    pointer-events: none;
+  }
+  #dial-brk-l { width: 25.3px; --img: url("assets/images/logo-desarme/bracket-left-thin.png?v=2"); }
+  #dial-brk-r { width: 24.2px; --img: url("assets/images/logo-desarme/bracket-right-thin.png?v=2"); }
+  .dial-on .dial-brk { display: block; }
+  /* (a click: the dial bows out while the square comes back) */
+  #bot-dial-home, .dial-brk { transition: opacity 0.3s ease; }
+  .dial-leaving #bot-dial-home, .dial-leaving .dial-brk { opacity: 0; }
   .bot-num {
     position: relative;
     height: 46.8px;
@@ -1243,12 +1369,210 @@
   #guide > div { overflow: hidden; }
   #guide > svg { overflow: visible; opacity: 0; will-change: opacity; }
   #guide > svg.on { opacity: 1; }
-  #guide > svg path { fill: none; stroke: #b8b8b8; stroke-dasharray: 8 6; }
+  #guide > svg path { fill: none; stroke: #c4eeff; stroke-dasharray: 16 12; }
   .g-dash { width: 100%; height: 100%; will-change: transform; }
-  #g-top .g-dash { background: repeating-linear-gradient(90deg, #b8b8b8 0 8px, transparent 8px 14px); }
-  #g-right .g-dash { background: repeating-linear-gradient(180deg, #b8b8b8 0 8px, transparent 8px 14px); }
-  #g-bottom .g-dash { background: repeating-linear-gradient(270deg, #b8b8b8 0 8px, transparent 8px 14px); }
-  #g-left .g-dash { background: repeating-linear-gradient(0deg, #b8b8b8 0 8px, transparent 8px 14px); }
+  #g-top .g-dash { background: repeating-linear-gradient(90deg, #c4eeff 0 16px, transparent 16px 28px); }
+  #g-right .g-dash { background: repeating-linear-gradient(180deg, #c4eeff 0 16px, transparent 16px 28px); }
+  #g-bottom .g-dash { background: repeating-linear-gradient(270deg, #c4eeff 0 16px, transparent 16px 28px); }
+  /* desktop, WATCH! hover: the botonera's rect previewed the same way, in
+     light magenta - it opens out of the square: its two ends slide out
+     from the square's sides to the botonera's, the top and bottom lines
+     uncovered behind them. Cut away inside the outline's box (the square
+     at rest, then the widening outline - see clipWGuide). */
+  #wguide {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    display: none;
+  }
+  #wguide.on { display: block; }
+  #wguide > div, #wguide > svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+  }
+  #wguide > div { overflow: hidden; }
+  #wguide > svg { overflow: visible; }
+  #wguide > svg path { fill: none; stroke: #ffc6f3; stroke-dasharray: 16 12; }
+  #wguide .g-dash { background: repeating-linear-gradient(90deg, #ffc6f3 0 16px, transparent 16px 28px); }
+  /* desktop, the botonera's back arrow hovered: the square it goes back
+     to, dashed, in the arrow's own magenta - born out of the black
+     outline (its ends start on the outline's and close in to the
+     square's) while it traces itself in line by line, like the logo's;
+     drawn OVER everything this time. The top and bottom lines are two
+     nested windows (one cut at each end) so the dashes hold still while
+     they shorten. */
+  #bguide {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    display: none;
+  }
+  #bguide.on { display: block; }
+  #bguide > div, #bguide > svg, #bguide > div > div {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+  }
+  #bguide > div, #bguide > div > div { overflow: hidden; }
+  #bguide > svg { overflow: visible; opacity: 0; }
+  #bguide > svg.on { opacity: 1; }
+  #bguide > svg path { fill: none; stroke: #ff4fd8; stroke-dasharray: 16 12; }
+  /* the top and bottom lines start right on the outline's: white in
+     their gaps, so no black shows between the dashes */
+  #bguide .bg-h .g-dash {
+    /* (a screen pixel of white past the line on each side - the outline
+       under it bled out a hair) */
+    background: repeating-linear-gradient(90deg, #ff4fd8 0 16px, transparent 16px 28px) center / 100% var(--t) no-repeat, #fff;
+  }
+  #bguide .bg-v .g-dash { width: 100%; height: 100%; background: repeating-linear-gradient(180deg, #ff4fd8 0 16px, transparent 16px 28px); }
+  /* desktop, at the square: the botonera's corners marked out ahead of
+     it in cyan - four fixed curved corners, like an old camera's
+     viewfinder; gone while WATCH! is hovered (its dashed rect takes over)
+     or anything's moving */
+  #viewfinder {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+  }
+  #viewfinder.on { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s; }
+  /* each corner comes in from outside - up/down and sideways - onto its
+     spot (--vx/--vy: its way out, see placeViewfinder) */
+  #viewfinder > .vf-corner {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    translate: var(--vx) var(--vy);
+    transition: translate 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+    will-change: translate;
+  }
+  #viewfinder.on > svg { translate: 0 0; }
+  /* WATCH! hovered: the frame opens out a little, a beat late as the
+     dashed rect's ends get there - and stays, framing it */
+  #viewfinder.pushed { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s; }
+  /* (each corner pushed straight out - up/down and sideways, same size -
+     to run parallel to the dashed rect the calle's width outside it) */
+  #viewfinder.pushed > svg { translate: var(--px) var(--py); }
+  /* square corners at rest; rounding off (to the dashed rect's parallel)
+     as soon as anything starts to move them (d: the same commands both
+     ways, the arc's radius from ~0 up) */
+  #viewfinder > .vf-corner path {
+    fill: none;
+    stroke: #80dfff;
+    stroke-linejoin: miter;
+    d: var(--d0);
+    transition: d 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  #viewfinder.pushed .vf-corner path, #viewfinder.leaving .vf-corner path { d: var(--d1); }
+  /* WATCH! clicked: the corners open out - away by --vd each way - till
+     they're off the screen */
+  #viewfinder.leaving { opacity: 1; visibility: visible; transition: none; }
+  #viewfinder.leaving > svg {
+    translate: calc(var(--px) + var(--sx) * var(--vd)) calc(var(--py) + var(--sy) * var(--vd));
+    transition: translate 0.8s cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  /* (gone for good once there - put back unseen) */
+  #viewfinder.reset, #viewfinder.reset > * { transition: none !important; }
+  /* ...and print marks beside the square, on the viewfinder's vertical
+     arms, at the screen's middle: a registration target on the left (a
+     circle crossed in four, each quarter a color, its lines cyan), a
+     four-color bar on the right (just the colors). They come and go with it; WATCH! hovered they step aside
+     for its texture */
+  .vf-mark { position: absolute; left: 0; top: 0; overflow: visible; transition: opacity 0.3s ease; }
+  #viewfinder.pushed .vf-mark, #viewfinder.leaving .vf-mark { opacity: 0; }
+  /* the hover's text texture, outside the dashed square: rows of "DIEGO
+     TAVELLA | EDITOR + MOTION GPX" at 30 degrees, big, every other row sliding
+     the other way (up-right / down-left). Even rows are one layer, odd
+     rows another - two transforms looping on the compositor; the square's
+     hole (with some room around it) is a fixed clip-path (see placeGuide).
+     Each layer also slides in from off screen and back out (.gtex-in),
+     the two from opposite sides. both in a very light cyan, the text lighter still. */
+  .gtex {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+    display: none;
+  }
+  .gtex.on { display: block; }
+  #gtex { --c: #a9e9ff; font-size: 150px; }
+  #gtex .gtex-row { letter-spacing: 0.08em; }
+  /* WATCH!'s: "VIDEOS", inside the botonera's dashed rect, beside the
+     square - very light magenta, lighter than its line */
+  #gtex-w { --c: #ffe5f9; font-size: 26px; }
+  /* the back arrow's: "HOME", outside the botonera's outline, the same
+     magenta, a little bigger */
+  #gtex-h { --c: #ffe5f9; font-size: 34px; }
+  /* the botonera's (desktop, a number hovered): its number and title, in
+     white ultra light, on the cyan only - kept in the stage just over the
+     cyan shape, so everything else on it stays on top */
+  #gtex-b { --c: #fff; font-size: 16px; opacity: 0.72; }
+  #gtex-b .gtex-row { font-weight: 100; }
+  .gtex-rot { position: absolute; left: 0; top: 0; }
+  /* each texture's box (see makeTex) - no vignette any more */
+  .gtex-mask { position: absolute; left: 0; top: 0; }
+  /* (provisional) the dust texture on the letters only: each row filled
+     with its letters' color (--c) and the texture over it in the panel's
+     plain - just its specks (white, the rest see-through,
+     so the letters keep their color everywhere else), a veil of the plain color on top to dial it
+     back (--tm: 0 none, 1 all of it) - clipped to the letters. The
+     texture as big as the screen (--tms, set in makeTex) */
+  .gtex { color: var(--c); }
+  .gtex-row {
+    background-color: var(--c);
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--c) calc((1 - var(--tm, 0.6)) * 100%), transparent), color-mix(in srgb, var(--c) calc((1 - var(--tm, 0.6)) * 100%), transparent)),
+      url("assets/images/tex-dust-specks.webp");
+    background-blend-mode: normal, normal;
+    background-size: auto, var(--tms, 1920px) var(--tms, 1920px);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .gtex-row .gtex-bar, .gtex-row .gtex-dot { background: var(--c); }
+  .gtex-in { position: absolute; left: 0; top: 0; will-change: transform; }
+  .gtex-layer { position: absolute; left: 0; top: 0; will-change: transform; }
+  .gtex-row {
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 700;
+    font-size: inherit; /* (the texture's own - see #gtex, #gtex-w) */
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+  .gtex-row > span { display: inline-block; }
+  /* between one phrase and the next: a bullet, centered on the capitals */
+  .gtex-dot {
+    display: inline-block;
+    width: 0.22em;
+    height: 0.22em;
+    margin: 0 0.4em;
+    border-radius: 50%;
+    background: currentColor;
+    vertical-align: 0.247em;
+  }
+  /* the "|": a bar exactly as tall as the capitals - the font's own runs
+     past them both ways and, rows this close, touched the next row's */
+  .gtex-bar {
+    display: inline-block;
+    width: 0.13em;
+    height: 0.714em;
+    background: currentColor;
+  }
+  #g-left .g-dash { background: repeating-linear-gradient(0deg, #c4eeff 0 16px, transparent 16px 28px); }
   /* the hover target: the button's own box, above everything */
   #idle-hit {
     position: absolute;
@@ -1578,7 +1902,7 @@
   <div class="viewport" id="viewport">
   <div class="stage" id="stage">
 
-    <div class="shape" id="cyan-shape">
+    <div class="shape" id="cyan-shape"><div id="cyan-tex-win"><div id="cyan-tex"></div></div>
       <div class="band band-mid"></div><div class="band band-top"></div><div class="band band-bot"></div>
       <div class="disc tl"></div><div class="disc tr"></div><div class="disc bl"></div><div class="disc br"></div>
     </div>
@@ -1587,6 +1911,7 @@
       <div class="disc tl"></div><div class="disc tr"></div><div class="disc bl"></div><div class="disc br"></div>
     </div>
 
+    <div class="gtex" id="gtex-b" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
     <div id="fake-push"></div>
     <div id="separator-win"><video id="separator" muted loop playsinline></video></div>
     <div id="watch-panel"><div id="watch-panel-in">
@@ -1641,7 +1966,13 @@
       <div class="ol-corner" id="ol-bl"></div><div class="ol-corner" id="ol-br"></div>
       <div class="ol-cover" id="ol-cover-r"></div><div class="ol-cover" id="ol-cover-b"></div>
     </div>
+    <div class="gtex" id="gtex" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
+    <div class="gtex" id="gtex-h" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
+    <div class="gtex" id="gtex-w" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
+    <div id="wguide" aria-hidden="true"><svg id="wg-l"><path/></svg><svg id="wg-r"><path/></svg><div id="wg-tl"><div class="g-dash"></div></div><div id="wg-bl"><div class="g-dash"></div></div><div id="wg-tr"><div class="g-dash"></div></div><div id="wg-br"><div class="g-dash"></div></div></div>
     <div id="guide" aria-hidden="true"><div id="g-top"><div class="g-dash"></div></div><svg id="g-tr"><path/></svg><div id="g-right"><div class="g-dash"></div></div><svg id="g-br"><path/></svg><div id="g-bottom"><div class="g-dash"></div></div><svg id="g-bl"><path/></svg><div id="g-left"><div class="g-dash"></div></div><svg id="g-tl"><path/></svg></div>
+    <div id="viewfinder" aria-hidden="true"><svg class="vf-corner"><path/></svg><svg class="vf-corner"><path/></svg><svg class="vf-corner"><path/></svg><svg class="vf-corner"><path/></svg></div>
+    <div id="bguide" aria-hidden="true"><div id="bg-t" class="bg-h"><div><div class="g-dash"></div></div></div><svg id="bg-tr"><path/></svg><div id="bg-r" class="bg-v"><div class="g-dash"></div></div><svg id="bg-br"><path/></svg><div id="bg-b" class="bg-h"><div><div class="g-dash"></div></div></div><svg id="bg-bl"><path/></svg><div id="bg-l" class="bg-v"><div class="g-dash"></div></div><svg id="bg-tl"><path/></svg></div>
     <div id="idle-back"></div>
     <div id="idle">
       <div id="idle-rect"></div>
@@ -1653,7 +1984,7 @@
     <div id="contact-button"><span class="cb-reg">Contact</span><span class="cb-bold" aria-hidden="true">Contact</span></div>
     <div id="nav" class="m-square"><span class="nav-chevs" id="nav-chevs-l"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span><span class="nav-word" id="nav-contact">Contact</span><span id="nav-sep">|</span><span class="nav-word" id="nav-work">Work<span id="nav-work-fill"><span>Work</span></span></span><span class="nav-word" id="nav-home">Home</span><span class="nav-chevs" id="nav-chevs-r"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span></div>
     <div id="watch-text-clip"><span id="watch-text">WATCH!<span id="watch-progress"><span id="watch-progress-text">WATCH!</span></span></span></div>
-    <div id="watch"><div id="watch-shape"></div></div>
+    <div id="watch"><div class="back-ghost" id="back-g3" style="--gx: 0px; --go: 0.15; --gd: 0.05s"></div><div class="back-ghost" id="back-g2" style="--gx: -24px; --go: 0.35; --gd: 0.15s"></div><div class="back-ghost" id="back-g1" style="--gx: -48px; --go: 0.6; --gd: 0.28s"></div><div id="watch-shape"></div></div>
     <div class="bottom-hit" id="contact-hit"></div>
     <div class="bottom-hit" id="watch-hit"></div>
   </div>
@@ -2313,6 +2644,8 @@
   function showIntroVideo(on) {
     introOn = on;
     introVideo.el.classList.toggle('on', on && !DEBUG_OFF.has('clip'));
+    updateOverTex();
+    updateCyanTex(true);
     if (on) {
       // placed right away (setState places it from the next frame on)
       placeIntroVideo(lastState);
@@ -2493,6 +2826,8 @@
       p.bl.style.transform = t(0, sh - sr);
       p.br.style.transform = t(sw - sr, sh - sr);
     }
+    // the cyan's texture follows the shape (only while it's on - see updateCyanTex)
+    if (canHoverReady && canHover && !TOUCH && (current === SQUARE || current === BOTONERA)) placeCyanTex(state);
     // capitals' vertical center on the WATCH! square's center (watchCY)
     contactButton.style.transform = `${t(L + 44 * UI, B - 54 * UI - contactCapCenter() * UI)} scale(${UI})`;
 
@@ -2554,7 +2889,9 @@
     // one way. (Portrait too: its dial centered in that same space.)
     const hfb = STATES[BOTONERA].hh ? Math.min(1, hh / STATES[BOTONERA].hh) : 0;
     const sb = STATES[BOTONERA], sbTop = sb.cy - sb.h / 2, sbBot = sb.cy + sb.h / 2;
-    const botDy = ((sbTop + (sbBot - GLOBE_DIAMETER / 2)) / 2 - CY) * hfb;
+    // (desktop: it stays on the square's middle - CY - so it's centered
+    // in the back arrow's dashed square)
+    const botDy = TOUCH ? ((sbTop + (sbBot - GLOBE_DIAMETER / 2)) / 2 - CY) * hfb : 0;
     // (portrait, at the square: the stacked block a little lower - eased in
     // with the logo's move, handed back to botDy as the header forms)
     const stackDy = PORTRAIT ? STACK_BLOCK_DY * (state.lp ?? 0) * (1 - hfb) : 0;
@@ -2834,6 +3171,8 @@
   const BOTONERA = 2;
   let canHoverReady = false; // updateIdle's own setup runs further down
   function updateContactButton() {
+    if (typeof updateViewfinder === 'function') updateViewfinder();
+    if (typeof updateCyanTex === 'function') updateCyanTex();
     if (typeof updateIdle === 'function' && canHoverReady) updateIdle();
     const idle = !animating;
     // portrait: the nav bar takes over from Contact and WATCH!
@@ -2915,6 +3254,7 @@
       setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: a.lp + (b.lp - a.lp) * el, lg: a.lg + (b.lg - a.lg) * el, ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bks: (a.bks ?? 1) + ((b.bks ?? 1) - (a.bks ?? 1)) * e, bo: mix('bo'), bt: mix('bt') });
       // the hover's dashed square: the black outline runs over it
       if (intro) clipGuide();
+      if (current === SQUARE && next === BOTONERA) clipWGuide();
       // tagline + globe come in a bit BEFORE the square settles, like the
       // current site (its tagline fires ~700ms before the grow ends)
       // - at most half the move early, so on the short way back from the
@@ -2926,6 +3266,8 @@
       if (p < 1) { requestAnimationFrame(frame); return; }
       if (fakePush) { fakePushP = null; fakePushEl.classList.remove('on'); }
       if (intro) dropGuide();
+      if (current === SQUARE && next === BOTONERA) { dropWGuide(); resetViewfinder(); }
+      if (current === BOTONERA && next === SQUARE) dropBGuide();
       current = next;
       if (hidingGlobe && globe) globe.pause();
       transitionRunning = false;
@@ -2963,12 +3305,17 @@
     (function count() {
       if (!counting) return;
       const raw = Math.min(1, media.currentTime / INTRO_COUNT_S) * 100;
+      // the hover's text texture: scrolling faster and faster with the
+      // render, flat out at 100% - and out, timed to end right then
+      speedTex(Math.min(1, media.currentTime / INTRO_COUNT_S));
+      if (media.currentTime >= INTRO_COUNT_S - TEX_OUT_MS / 1000) releaseTex();
       let pct = 0;
       for (const v of steps) if (v <= raw) pct = v;
       if (pct !== shownPct) { shownPct = pct; introCount.textContent = pct + '%'; }
       if (pct < 100) { requestAnimationFrame(count); return; }
       counting = false;
       introCountLayer.classList.remove('on');
+      releaseTex();
       playTagline();
       sweepTicker();
     })();
@@ -2978,6 +3325,7 @@
       if (done) return;
       done = true;
       if (counting) { counting = false; introCountLayer.classList.remove('on'); playTagline(); sweepTicker(); }
+      releaseTex();
       showIntroVideo(false);
       finishIntro();
     };
@@ -3242,7 +3590,30 @@
   // brackets move out by, as in the current site (8% of the stage height)
   const BOT_SPREAD = 86.4;
   const BOT_INNER_L = 528.7, BOT_INNER_R = 1392.4;
-  const BOT_GAP = ((BOT_INNER_R + BOT_SPREAD) - (BOT_INNER_L - BOT_SPREAD)) / 8;
+  // desktop: the row drawn in tighter - brackets closer, numbers closer
+  // (nothing smaller) - so it sits inside the square (the back arrow's
+  // dashed one), the calle's width in from its line: the brackets' ink
+  // that far in, in content px (the block is scaled by the square's ks)
+  if (!TOUCH) {
+    const sqB = olBox(STATES[SQUARE]);
+    const half = ((sqB.x1 - sqB.x0) / 2 - T - STATES[SQUARE].gap) / blockScaleSquare();
+    STATES[BOTONERA].bx = 960 - half - BRACKET_INK;
+  }
+  const BOT_GAP = TOUCH ? ((BOT_INNER_R + BOT_SPREAD) - (BOT_INNER_L - BOT_SPREAD)) / 8
+    // (the slots: between the brackets' inner edges)
+    : (1920 - 2 * (STATES[BOTONERA].bx + 25.3)) / 8;
+  // ...that's the row squeezed in, though: at rest it's BOT_WIDE times as
+  // wide (spaces only - every x from the center times botK), and the back
+  // arrow's dashed square, closing in, pushes it gently in to fit (see
+  // drawBGuide -> squeezeRow)
+  const BOT_WIDE = 1.15;
+  let botK = TOUCH ? 1 : BOT_WIDE;
+  let botScroll = 0; // the dial's run to the left (see botDial), content px
+  let botDialD = 0;
+  const botBxC = STATES[BOTONERA].bx; // squeezed
+  // the brackets' x for a spread k: their inner edges on the slots' ends
+  const botBx = (k) => 960 - (960 - (botBxC + 25.3)) * k - 25.3;
+  if (!TOUCH) STATES[BOTONERA].bx = botBx(BOT_WIDE);
   const BOT_FORM_MS = 600;
   const BOT_FADE_MS = 300;
   const botoneraEl = document.getElementById('botonera');
@@ -3256,15 +3627,16 @@
       bar.className = 'bot-bar';
       botoneraEl.appendChild(bar);
       botBars.push({ el: bar, k: side * i, fromX: side < 0 ? BOT_INNER_L : BOT_INNER_R, toX: 960 + side * BOT_GAP * i });
+      // (toX: squeezed - see barTo for where it is at botK)
     });
   }
   for (let i = 1; i <= 8; i++) {
     const cell = document.createElement('div');
     cell.className = 'bot-cell';
-    cell.style.width = BOT_GAP + 'px';
-    const cx = 960 + (i - 4.5) * BOT_GAP;
+    cell.style.width = BOT_GAP * botK + 'px';
+    const cx = 960 + (i - 4.5) * BOT_GAP * botK;
     if (!TOUCH) cell.style.height = BOT_HIT_H + 'px';
-    cell.style.transform = `translate(${cx - BOT_GAP / 2}px, ${CY - BOT_HIT_H / 2}px)`;
+    cell.style.transform = `translate(${cx - BOT_GAP * botK / 2}px, ${CY - BOT_HIT_H / 2}px)`;
     const num = document.createElement('div');
     num.className = 'bot-num';
     num.textContent = String(i).padStart(2, '0');
@@ -3281,8 +3653,9 @@
       openBotPanel(i - 1);
       botHoverCell = i - 1;
       pushFrom(i - 1);
+      hoverBotTex(i - 1);
     });
-    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); closeBotPanel(); pushFrom(-1); } });
+    cell.addEventListener('mouseleave', () => { if (!TOUCH) { headerInfo.classList.remove('visible'); hidePreview(); closeBotPanel(); pushFrom(-1); hoverBotTex(-1); } });
     cell.addEventListener('click', (e) => {
       e.stopPropagation();
       if (!botoneraEl.classList.contains('live')) return;
@@ -3328,7 +3701,7 @@
     if (numW[h] == null) numW[h] = botCells[h].firstChild.offsetWidth;
     setPushTarget(h);
   }
-  const slotLeft = (n) => 960 + (n - 4) * BOT_GAP + pushOff[n];
+  const slotLeft = (n) => 960 + (n - 4) * BOT_GAP * botK + pushOff[n] - botScroll;
   // the blob's target edges: around number h, where its slot is right now
   function blobGoal(h) {
     const cx = (slotLeft(h) + slotLeft(h + 1)) / 2, half = numW[h] * BLOB_SX / 2;
@@ -3975,7 +4348,116 @@
   const barAt = (x) => `translate(${x - 1}px, ${CY - 23.4}px)`;
   // a bar's resting place: in the row (landscape), or lying across the
   // column between two numbers (portrait)
-  const barTo = (bar) => barAt(bar.toX);
+  const barTo = (bar) => barAt(960 + (bar.toX - 960) * botK);
+  // the row at a new spread: the numbers' slots, the bars, the brackets
+  // the row's dial (desktop, back arrow): d 0..1 - the sweep runs
+  // over its first part, the squeeze, the run and the brackets' closing
+  // in take all of it, as one; DIAL_PAD: kept clear inside the brackets, DIAL_HOME_PAD: between
+  // HOME and the brackets once closed
+  const DIAL_PAD = 10, DIAL_HOME_PAD = 26;
+  let dialHomeEl = null, dialHomeW = 0, dialBrkL = null, dialBrkR = null, dialBarEl = null;
+  function botDial(d) {
+    if (d === botDialD) return;
+    botDialD = d;
+    // one move: the squeeze and the run (and the brackets closing in on
+    // HOME) all on the same eased progress - no stop at the squeezed row
+    const clamp = (v) => Math.max(0, Math.min(1, v));
+    const run = ease(d);
+    const k = 1 + (BOT_WIDE - 1) * (1 - run);
+    botK = k;
+    if (!dialHomeEl) {
+      // (the brackets' fills beside them in #content - not in the row,
+      // which is clipped to inside them)
+      [dialBrkL, dialBrkR] = ['dial-brk-l', 'dial-brk-r'].map((id) => {
+        const el = document.createElement('div');
+        el.id = id;
+        el.className = 'dial-brk';
+        bracketRightThin.after(el);
+        return el;
+      });
+      dialHomeEl = document.createElement('div');
+      dialHomeEl.id = 'bot-dial-home';
+      dialHomeEl.textContent = 'HOME';
+      botoneraEl.appendChild(dialHomeEl);
+      dialBarEl = document.createElement('div');
+      dialBarEl.className = 'bot-bar';
+      dialBarEl.id = 'bot-dial-bar';
+      botoneraEl.appendChild(dialBarEl);
+    }
+    // (only resting at the botonera - moving, setState has the brackets)
+    if (current !== BOTONERA || animating) return;
+    const sweep = clamp(d / 0.55);
+    if (botoneraEl.classList.contains('dial') !== d > 0) {
+      // (the numbers' own color transition off for the swap in and out of
+      // the clipped-gradient look - it faded them through transparent: a
+      // blink)
+      const nums = botCells.map((c) => c.firstChild);
+      nums.forEach((n) => { n.style.transition = 'none'; });
+      botoneraEl.classList.toggle('dial', d > 0);
+      void botoneraEl.offsetWidth;
+      nums.forEach((n) => { n.style.transition = ''; });
+    }
+    botoneraEl.style.setProperty('--num-op', 0.6 + 0.4 * sweep);
+    contentEl.classList.toggle('dial-on', d > 0);
+    if (d > 0 && !dialHomeW) dialHomeW = dialHomeEl.offsetWidth;
+    const G = BOT_GAP * k;
+    const inL = 960 - 4 * G, inR = 960 + 4 * G;
+    // HOME: in line after 08, a bar between them - the bar starting on the
+    // row's right end (under its bracket) and ending under HOME's left
+    // bracket's stroke once it's run in to the center
+    const barToHome = DIAL_HOME_PAD + 25.3 - BRACKET_INK - 1;
+    const home0 = inR + barToHome + dialHomeW / 2;
+    botScroll = run * (home0 - 960);
+    // the brackets: from the row's ends in to HOME
+    const bl = inL + ((960 - dialHomeW / 2 - DIAL_HOME_PAD) - inL) * run;
+    const br = inR + ((960 + dialHomeW / 2 + DIAL_HOME_PAD) - inR) * run;
+    const wl = bl + DIAL_PAD, wr = br - DIAL_PAD;
+    placePush();
+    if (botoneraEl.classList.contains('live')) botBars.forEach((bar) => { bar.el.style.transform = barTo(bar); });
+    const lbx = bl - 25.3, rbx = br;
+    // the sweep: from the left bracket's outer edge to the right one's
+    const fr = lbx + (rbx + 24.2 - lbx) * sweep;
+    // ...through the numbers and HOME (each one's own left)
+    botCells.forEach((cell, n) => {
+      const num = cell.firstChild;
+      if (numW[n] == null) numW[n] = num.offsetWidth;
+      const a = slotLeft(n), b = slotLeft(n + 1);
+      num.style.setProperty('--sw', (fr - (a + (b - a - numW[n]) / 2)) + 'px');
+    });
+    const homeL = home0 - botScroll - dialHomeW / 2;
+    dialHomeEl.style.setProperty('--sw', (fr - homeL) + 'px');
+    // ...and the brackets
+    dialBrkL.style.transform = `translate(${lbx}px, ${CY - 124.3 / 2}px)`;
+    dialBrkR.style.transform = `translate(${rbx}px, ${CY - 124.3 / 2}px)`;
+    dialBrkL.style.clipPath = `inset(0 ${Math.max(0, 25.3 - (fr - lbx))}px 0 0)`;
+    dialBrkR.style.clipPath = `inset(0 ${Math.max(0, 24.2 - (fr - rbx))}px 0 0)`;
+    botBars.forEach((bar) => {
+      const x = 960 + (bar.toX - 960) * k - botScroll;
+      bar.el.style.translate = botScroll ? `${-botScroll}px 0` : '';
+      const lit = d > 0 && x < fr;
+      bar.el.style.background = lit ? '#ff4fd8' : '';
+      bar.el.style.opacity = lit ? '1' : '0.6';
+    });
+    // the middle bar (the plus, outside the clipped row): along with them,
+    // gone into the solid (visibility - its opacity is held by an animation)
+    tagPlus.style.translate = botScroll ? `${-botScroll}px 0` : '';
+    const px = 960 - botScroll;
+    tagPlus.style.visibility = d > 0 && (px < fr || px < wl || px > wr) ? 'hidden' : '';
+    dialHomeEl.style.transform = `translate(${homeL}px, ${CY - 23.4}px)`;
+    const hbx = inR - botScroll;
+    dialBarEl.style.transform = barAt(hbx);
+    dialBarEl.style.background = hbx < fr ? '#ff4fd8' : '';
+    dialBarEl.style.opacity = hbx < fr ? '1' : '';
+    // nothing past the brackets (their padding in)
+    botoneraEl.style.clipPath = d > 0 ? `path('M${wl},${CY - 200} H${wr} V${CY + 200} H${wl} Z')` : '';
+    bracketLeft.style.transform = `translate(${lbx}px, ${CY - 124.3 / 2}px) scale(1)`;
+    bracketRight.style.transform = `translate(${rbx}px, ${CY - 124.3 / 2}px) scale(1)`;
+    [[bracketLeftThin, bracketLeft], [bracketRightThin, bracketRight], [bracketLeftW, bracketLeft], [bracketRightW, bracketRight]]
+      .forEach(([el, src]) => { el.style.transform = src.style.transform; });
+    lastBracketL = lbx;
+    lastBracketR = rbx;
+  }
+
   const armH = tagPlus.querySelector('.plus-arm-h');
   const armV = tagPlus.querySelector('.plus-arm-v');
   function buildBotonera() {
@@ -3997,6 +4479,7 @@
     // the plus becomes the middle bar: arms collapse to one thin, taller,
     // gray vertical bar (black, like the other bars - see .as-bar)
     tagPlus.classList.add('as-bar');
+    placePush(); // (the slots at the current spread)
     const opts = { duration: BOT_FORM_MS, easing: 'ease', fill: 'forwards' };
     // (portrait: a thin HORIZONTAL bar, the column's middle divider)
     armH.animate([{ transform: getComputedStyle(armH).transform }, { transform: TOUCH ? `scale(1.5, ${2 / 7.15})` : 'scaleX(0)' }], opts);
@@ -4013,11 +4496,18 @@
     ).finished);
     Promise.all(done).then(() => {
       if (current !== BOTONERA && !transitionRunning) return;
+      // (the bars' end state made their own, so squeezeRow can move them)
+      botBars.forEach((bar) => {
+        bar.el.style.transform = barTo(bar);
+        bar.el.style.opacity = '0.6';
+        bar.el.getAnimations().forEach((an) => an.cancel());
+      });
       botCells.forEach((c) => c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BOT_FADE_MS, easing: 'ease', fill: 'forwards' }));
       botoneraEl.classList.add('live');
     }).catch(() => {});
   }
   function teardownBotonera() {
+    if (typeof hoverBotTex === 'function') hoverBotTex(-1);
     closeBotPanel(true);
     resetPush();
     botoneraEl.classList.remove('live');
@@ -4399,6 +4889,7 @@
   document.addEventListener('click', () => {
     if (locked || current !== 0 || animating) return;
     guideHold = true;
+    if (canHover && !TOUCH) texIntroHold = true;
     kickGuide();
     if (!introReady) { clickQueued = true; return; }
     bounceThenGrow();
@@ -4433,11 +4924,23 @@
       // safety net in case 'ended' never fires (clip not loaded, etc.)
       setTimeout(finish, ((separatorEl.duration || 2.2) + 1) * 1000);
     } else if (current === SQUARE) {
+      // (the botonera's dashed rect: kept until the outline is over it)
+      if (canHover && !TOUCH) { wgHold = true; kickWGuide(); leaveViewfinder(); }
       const lift = watchOpen && stage.classList.contains('watch-lift') ? -(WATCH_PANEL_H + lastState.gap) / 2 : 0;
       closeWatch(true);
       goTo(BOTONERA, lift);
     }
-    else if (current === BOTONERA) goTo(SQUARE);
+    else if (current === BOTONERA) {
+      // (the square's dashed preview: kept until the outline is on it;
+      // the brackets leave from where its squeeze has them)
+      if (canHover && !TOUCH) {
+        bgHold = true;
+        kickBGuide();
+        STATES[BOTONERA].bx = lastBracketL;
+        contentEl.classList.add('dial-leaving');
+      }
+      goTo(SQUARE);
+    }
   });
 
   // --- WATCH! hover (desktop): triangle + "WATCH!" + separator preview ---
@@ -4448,16 +4951,16 @@
   const idleEl = document.getElementById('idle');
   const idleHit = document.getElementById('idle-hit');
   const idleBack = document.getElementById('idle-back');
-  // desktop: the dashed square (see #guide). Hovered, it loops: traces
-  // itself in, then out the same way round (the tail following the head),
-  // again and again. Leaving halfway, it still
-  // finishes tracing in, then traces out and stops. A click holds it
+  // desktop: the dashed square (see #guide). Hovered, it traces itself in
+  // and stays; the hover over, it traces out the same way round (the tail
+  // following the head). Leaving halfway, it still finishes tracing in
+  // first. A click holds it
   // traced in until the real outline grows onto it (dropGuide, from goTo).
   const guideEl = document.getElementById('guide');
-  const GUIDE_IN_MS = 560, GUIDE_OUT_MS = 460, GUIDE_DWELL_MS = 160;
+  const GUIDE_IN_MS = 560, GUIDE_OUT_MS = 460;
   // the trace, in order: [element, kind, start, length, base x, base y]
   let guideSegs = [], guideLen = 1;
-  let guideP = 0, guideQ = 0, guideDir = 0, guideDwell = 0, guideHold = false, guideRaf = 0, guideLast = 0;
+  let guideP = 0, guideQ = 0, guideDir = 0, guideHold = false, guideRaf = 0, guideLast = 0;
   function placeGuide() {
     if (!canHover || TOUCH) return;
     // the outline's own box at the square (see setState): the line runs
@@ -4500,6 +5003,13 @@
     seg(corner('g-tl', x0, y0, `M${h2},${ro} A${rc},${rc} 0 0 1 ${ro},${h2}`), 'c', arc);
     guideLen = at;
     guideBox = { x0, y0, x1, y1 };
+    placeWGuide();
+    // the texture: everywhere but inside the square
+    {
+      const q = TEX_PAD, hx0 = x0 - q, hy0 = y0 - q, hx1 = x1 + q, hy1 = y1 + q, hr = ro + q;
+      texEl.style.clipPath = `path(evenodd, 'M-9999,-9999 H19999 V19999 H-9999 Z M${hx0 + hr},${hy0} H${hx1 - hr} A${hr},${hr} 0 0 1 ${hx1},${hy0 + hr} V${hy1 - hr} A${hr},${hr} 0 0 1 ${hx1 - hr},${hy1} H${hx0 + hr} A${hr},${hr} 0 0 1 ${hx0},${hy1 - hr} V${hy0 + hr} A${hr},${hr} 0 0 1 ${hx0 + hr},${hy0} Z')`;
+    }
+    logoTex.resized();
     drawGuide();
   }
   function drawGuide() {
@@ -4539,10 +5049,8 @@
     if (guideHold && guideDir === -1) guideDir = 2;
     if (guideDir === 1) {
       guideP = Math.min(1, guideP + dt / GUIDE_IN_MS);
-      if (guideP >= 1) {
-        guideDwell += dt;
-        if (!guideHold && guideDwell >= GUIDE_DWELL_MS) { guideDir = -1; guideDwell = 0; }
-      }
+      // traced in, it stays while hovered (or held); otherwise out it goes
+      if (guideP >= 1 && !guideHold && !guideHovered()) guideDir = -1;
     } else if (guideDir === -1) {
       guideQ = Math.min(1, guideQ + dt / GUIDE_OUT_MS);
       if (guideQ >= 1) {
@@ -4553,7 +5061,7 @@
       guideQ = Math.max(0, guideQ - dt / GUIDE_OUT_MS);
     }
     drawGuide();
-    const settled = guideDir === 0 || (guideHold && guideP >= 1 && guideQ <= 0);
+    const settled = guideDir === 0 || ((guideHold || guideHovered()) && guideDir !== -1 && guideP >= 1 && guideQ <= 0);
     guideRaf = settled ? 0 : requestAnimationFrame(tickGuide);
   }
   function kickGuide() {
@@ -4577,15 +5085,709 @@
     const clip = `path(evenodd, 'M-9999,-9999 H19999 V19999 H-9999 Z M${x0 + ro},${y0} H${x1 - ro} A${ro},${ro} 0 0 1 ${x1},${y0 + ro} V${y1 - ro} A${ro},${ro} 0 0 1 ${x1 - ro},${y1} H${x0 + ro} A${ro},${ro} 0 0 1 ${x0},${y1 - ro} V${y0 + ro} A${ro},${ro} 0 0 1 ${x0 + ro},${y0} Z')`;
     guideEl.style.clipPath = clip;
   }
+  // the text textures (see .gtex): built for the viewport's size the
+  // first time one shows (and again after a resize), shown while hovered
+  // or held. One for the logo's hover, one for WATCH!'s.
+  // row to row: the capitals' height (0.714em, Helvetica Neue) + a gap of
+  // 10% of the type size, between one row's capitals and the next's; the
+  // scroll's speed scales with the type too (TEX_SPEED: per px of it)
+  const TEX_ANGLE = 30, TEX_PITCH_EM = 0.714 + 0.1, TEX_SPEED = 1.6; // deg, em, px/s per px of type
+  // the room left around the square (and the botonera's rect): the same
+  // as the white calle inside the outline
+  const TEX_PAD = STATES[SQUARE].gap;
+  const TEX_IN_MS = 650, TEX_OUT_MS = 500; // the slide in / out, across the screen
+  // pitchK: row to row, times the usual; inStage: left where it is, in the
+  // stage, instead of over it all; vignette: () => its vignette's box
+  // (stage px)
+  // (provisional - the panel's loop switch) the text textures' pass in a
+  // loop: while one's showing it comes in, holds TEX_LOOP_HOLD_MS, runs on
+  // out the other side, and comes in again - to look at it over and over
+  let texLoop = false;
+  const TEX_LOOP_HOLD_MS = 1200;
+  const texAll = [];
+  function setTexLoop(on) {
+    texLoop = on;
+    texAll.forEach((t) => t.loop());
+  }
+  function makeTex(el, text, pitchK = 1, inStage = false, vignette = null) {
+    // out of the stage (it clips to 1920 x STAGE_H) and onto the viewport,
+    // so it reaches the screen's edges; it follows the stage's own
+    // transform (see fitStage), so it's still placed in stage px
+    if (!inStage) { viewport.appendChild(el); el.classList.add('gtex-vp'); }
+    const layers = [...el.querySelectorAll('.gtex-layer')];
+    const ins = [...el.querySelectorAll('.gtex-in')];
+    let key = null, anims = [], travel = 0, slides = [], shown = false, rate = 1;
+    let size = 0, pitch = 0;
+    function setRate(r) {
+      if (r === rate) return;
+      rate = r;
+      anims.forEach((an) => (an.updatePlaybackRate ? an.updatePlaybackRate(r) : (an.playbackRate = r)));
+    }
+    function build() {
+      // the viewport in stage px, around the stage's center
+      const sc = stageScale();
+      const vw = viewport.clientWidth / sc, vh = viewport.clientHeight / sc;
+      const k = `${Math.round(vw)}x${Math.round(vh)}`;
+      if (k === key) return;
+      key = k;
+      const a = TEX_ANGLE * Math.PI / 180;
+      // the viewport's box in the rows' own (rotated) frame, with margin
+      const wr = vw * Math.cos(a) + vh * Math.sin(a) + 200;
+      const hr = vw * Math.sin(a) + vh * Math.cos(a) + 200;
+      // one text + its gap: the loop's period
+      layers[0].innerHTML = `<div class="gtex-row"><span>${text}</span></div>`;
+      const seg = layers[0].firstChild.firstChild.offsetWidth;
+      size = parseFloat(getComputedStyle(el).fontSize);
+      pitch = size * TEX_PITCH_EM * pitchK;
+      const reps = Math.ceil((wr + 3 * seg) / seg);
+      const row = `<span>${text}</span>`.repeat(reps);
+      const html = ['', ''];
+      const n = Math.ceil(hr / pitch);
+      for (let i = 0; i < n; i++) {
+        // each row shifted a different amount, so the words don't stack up
+        const x = -wr / 2 - seg - ((i * 0.37) % 1) * seg;
+        html[i % 2] += `<div class="gtex-row" style="transform: translate(${x}px, ${-hr / 2 + i * pitch}px)">${row}</div>`;
+      }
+      // far enough that a layer slid by it is entirely off screen
+      travel = wr + 3 * seg;
+      layers[0].innerHTML = html[0];
+      layers[1].innerHTML = html[1];
+      // the vignette's box; the rows stay put in stage px inside it
+      const vb = vignette ? vignette() : { x: -vw / 2 + 960, y: -vh / 2 + CY, w: vw, h: vh };
+      const mask = el.querySelector('.gtex-mask');
+      mask.style.transform = `translate(${vb.x}px, ${vb.y}px)`;
+      mask.style.width = vb.w + 'px';
+      mask.style.height = vb.h + 'px';
+      el.querySelector('.gtex-rot').style.transform = `translate(${960 - vb.x}px, ${CY - vb.y}px) rotate(${-TEX_ANGLE}deg)`;
+      // the letters' dust: as big as the screen
+      el.style.setProperty('--tms', Math.max(vw, vh) + 'px');
+      // even rows up-right, odd rows down-left - one period, looping
+      anims.forEach((an) => an.cancel());
+      const dur = seg / (TEX_SPEED * size) * 1000;
+      anims = layers.map((l, j) => l.animate(
+        [{ transform: 'translateX(0)' }, { transform: `translateX(${j ? -seg : seg}px)` }],
+        { duration: dur, iterations: Infinity }));
+      rate = 1; // (new animations, at x1)
+    }
+    // in: each layer slides in from behind where it scrolls from (even rows
+    // from the bottom left, odd from the top right) and lands; out: it runs
+    // on off the other side, the way it scrolls
+    function show(on) {
+      if (!canHover || TOUCH) return;
+      if (on === shown) return;
+      shown = on;
+      const fresh = on && !el.classList.contains('on');
+      if (on) {
+        // (shown first: it's measured inside)
+        el.classList.add('on');
+        build();
+        setRate(1);
+        anims.forEach((an) => an.play());
+      } else if (!el.classList.contains('on')) return;
+      slides = ins.map((l, j) => {
+        const dir = j ? -1 : 1; // the way this layer scrolls
+        const from = fresh ? -dir * travel : new DOMMatrix(getComputedStyle(l).transform).m41;
+        const to = on ? 0 : dir * travel;
+        slides[j]?.cancel();
+        const d = Math.abs(to - from) / travel;
+        return l.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${to}px)` }], {
+          duration: (on ? TEX_IN_MS : TEX_OUT_MS) * Math.min(1, d),
+          easing: on ? 'cubic-bezier(0.2, 0.7, 0.3, 1)' : 'cubic-bezier(0.6, 0, 0.8, 0.4)',
+          fill: 'forwards',
+        });
+      });
+      loop(); // (in a loop if the panel says so - and a hide ends one)
+      if (!on) {
+        const mine = slides;
+        Promise.all(mine.map((an) => an.finished)).then(() => {
+          if (shown || mine !== slides) return;
+          el.classList.remove('on');
+          anims.forEach((an) => an.pause());
+          setRate(1);
+        }).catch(() => {});
+      }
+    }
+    // the pass, again and again (see setTexLoop)
+    let loopRun = 0;
+    function loop() {
+      const run = ++loopRun;
+      if (!texLoop || !shown) return;
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const slide = (from, to, ms, easing) => Promise.all(ins.map((l, j) => {
+        const dir = j ? -1 : 1;
+        slides[j]?.cancel();
+        slides[j] = l.animate([{ transform: `translateX(${from * dir}px)` }, { transform: `translateX(${to * dir}px)` }],
+          { duration: ms, easing, fill: 'forwards' });
+        return slides[j].finished;
+      }));
+      (async () => {
+        await Promise.all(slides.map((an) => an?.finished)).catch(() => {});
+        while (run === loopRun && texLoop && shown) {
+          await wait(TEX_LOOP_HOLD_MS);
+          if (run !== loopRun || !texLoop || !shown) return;
+          await slide(0, travel, TEX_OUT_MS, 'cubic-bezier(0.6, 0, 0.8, 0.4)').catch(() => {});
+          if (run !== loopRun || !texLoop || !shown) return;
+          await slide(-travel, 0, TEX_IN_MS, 'cubic-bezier(0.2, 0.7, 0.3, 1)').catch(() => {});
+        }
+      })();
+    }
+    texAll.push({ el, loop });
+    return {
+      el, show, setRate,
+      active: () => shown || el.classList.contains('on'),
+      // new words: swapped in place, whatever it's doing
+      setText(t) {
+        if (t === text) return;
+        text = t;
+        key = null;
+        if (el.classList.contains('on')) build();
+      },
+      // the viewport changed: rebuilt now if showing, else on next show
+      resized() { key = null; if (el.classList.contains('on')) build(); },
+    };
+  }
+  const logoTex = makeTex(document.getElementById('gtex'),
+    'DIEGO TAVELLA <i class="gtex-bar"></i> EDITOR + MOTION GPX<i class="gtex-dot"></i>');
+  const watchTex = makeTex(document.getElementById('gtex-w'), 'VIDEOS<i class="gtex-dot"></i>', 2, false, () => {
+    const b = olBox(STATES[BOTONERA]);
+    return { x: b.x0, y: b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0 };
+  });
+  // --- the botonera's texture (desktop): the hovered number's "NN TITLE",
+  // on the hueco, around the whole botonera (TEX_PAD clear of its
+  // brackets). Moving from one number to the next just swaps the words;
+  // it slides out only once the pointer's off them all.
+  const botTex = makeTex(document.getElementById('gtex-b'), '', 2, true, () => {
+    const st = STATES[BOTONERA];
+    return { x: CX - st.w / 2, y: (st.cy ?? CY) - st.h / 2, w: st.w, h: st.h };
+  });
+  let botTexTimer = 0;
+  // the botonera's box, in stage px: its brackets (the numbers run between
+  // them) - where they REST, worked out rather than measured, so it's
+  // right even while the row's still moving (say, letting out again after
+  // the back arrow's dial)
+  function botRowBox() {
+    const ks = blockScaleFor(STATES[BOTONERA]);
+    const toX = (x) => 960 + (x - 960) * ks;
+    const lbx = botBx(BOT_WIDE), rbx = 1920 - lbx - 24.2;
+    return { x0: toX(lbx), y0: CY - 124.3 / 2 * ks, x1: toX(rbx + 24.2), y1: CY + 124.3 / 2 * ks };
+  }
+
+  function clipBotTex() {
+    const st = lastState;
+    if (!st) return;
+    const row = botRowBox(), q = TEX_PAD;
+    const L = CX - st.w / 2, Tp = (st.cy ?? CY) - st.h / 2;
+    let d = `M${L},${Tp} H${L + st.w} V${Tp + st.h} H${L} Z`;
+    if (row) d += ` M${row.x0 - q},${row.y0 - q} H${row.x1 + q} V${row.y1 + q} H${row.x0 - q} Z`;
+    botTex.el.style.clipPath = `path(evenodd, '${d}')`;
+  }
+  function hoverBotTex(index) {
+    if (!canHover || TOUCH) return;
+    clearTimeout(botTexTimer);
+    if (index < 0) {
+      // (a beat's grace: the next number's enter comes right after)
+      botTexTimer = setTimeout(() => botTex.show(false), 80);
+      return;
+    }
+    const info = VIDEO_INFO[index];
+    botTex.setText(`${String(index + 1).padStart(2, '0')} ${info.title.toUpperCase()}<i class="gtex-dot"></i>`);
+    if (!botTex.active()) clipBotTex();
+    botTex.show(true);
+  }
+
+  const texEl = logoTex.el;
+  const showTex = (on) => logoTex.show(on);
+  // a click keeps the logo's texture through the intro's render: it slides
+  // out so as to be gone right as the counter gets to 100% (see startIntro)
+  let texIntroHold = false;
+  // the scroll's speed through the render: x1 at 0%, TEX_MAX_RATE at 100%
+  const TEX_MAX_RATE = 10;
+  function speedTex(p) {
+    if (logoTex.active()) logoTex.setRate(1 + (TEX_MAX_RATE - 1) * p * p);
+  }
+  function releaseTex() {
+    if (!texIntroHold) return;
+    texIntroHold = false;
+    showTex(false);
+  }
   function dropGuide() {
     guideHold = false;
     guideDir = 0;
-    guideDwell = 0;
     guideP = guideQ = 0;
     if (guideClipped) { guideEl.style.clipPath = ''; guideClipped = false; }
+    if (!texIntroHold) showTex(false);
     if (guideRaf) { cancelAnimationFrame(guideRaf); guideRaf = 0; }
     drawGuide();
   }
+  // --- WATCH! hover (desktop): the botonera's rect, dashed, opening out
+  // of the square (see #wguide). Same rules as the logo's: traced in on
+  // the hover and kept, out when it's over (finishing first if halfway);
+  // a click holds it until the widening outline has run over it.
+  const wgEl = document.getElementById('wguide');
+  const wgL = document.getElementById('wg-l'), wgR = document.getElementById('wg-r');
+  const wgStrips = ['wg-tl', 'wg-bl', 'wg-tr', 'wg-br'].map((id) => document.getElementById(id));
+  const WG_IN_MS = 520, WG_OUT_MS = 420;
+  let wg = null; // geometry, see placeWGuide
+  let wgCur = null; // its ends right now (see drawWGuide)
+  let wgP = 0, wgDir = 0, wgHover = false, wgHold = false, wgRaf = 0, wgLast = 0, wgDrawn = -1;
+  // a state's outline outer box, as setState snaps it
+  function olBox(st) {
+    const snap = (v) => Math.round(v / U) * U;
+    const cy = st.cy ?? CY, hh = st.hh ?? 0;
+    return {
+      x0: snap(CX - st.w / 2 - st.gap - T), y0: snap(cy - st.h / 2 - st.gap - hh - T),
+      x1: snap(CX + st.w / 2 + st.gap + T), y1: snap(cy + st.h / 2 + st.gap + T),
+      ro: Math.max(st.or, T),
+    };
+  }
+  // a clip-path showing everything BUT the given outline box
+  function outsideOf(b) {
+    const { x0, y0, x1, y1, ro } = b;
+    return `path(evenodd, 'M-9999,-9999 H19999 V19999 H-9999 Z M${x0 + ro},${y0} H${x1 - ro} A${ro},${ro} 0 0 1 ${x1},${y0 + ro} V${y1 - ro} A${ro},${ro} 0 0 1 ${x1 - ro},${y1} H${x0 + ro} A${ro},${ro} 0 0 1 ${x0},${y1 - ro} V${y0 + ro} A${ro},${ro} 0 0 1 ${x0 + ro},${y0} Z')`;
+  }
+  function placeWGuide() {
+    if (!canHover || TOUCH) return;
+    const sq = olBox(STATES[SQUARE]), b = olBox(STATES[BOTONERA]);
+    const ro = b.ro, h2 = T / 2, rc = ro - h2, H = b.y1 - b.y0;
+    // the two ends: a side and its two corners each
+    const end = (el, d) => {
+      el.setAttribute('width', ro);
+      el.setAttribute('height', H);
+      el.firstChild.setAttribute('d', d);
+      el.firstChild.setAttribute('stroke-width', T);
+    };
+    end(wgL, `M${ro},${h2} A${rc},${rc} 0 0 0 ${h2},${ro} V${H - ro} A${rc},${rc} 0 0 0 ${ro},${H - h2}`);
+    end(wgR, `M0,${h2} A${rc},${rc} 0 0 1 ${rc},${ro} V${H - ro} A${rc},${rc} 0 0 1 0,${H - h2}`);
+    // the lines between them and the square: as long as the whole run
+    const L = sq.x0 - b.x0;
+    wgStrips.forEach((el) => { el.style.width = L + 'px'; el.style.height = T + 'px'; el.firstChild.style.width = L + 'px'; });
+    wg = { sq, b, ro, L };
+    wgDrawn = -1;
+    drawWGuide();
+    watchTex.resized();
+    clipWatchTex();
+    placeViewfinder();
+    placeBGuide();
+  }
+  // WATCH!'s texture: only inside the botonera's dashed rect and outside
+  // the outline (the square, then the widening one), TEX_PAD clear of both
+  // - two bands, one each side
+  function clipWatchTex() {
+    if (!wg) return;
+    const b = wg.b, ol = lastOl || wg.sq, q = TEX_PAD;
+    const y0 = b.y0 + q, y1 = b.y1 - q;
+    // (its outer ends: where the dashed rect's are right now)
+    const lx = wgCur ? wgCur.lx : b.x0, rx = wgCur ? wgCur.rx : b.x1;
+    const band = (x0, x1) => (x1 > x0 ? `M${x0},${y0} H${x1} V${y1} H${x0} Z ` : '');
+    const d = band(lx + q, ol.x0 - q) + band(ol.x1 + q, rx - q);
+    watchTex.el.style.clipPath = `path('${d || 'M0,0 Z'}')`;
+  }
+  function drawWGuide() {
+    if (!wg) return;
+    const e = wgP <= 0 ? 0 : wgP >= 1 ? 1 : ease(wgP);
+    wgEl.classList.toggle('on', e > 0);
+    if (e === wgDrawn) return;
+    wgDrawn = e;
+    const { sq, b, ro, L } = wg;
+    const lx = sq.x0 + (b.x0 - sq.x0) * e, rx = sq.x1 + (b.x1 - sq.x1) * e;
+    wgCur = { lx, rx };
+    // the texture kept inside it as it opens
+    if (watchTex.active()) clipWatchTex();
+    wgL.style.transform = `translate(${lx}px, ${b.y0}px)`;
+    wgR.style.transform = `translate(${rx - ro}px, ${b.y0}px)`;
+    // each line: a window from its end to (past) the square, the dashes
+    // held still inside it (anchored at the botonera's corners)
+    const strip = (el, ox, y, anchor) => {
+      el.style.transform = `translate(${ox}px, ${y}px)`;
+      el.firstChild.style.transform = `translateX(${anchor - ox}px)`;
+    };
+    strip(wgStrips[0], lx + ro, b.y0, b.x0 + ro);
+    strip(wgStrips[1], lx + ro, b.y1 - T, b.x0 + ro);
+    strip(wgStrips[2], rx - ro - L, b.y0, b.x1 - ro - L);
+    strip(wgStrips[3], rx - ro - L, b.y1 - T, b.x1 - ro - L);
+  }
+  function tickWGuide(now) {
+    const dt = Math.min(50, now - wgLast);
+    wgLast = now;
+    if (wgHold && wgDir < 0) wgDir = 1;
+    if (wgDir > 0) {
+      wgP = Math.min(1, wgP + dt / WG_IN_MS);
+      if (wgP >= 1 && !wgHold && !wgHover) wgDir = -1;
+    } else if (wgDir < 0) {
+      wgP = Math.max(0, wgP - dt / WG_OUT_MS);
+      if (wgP <= 0) wgDir = wgHover || wgHold ? 1 : 0;
+    }
+    drawWGuide();
+    const settled = wgDir === 0 || (wgDir > 0 && wgP >= 1 && (wgHover || wgHold));
+    wgRaf = settled ? 0 : requestAnimationFrame(tickWGuide);
+  }
+  function kickWGuide() {
+    if (!canHover || TOUCH || !wg) return;
+    if ((wgHover || wgHold) && wgDir === 0) wgDir = 1;
+    if (wgRaf || wgDir === 0) return;
+    wgLast = performance.now();
+    wgRaf = requestAnimationFrame(tickWGuide);
+  }
+  function hoverWGuide(on) {
+    wgHover = on;
+    updateViewfinder();
+    // cut away inside the square's outline
+    if (on && lastOl) wgEl.style.clipPath = outsideOf(lastOl);
+    kickWGuide();
+    if (on) { clipWatchTex(); watchTex.show(true); }
+    else if (!wgHold) watchTex.show(false);
+  }
+  // the square -> botonera move: inside the widening outline, cut away
+  function clipWGuide() {
+    if (wgEl.classList.contains('on') && lastOl) wgEl.style.clipPath = outsideOf(lastOl);
+    if (watchTex.active()) clipWatchTex();
+  }
+  function dropWGuide() {
+    wgHold = false;
+    wgHover = false;
+    wgDir = 0;
+    wgP = 0;
+    if (wgRaf) { cancelAnimationFrame(wgRaf); wgRaf = 0; }
+    drawWGuide();
+    watchTex.show(false);
+  }
+  // (watchOpen may not be declared yet when this first runs)
+  function isWatchOpen() { try { return watchOpen; } catch (e) { return false; } }
+  // (provisional) the cyan's texture over what plays on the square's
+  // hueco - the intro clip, WATCH!'s preview and its magenta panel - live
+  // blended over them (the cyan's own copy is off meanwhile); right over
+  // the clip, which sits over the preview and the panel
+  function updateOverTex() {
+    if (!canHover || TOUCH || !introVideo) return;
+    const on = introOn || (isWatchOpen() && current === SQUARE);
+    let el = document.getElementById('intro-tex');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'intro-tex';
+      // (the texture's middle square - all that shows - at 1400px, gray)
+      el.style.backgroundImage = 'url("assets/images/tex-dust-1400.webp")';
+      introVideo.el.after(el);
+      const st = STATES[SQUARE];
+      el.style.transform = `translate(${CX - st.w / 2}px, ${(st.cy ?? CY) - st.h / 2}px)`;
+      el.style.width = st.w + 'px';
+      el.style.height = st.h + 'px';
+      el.style.borderRadius = st.r + 'px';
+      void el.offsetWidth;
+    }
+    el.classList.toggle('on', on);
+  }
+  // --- (provisional) the cyan's texture + its test panel (see #cyan-tex)
+  const cyanTex = document.getElementById('cyan-tex');
+  if (cyanTex) {
+    // over the shape's own parts (the fill), still inside it
+    const win = cyanTex.parentNode;
+    win.parentNode.appendChild(win);
+    if (!canHover || TOUCH) win.remove();
+  }
+  // (it can be called before the lines above have run - so it looks the
+  // element up itself)
+  // the window on the hueco (as the shape draws it, 1px in from its box),
+  // the texture as wide as it, centered on its height
+  function placeCyanTex(st) {
+    const win = document.getElementById('cyan-tex-win');
+    if (!win || !win.isConnected) return;
+    const { w, h, r } = st, rt = st.rt ?? r;
+    win.style.width = w + 'px';
+    win.style.height = h + 'px';
+    win.style.borderRadius = `${rt}px ${rt}px ${r}px ${r}px`;
+    win.firstChild.style.transform = `translate(0, ${(h - w) / 2}px) scale(${w / 1400})`;
+  }
+  // cut: no fade - switched in the very frame the intro clip goes
+  function updateCyanTex(cut = false) {
+    const cyanTex = document.getElementById('cyan-tex');
+    if (!cyanTex || !canHover || TOUCH) return;
+    // (on at the square and the botonera and between them - it follows the
+    // shape, see placeCyanTex; off from the logo on, and while the intro
+    // clip or WATCH!'s preview plays - their own copy does it there, so
+    // their see-through parts don't get two layers of it; back on, cut, the
+    // moment they go)
+    const on = (current === SQUARE || current === BOTONERA) && !introOn && !isWatchOpen();
+    if (cut) cyanTex.style.transition = 'none';
+    if (on && !cyanTex.dataset.loaded) {
+      cyanTex.dataset.loaded = '1';
+      cyanTex.style.backgroundImage = 'url("assets/images/cyan-tex-baked.webp")';
+      cyanTex.classList.add('baked');
+    }
+    if (on && lastState) placeCyanTex(lastState);
+    cyanTex.classList.toggle('on', on);
+    if (cut) { void cyanTex.offsetWidth; cyanTex.style.transition = ''; }
+  }
+
+  // --- the viewfinder (see #viewfinder): the botonera's outline corners,
+  // the arc and VF_LEG of each side
+  const vfEl = document.getElementById('viewfinder');
+  const VF_LEG = 18, VF_FROM = 70; // its sides' length; how far out they come in from
+  function placeViewfinder() {
+    if (!canHover || TOUCH) return;
+    const b = olBox(STATES[BOTONERA]);
+    // (as thick as the outline)
+    // the curve: always the one that runs parallel to the dashed rect's
+    // (same center, the calle's width out) when WATCH! pushes them there -
+    // at rest they keep it, just sitting on the botonera's corners
+    const t = T, h2 = t / 2, rc = b.ro + TEX_PAD + h2, ro = rc + h2, n = ro + VF_LEG;
+    // each corner drawn in its own n x n box, the line T wide down the
+    // middle of where the outline will run
+    // (each as a function of its arc's radius r: r = rc rounded, ~0 square
+    // - a hair over 0 so the arc's still there to grow)
+    const corners = [
+      [b.x0, b.y0, (r) => `M${h2},${n} V${h2 + r} A${r},${r} 0 0 1 ${h2 + r},${h2} H${n}`],
+      [b.x1 - n, b.y0, (r) => `M0,${h2} H${n - h2 - r} A${r},${r} 0 0 1 ${n - h2},${h2 + r} V${n}`],
+      [b.x1 - n, b.y1 - n, (r) => `M${n - h2},0 V${n - h2 - r} A${r},${r} 0 0 1 ${n - h2 - r},${n - h2} H0`],
+      [b.x0, b.y1 - n, (r) => `M${n},${n - h2} H${h2 + r} A${r},${r} 0 0 1 ${h2},${n - h2 - r} V0`],
+    ];
+    vfEl.querySelectorAll('.vf-corner').forEach((svg, i) => {
+      const [x, y, d] = corners[i];
+      svg.setAttribute('width', n);
+      svg.setAttribute('height', n);
+      // (placed by left/top: translate is the way in, and WATCH!'s push)
+      svg.style.left = x + 'px';
+      svg.style.top = y + 'px';
+      svg.firstChild.style.setProperty('--d0', `path("${d(0.01)}")`);
+      svg.firstChild.style.setProperty('--d1', `path("${d(rc)}")`);
+      svg.firstChild.setAttribute('stroke-width', t);
+      svg.style.setProperty('--vx', (i === 0 || i === 3 ? -VF_FROM : VF_FROM) + 'px');
+      svg.style.setProperty('--vy', (i < 2 ? -VF_FROM : VF_FROM) + 'px');
+      // WATCH!'s push: out until its arc shares the dashed rect's center
+      const left = i === 0 || i === 3, top = i < 2, m = ro - b.ro;
+      svg.style.setProperty('--px', (left ? -m : m) + 'px');
+      svg.style.setProperty('--py', (top ? -m : m) + 'px');
+    });
+    // WATCH! clicked (see leaveViewfinder): out far enough to clear the
+    // viewport on every side
+    const m = ro - b.ro;
+    const L = b.x0 - m, R = b.x1 + m, Tp = b.y0 - m, B = b.y1 + m; // the pushed frame's outer box
+    const sc = stageScale(), ox = (viewport.clientWidth - 1920 * sc) / 2, oy = (viewport.clientHeight - STAGE_H * sc) / 2;
+    const vd = Math.max(L - (-ox / sc), (viewport.clientWidth - ox) / sc - R, Tp - (-oy / sc), (viewport.clientHeight - oy) / sc - B) + n + 10;
+    vfEl.style.setProperty('--vd', vd + 'px');
+    // the print marks: on the arms' center lines, at rest
+    placeMarks(b.x0 + h2, b.x1 - h2, t * 0.5);
+    vfEl.querySelectorAll('.vf-corner').forEach((svg, i) => {
+      svg.style.setProperty('--sx', i === 0 || i === 3 ? -1 : 1);
+      svg.style.setProperty('--sy', i < 2 ? -1 : 1);
+    });
+  }
+  // WATCH! clicked: the frame (formed by now, or forming) opens out off
+  // the screen as the botonera comes; put back unseen once it's there
+  // the print marks (see .vf-mark): the targets' diameter, their cross's
+  // overhang, the bar's cell
+  const VF_MARK_D = 26, VF_MARK_X = 7, VF_BAR_CELL = 12;
+  const MARK_COLORS = ['#ff4fd8', '#80dfff', '#fff', '#000'];
+  function placeMarks(xL, xR, lw) {
+    if (!vfEl.querySelector('.vf-mark')) {
+      const r = VF_MARK_D / 2, e = r + VF_MARK_X;
+      // a target: four quarters (clockwise from the top right), the circle
+      // and its cross over them
+      const target = () => {
+        const q = (a0, a1, c) => {
+          const p = (a) => `${(r * Math.cos(a)).toFixed(3)},${(r * Math.sin(a)).toFixed(3)}`;
+          return `<path d="M0,0 L${p(a0)} A${r},${r} 0 0 1 ${p(a1)} Z" fill="${c}"/>`;
+        };
+        const H = Math.PI / 2;
+        return `<svg class="vf-mark vf-target" width="${2 * e}" height="${2 * e}" viewBox="${-e} ${-e} ${2 * e} ${2 * e}">`
+          + q(-H, 0, MARK_COLORS[0]) + q(0, H, MARK_COLORS[1]) + q(H, 2 * H, MARK_COLORS[2]) + q(2 * H, 3 * H, MARK_COLORS[3])
+          + `<circle r="${r}" fill="none" stroke="#80dfff"/><path d="M${-e},0 H${e} M0,${-e} V${e}" stroke="#80dfff" fill="none"/></svg>`;
+      };
+      const c = VF_BAR_CELL;
+      const bar = `<svg class="vf-mark vf-bar" width="${c}" height="${4 * c}" viewBox="0 0 ${c} ${4 * c}">`
+        // (top to bottom: magenta, white, cyan, black)
+        + [MARK_COLORS[0], MARK_COLORS[2], MARK_COLORS[1], MARK_COLORS[3]].map((col, k) => `<rect x="0" y="${k * c}" width="${c}" height="${c}" fill="${col}"/>`).join('')
+        + '</svg>';
+      vfEl.insertAdjacentHTML('beforeend', target() + bar);
+    }
+    const e = VF_MARK_D / 2 + VF_MARK_X;
+    const t1 = vfEl.querySelector('.vf-target');
+    const barEl = vfEl.querySelector('.vf-bar');
+    // (their lines as thick as the viewfinder's)
+    vfEl.querySelectorAll('.vf-mark [stroke]').forEach((el) => el.setAttribute('stroke-width', lw));
+    t1.style.transform = `translate(${xL - e}px, ${CY - e}px)`;
+    barEl.style.transform = `translate(${xR - VF_BAR_CELL / 2}px, ${CY - 2 * VF_BAR_CELL}px)`;
+  }
+  function leaveViewfinder() {
+    if (!canHover || TOUCH || !vfEl.classList.contains('pushed')) return;
+    vfEl.classList.add('leaving');
+  }
+  function resetViewfinder() {
+    if (!vfEl.classList.contains('leaving')) return;
+    vfEl.classList.add('reset');
+    vfEl.classList.remove('leaving', 'pushed', 'on');
+    void vfEl.offsetWidth;
+    vfEl.classList.remove('reset');
+  }
+  function updateViewfinder() {
+    if (vfEl.classList.contains('leaving')) return; // (see leaveViewfinder)
+    const at = canHover && !TOUCH && current === SQUARE && !animating && !wgHold;
+    vfEl.classList.toggle('on', at && !wgHover);
+    // WATCH! hovered: its dashed rect nudges them out a little - framing it
+    vfEl.classList.toggle('pushed', at && wgHover);
+  }
+
+
+  // --- the botonera's back arrow (desktop): the square, dashed, closing
+  // in from the black outline (see #bguide). Same rules as the others:
+  // traced in on the hover and kept, out when it's over (finishing first
+  // if halfway) - out the way it came in, backwards; a click holds it
+  // until the outline has shrunk onto it.
+  const bgEl = document.getElementById('bguide');
+  const bgEls = {};
+  ['bg-t', 'bg-tr', 'bg-r', 'bg-br', 'bg-b', 'bg-bl', 'bg-l', 'bg-tl'].forEach((id) => { bgEls[id] = document.getElementById(id); });
+  const BG_IN_MS = 560, BG_OUT_MS = 460;
+  // its texture: "HOME", everywhere outside the botonera's outline
+  const homeTex = makeTex(document.getElementById('gtex-h'), 'HOME<i class="gtex-dot"></i>', 2);
+  const showHomeTex = (on) => homeTex.show(on);
+
+  let bg = null;
+  // bgP: traced in (head) - also how far it's closed in (and the row
+  // squeezed); out, it just runs back down. bgQ (a tail): unused here,
+  // always 0. bgDir: 1 in, -1 out, 0 still
+  let bgP = 0, bgQ = 0, bgDir = 0, bgHover = false, bgHold = false, bgRaf = 0, bgLast = 0;
+  let bgDP = 0; // the row's dial (see botDial), on its own clock
+  const DIAL_IN_MS = 1400, DIAL_OUT_MS = 800;
+  function placeBGuide() {
+    if (!canHover || TOUCH) return;
+    const sq = olBox(STATES[SQUARE]), b = olBox(STATES[BOTONERA]);
+    const ro = sq.ro, h2 = T / 2, rc = ro - h2, H = b.y1 - b.y0, lh = H - 2 * ro;
+    const corner = (id, d) => {
+      const el = bgEls[id];
+      el.setAttribute('width', ro);
+      el.setAttribute('height', ro);
+      el.firstChild.setAttribute('d', d);
+      el.firstChild.setAttribute('stroke-width', T);
+    };
+    corner('bg-tr', `M0,${h2} A${rc},${rc} 0 0 1 ${rc},${ro}`);
+    corner('bg-br', `M${rc},0 A${rc},${rc} 0 0 1 0,${rc}`);
+    corner('bg-bl', `M${ro},${rc} A${rc},${rc} 0 0 1 ${h2},0`);
+    corner('bg-tl', `M${h2},${ro} A${rc},${rc} 0 0 1 ${ro},${h2}`);
+    ['bg-r', 'bg-l'].forEach((id) => { bgEls[id].style.width = T + 'px'; bgEls[id].style.height = lh + 'px'; });
+    // the top/bottom lines: as long as the outline's own, at most
+    const W = b.x1 - b.x0 - 2 * ro;
+    bgEl.style.setProperty('--t', T + 'px');
+    ['bg-t', 'bg-b'].forEach((id) => {
+      const el = bgEls[id];
+      [el, el.firstChild, el.firstChild.firstChild].forEach((e) => { e.style.width = W + 'px'; e.style.height = (T + 2 * U) + 'px'; });
+    });
+    bg = { sq, b, ro, W, lh, arc: Math.PI / 2 * rc };
+    drawBGuide();
+    const q = TEX_PAD;
+    homeTex.el.style.clipPath = outsideOf({ x0: b.x0 - q, y0: b.y0 - q, x1: b.x1 + q, y1: b.y1 + q, ro: b.ro + q });
+    homeTex.resized();
+  }
+  function drawBGuide() {
+    if (!bg) return;
+    const at = (p) => (p <= 0 ? 0 : p >= 1 ? 1 : ease(p));
+    const e = at(bgP);
+    const { sq, b, ro, W, lh, arc } = bg;
+    // closing in: its ends from the outline's to the square's
+    const lx = b.x0 + (sq.x0 - b.x0) * e, rx = b.x1 + (sq.x1 - b.x1) * e;
+    const len = rx - lx - 2 * ro;
+    // tracing: around from the top left, clockwise, head and tail
+    const segs = [['bg-t', len], ['bg-tr', arc], ['bg-r', lh], ['bg-br', arc], ['bg-b', len], ['bg-bl', arc], ['bg-l', lh], ['bg-tl', arc]];
+    const tot = segs.reduce((n, sg) => n + sg[1], 0);
+    const head = e * tot, tail = at(bgQ) * tot;
+    bgEl.classList.toggle('on', head > tail);
+    // the row: squeezed and turned into the dial (on its own clock), let
+    // out again as it goes
+    botDial(bgDP);
+    let a0 = 0;
+    for (const [id, l] of segs) {
+      const fh = Math.max(0, Math.min(1, (head - a0) / l)), ft = Math.max(0, Math.min(1, (tail - a0) / l));
+      a0 += l;
+      const el = bgEls[id];
+      if (id === 'bg-t' || id === 'bg-b') {
+        // visible from x0v to x1v: the outer window starts there, the inner
+        // one ends there, the dashes held at the outline's corner
+        const x0v = id === 'bg-t' ? lx + ro + ft * len : rx - ro - fh * len;
+        const x1v = id === 'bg-t' ? lx + ro + fh * len : rx - ro - ft * len;
+        const y = (id === 'bg-t' ? b.y0 : b.y1 - T) - U;
+        const ix = x1v - W;
+        el.style.transform = `translate(${x0v}px, ${y}px)`;
+        el.firstChild.style.transform = `translateX(${ix - x0v}px)`;
+        el.firstChild.firstChild.style.transform = `translateX(${b.x0 + ro - ix}px)`;
+      } else if (id === 'bg-r' || id === 'bg-l') {
+        // one window sliding along the side, its dashes sliding back
+        const k = fh < 1 ? -(1 - fh) * l : ft * l;
+        const x = id === 'bg-r' ? rx - T : lx, y = b.y0 + ro;
+        const down = id === 'bg-r';
+        el.style.transform = `translate(${x}px, ${down ? y + k : y - k}px)`;
+        el.firstChild.style.transform = `translateY(${down ? -k : k}px)`;
+      } else {
+        el.classList.toggle('on', fh > 0.5 && ft <= 0.5);
+        const x = id === 'bg-tr' || id === 'bg-br' ? rx - ro : lx;
+        const y = id === 'bg-tr' || id === 'bg-tl' ? b.y0 : b.y1 - ro;
+        el.style.transform = `translate(${x}px, ${y}px)`;
+      }
+    }
+  }
+  function tickBGuide(now) {
+    const dt = Math.min(50, now - bgLast);
+    bgLast = now;
+    if (bgHold && bgDir === -1) bgDir = 1;
+    // the dial, at its own (slower) pace: on its way in while the square
+    // is (or is in), back out while the square goes
+    const dialTo = bgDir === -1 || (bgDir === 0 && !bgHover && !bgHold) ? 0 : 1;
+    bgDP = dialTo ? Math.min(1, bgDP + dt / DIAL_IN_MS) : Math.max(0, bgDP - dt / DIAL_OUT_MS);
+    if (bgDir === 1) {
+      bgP = Math.min(1, bgP + dt / BG_IN_MS);
+      // traced in, it stays while hovered (or held); otherwise out it goes
+      if (bgP >= 1 && !bgHold && !bgHover) bgDir = -1;
+    } else if (bgDir === -1) {
+      // out: the way it came in, backwards - un-traced back to its start
+      // while opening out onto the black again, the row let out with it
+      bgP = Math.max(0, bgP - dt / BG_OUT_MS);
+      if (bgP <= 0) bgDir = bgHover || bgHold ? 1 : 0;
+    }
+    drawBGuide();
+    const settled = (bgDir === 0 && bgDP <= 0) || ((bgHold || bgHover) && bgDir !== -1 && bgP >= 1 && bgDP >= 1);
+    bgRaf = settled ? 0 : requestAnimationFrame(tickBGuide);
+  }
+
+  function kickBGuide() {
+    if (!canHover || TOUCH || !bg) return;
+    if ((bgHover || bgHold) && bgDir === 0) bgDir = 1;
+    if (bgRaf || (bgDir === 0 && bgDP <= 0)) return;
+    bgLast = performance.now();
+    bgRaf = requestAnimationFrame(tickBGuide);
+  }
+  function hoverBGuide(on) {
+    if (on && (current !== BOTONERA || animating)) return;
+    bgHover = on;
+    kickBGuide();
+    if (on) watchEl.classList.add('trail');
+    else if (!bgHold) watchEl.classList.remove('trail');
+    if (on) showHomeTex(true);
+    else if (!bgHold) showHomeTex(false);
+  }
+  function dropBGuide() {
+    bgHold = false;
+    bgHover = false;
+    bgDir = 0;
+    bgP = bgQ = bgDP = 0;
+    if (bgRaf) { cancelAnimationFrame(bgRaf); bgRaf = 0; }
+    drawBGuide();
+    if (!TOUCH) {
+      STATES[BOTONERA].bx = botBx(BOT_WIDE); // (spread again, next time)
+      // the dial's leftovers cleared (botDial only moves things resting)
+      botScroll = 0;
+      botoneraEl.classList.remove('dial');
+      contentEl.classList.remove('dial-on', 'dial-leaving');
+      botoneraEl.style.clipPath = '';
+      botBars.forEach((bar) => { bar.el.style.translate = ''; bar.el.style.background = ''; bar.el.style.opacity = '0.6'; });
+      tagPlus.style.translate = '';
+      tagPlus.style.visibility = '';
+    }
+    showHomeTex(false);
+    watchEl.classList.remove('trail');
+  }
+  if (canHover && !TOUCH) {
+    watchEl.addEventListener('mouseenter', () => hoverBGuide(true));
+    watchEl.addEventListener('mouseleave', () => hoverBGuide(false));
+  }
+
+
   function placeIdle() {
     // inside #idle: drawn at landscape size (#idle scales it by UI), with
     // the outline thickness divided back so it lands on the real outline
@@ -4630,8 +5832,8 @@
     if (!on) idleEl.classList.remove('hovered');
   }
   if (canHover) {
-    idleHit.addEventListener('mouseenter', () => { idleEl.classList.add('hovered'); kickGuide(); });
-    idleHit.addEventListener('mouseleave', () => { idleEl.classList.remove('hovered'); kickGuide(); });
+    idleHit.addEventListener('mouseenter', () => { idleEl.classList.add('hovered'); kickGuide(); showTex(true); });
+    idleHit.addEventListener('mouseleave', () => { idleEl.classList.remove('hovered'); kickGuide(); if (!guideHold && !texIntroHold) showTex(false); });
   }
   placeIdle();
   updateIdle();
@@ -4707,6 +5909,8 @@
   function openWatch() {
     if (watchOpen || current !== SQUARE || animating) return;
     watchOpen = true;
+    updateOverTex();
+    updateCyanTex(true);
     stopOnda(); // no dot burst over the athletes
     watchEl.classList.add('triangle');
     watchClip.classList.add('open');
@@ -4722,6 +5926,7 @@
       // half of what the panel + its calle take off the hueco's height
       stage.style.setProperty('--lift', -(WATCH_PANEL_H + lastState.gap) / 2 + 'px');
       stage.classList.add('watch-lift');
+      hoverWGuide(true);
     }
     if (globe) globe.el.style.visibility = 'hidden'; // a cut, like the current site
   }
@@ -4730,6 +5935,8 @@
   function closeWatch(carry) {
     if (!watchOpen) return;
     watchOpen = false;
+    updateOverTex();
+    updateCyanTex(true);
     if (carry) contentEl.style.transition = 'none';
     watchEl.classList.remove('triangle');
     watchClip.classList.remove('open');
@@ -4738,6 +5945,7 @@
     watchPanel.classList.remove('open');
     wipeLogoGreen(false);
     stage.classList.remove('watch-lift');
+    hoverWGuide(false);
     if (carry) {
       void contentEl.offsetWidth; // apply the cut before the transition's back
       contentEl.style.transition = '';
@@ -4769,6 +5977,7 @@
     const x = Math.round((vw - 1920 * s) / 2 * dpr) / dpr;
     const y = Math.round((vh - STAGE_H * s) / 2 * dpr) / dpr;
     stage.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+    document.querySelectorAll('.gtex.gtex-vp').forEach((el) => { el.style.transform = stage.style.transform; });
   }
   fitStage();
   addEventListener('resize', fitStage);
