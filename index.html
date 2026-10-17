@@ -1219,6 +1219,36 @@
     top: 0;
     transform-origin: 0 0;
   }
+  /* desktop, logo hover: the square's outline previewed as a dashed gray
+     line, traced side by side (see tickGuide) - above the outline's white
+     covers; the real outline, growing onto it, cuts it away as it
+     arrives (clipGuide), so it reads as drawn over it. Transform
+     only: each straight side is a window (overflow hidden) sliding in
+     along the side while its dashes counter-slide and stay put; the four
+     corner arcs just switch on as the trace passes them. */
+  #guide {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    display: none;
+  }
+  #guide.on { display: block; }
+  #guide > div, #guide > svg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    will-change: transform;
+  }
+  #guide > div { overflow: hidden; }
+  #guide > svg { overflow: visible; opacity: 0; will-change: opacity; }
+  #guide > svg.on { opacity: 1; }
+  #guide > svg path { fill: none; stroke: #b8b8b8; stroke-dasharray: 8 6; }
+  .g-dash { width: 100%; height: 100%; will-change: transform; }
+  #g-top .g-dash { background: repeating-linear-gradient(90deg, #b8b8b8 0 8px, transparent 8px 14px); }
+  #g-right .g-dash { background: repeating-linear-gradient(180deg, #b8b8b8 0 8px, transparent 8px 14px); }
+  #g-bottom .g-dash { background: repeating-linear-gradient(270deg, #b8b8b8 0 8px, transparent 8px 14px); }
+  #g-left .g-dash { background: repeating-linear-gradient(0deg, #b8b8b8 0 8px, transparent 8px 14px); }
   /* the hover target: the button's own box, above everything */
   #idle-hit {
     position: absolute;
@@ -1611,6 +1641,7 @@
       <div class="ol-corner" id="ol-bl"></div><div class="ol-corner" id="ol-br"></div>
       <div class="ol-cover" id="ol-cover-r"></div><div class="ol-cover" id="ol-cover-b"></div>
     </div>
+    <div id="guide" aria-hidden="true"><div id="g-top"><div class="g-dash"></div></div><svg id="g-tr"><path/></svg><div id="g-right"><div class="g-dash"></div></div><svg id="g-br"><path/></svg><div id="g-bottom"><div class="g-dash"></div></div><svg id="g-bl"><path/></svg><div id="g-left"><div class="g-dash"></div></div><svg id="g-tl"><path/></svg></div>
     <div id="idle-back"></div>
     <div id="idle">
       <div id="idle-rect"></div>
@@ -1816,6 +1847,7 @@
   ['ol-top', 'ol-bottom', 'ol-left', 'ol-right', 'ol-tl', 'ol-tr', 'ol-bl', 'ol-br', 'ol-cover-r', 'ol-cover-b']
     .forEach((id) => { ol[id] = document.getElementById(id); });
   let lastRo = null;
+  let lastOl = null; // the outline's outer box, last placed (see setState)
   const pieces = {};
   document.querySelectorAll('.piece').forEach((el) => { pieces[el.id] = el; });
 
@@ -2762,6 +2794,7 @@
     // outline pieces (see #outline): outer box snapped to screen pixels
     // (x0/y0/x1/y1, computed above with the header)
     const ro = Math.max(or, T);
+    lastOl = { x0, y0, x1, y1, ro };
     if (ro !== lastRo) { stage.style.setProperty('--ro', ro + 'px'); lastRo = ro; }
     ol['ol-top'].style.transform = t(x0 + ro / 2, y0);
     ol['ol-bottom'].style.transform = t(x0 + ro / 2, y1 - T);
@@ -2880,6 +2913,8 @@
       contentLift = liftFrom * (1 - e);
       const el = intro ? ease(Math.min(1, p / LOGO_LEAD)) : e;
       setState({ w: a.w + (b.w - a.w) * ew, h: mix('h'), cy: mix('cy'), r: mix('r'), rt: mix('rt'), hh: mix('hh'), lp: a.lp + (b.lp - a.lp) * el, lg: a.lg + (b.lg - a.lg) * el, ksv: blockScaleFor(a) + (blockScaleFor(b) - blockScaleFor(a)) * e, gap: mix('gap'), or: mix('or'), drop: mix('drop'), bi: mix('bi'), bx: mix('bx'), bks: (a.bks ?? 1) + ((b.bks ?? 1) - (a.bks ?? 1)) * e, bo: mix('bo'), bt: mix('bt') });
+      // the hover's dashed square: the black outline runs over it
+      if (intro) clipGuide();
       // tagline + globe come in a bit BEFORE the square settles, like the
       // current site (its tagline fires ~700ms before the grow ends)
       // - at most half the move early, so on the short way back from the
@@ -2890,6 +2925,7 @@
       }
       if (p < 1) { requestAnimationFrame(frame); return; }
       if (fakePush) { fakePushP = null; fakePushEl.classList.remove('on'); }
+      if (intro) dropGuide();
       current = next;
       if (hidingGlobe && globe) globe.pause();
       transitionRunning = false;
@@ -4362,6 +4398,8 @@
   });
   document.addEventListener('click', () => {
     if (locked || current !== 0 || animating) return;
+    guideHold = true;
+    kickGuide();
     if (!introReady) { clickQueued = true; return; }
     bounceThenGrow();
   });
@@ -4410,6 +4448,144 @@
   const idleEl = document.getElementById('idle');
   const idleHit = document.getElementById('idle-hit');
   const idleBack = document.getElementById('idle-back');
+  // desktop: the dashed square (see #guide). Hovered, it loops: traces
+  // itself in, then out the same way round (the tail following the head),
+  // again and again. Leaving halfway, it still
+  // finishes tracing in, then traces out and stops. A click holds it
+  // traced in until the real outline grows onto it (dropGuide, from goTo).
+  const guideEl = document.getElementById('guide');
+  const GUIDE_IN_MS = 560, GUIDE_OUT_MS = 460, GUIDE_DWELL_MS = 160;
+  // the trace, in order: [element, kind, start, length, base x, base y]
+  let guideSegs = [], guideLen = 1;
+  let guideP = 0, guideQ = 0, guideDir = 0, guideDwell = 0, guideHold = false, guideRaf = 0, guideLast = 0;
+  function placeGuide() {
+    if (!canHover || TOUCH) return;
+    // the outline's own box at the square (see setState): the line runs
+    // where the outline will be, T wide
+    const s = STATES[SQUARE];
+    const snap = (v) => Math.round(v / U) * U;
+    const cy = s.cy ?? CY;
+    const x0 = snap(CX - s.w / 2 - s.gap - T), y0 = snap(cy - s.h / 2 - s.gap - T);
+    const x1 = snap(CX + s.w / 2 + s.gap + T), y1 = snap(cy + s.h / 2 + s.gap + T);
+    const ro = Math.max(s.or, T), rc = ro - T / 2, arc = Math.PI / 2 * rc;
+    const lw = x1 - x0 - 2 * ro, lh = y1 - y0 - 2 * ro;
+    const side = (id, w, h) => {
+      const el = document.getElementById(id);
+      el.style.width = w + 'px';
+      el.style.height = h + 'px';
+      return el;
+    };
+    // a corner: its quarter arc drawn from where the trace comes in
+    const corner = (id, x, y, d) => {
+      const el = document.getElementById(id);
+      el.setAttribute('width', ro);
+      el.setAttribute('height', ro);
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      const path = el.firstChild;
+      path.setAttribute('d', d);
+      path.setAttribute('stroke-width', T);
+      return el;
+    };
+    const h2 = T / 2;
+    let at = 0;
+    const seg = (el, kind, len, bx, by) => { guideSegs.push({ el, kind, a: at, l: len, bx, by, f: -1 }); at += len; };
+    guideSegs = [];
+    seg(side('g-top', lw, T), 'r', lw, x0 + ro, y0);
+    seg(corner('g-tr', x1 - ro, y0, `M0,${h2} A${rc},${rc} 0 0 1 ${rc},${ro}`), 'c', arc);
+    seg(side('g-right', T, lh), 'd', lh, x1 - T, y0 + ro);
+    seg(corner('g-br', x1 - ro, y1 - ro, `M${rc},0 A${rc},${rc} 0 0 1 0,${rc}`), 'c', arc);
+    seg(side('g-bottom', lw, T), 'l', lw, x0 + ro, y1 - T);
+    seg(corner('g-bl', x0, y1 - ro, `M${ro},${rc} A${rc},${rc} 0 0 1 ${h2},0`), 'c', arc);
+    seg(side('g-left', T, lh), 'u', lh, x0, y0 + ro);
+    seg(corner('g-tl', x0, y0, `M${h2},${ro} A${rc},${rc} 0 0 1 ${ro},${h2}`), 'c', arc);
+    guideLen = at;
+    guideBox = { x0, y0, x1, y1 };
+    drawGuide();
+  }
+  function drawGuide() {
+    // the line shows from its tail to its head: tracing in moves the head,
+    // tracing out moves the tail after it, the same way round
+    // (ends exact - ease() only gets within a hair of 0 and 1)
+    const at = (p) => (p <= 0 ? 0 : p >= 1 ? guideLen : ease(p) * guideLen);
+    const head = at(guideP), tail = at(guideQ);
+    guideEl.classList.toggle('on', head > tail);
+    for (const g of guideSegs) {
+      const fh = Math.max(0, Math.min(1, (head - g.a) / g.l));
+      const ft = Math.max(0, Math.min(1, (tail - g.a) / g.l));
+      if (g.kind === 'c') {
+        const on = fh > 0.5 && ft <= 0.5;
+        if (on !== g.f) { g.f = on; g.el.classList.toggle('on', on); }
+        continue;
+      }
+      // the window slides along the side, its dashes slide back: short of
+      // the head it trails behind the side's start, past the tail it runs
+      // on beyond it
+      const k = fh < 1 ? -(1 - fh) * g.l : ft * g.l;
+      if (k === g.f) continue;
+      g.f = k;
+      const inner = g.el.firstChild;
+      if (g.kind === 'r') { g.el.style.transform = `translate(${g.bx + k}px, ${g.by}px)`; inner.style.transform = `translateX(${-k}px)`; }
+      if (g.kind === 'l') { g.el.style.transform = `translate(${g.bx - k}px, ${g.by}px)`; inner.style.transform = `translateX(${k}px)`; }
+      if (g.kind === 'd') { g.el.style.transform = `translate(${g.bx}px, ${g.by + k}px)`; inner.style.transform = `translateY(${-k}px)`; }
+      if (g.kind === 'u') { g.el.style.transform = `translate(${g.bx}px, ${g.by - k}px)`; inner.style.transform = `translateY(${k}px)`; }
+    }
+  }
+  const guideHovered = () => idleEl.classList.contains('hovered');
+  // guideDir: 1 tracing in (head), -1 tracing out (tail), 2 a click caught
+  // it tracing out - the tail goes back to make it whole, 0 still
+  function tickGuide(now) {
+    const dt = Math.min(50, now - guideLast);
+    guideLast = now;
+    if (guideHold && guideDir === -1) guideDir = 2;
+    if (guideDir === 1) {
+      guideP = Math.min(1, guideP + dt / GUIDE_IN_MS);
+      if (guideP >= 1) {
+        guideDwell += dt;
+        if (!guideHold && guideDwell >= GUIDE_DWELL_MS) { guideDir = -1; guideDwell = 0; }
+      }
+    } else if (guideDir === -1) {
+      guideQ = Math.min(1, guideQ + dt / GUIDE_OUT_MS);
+      if (guideQ >= 1) {
+        guideP = guideQ = 0;
+        guideDir = guideHovered() || guideHold ? 1 : 0;
+      }
+    } else if (guideDir === 2) {
+      guideQ = Math.max(0, guideQ - dt / GUIDE_OUT_MS);
+    }
+    drawGuide();
+    const settled = guideDir === 0 || (guideHold && guideP >= 1 && guideQ <= 0);
+    guideRaf = settled ? 0 : requestAnimationFrame(tickGuide);
+  }
+  function kickGuide() {
+    if (!canHover || TOUCH) return;
+    if (guideDir === 0 && (guideHovered() || guideHold)) guideDir = 1;
+    if (guideRaf || guideDir === 0) return;
+    guideLast = performance.now();
+    guideRaf = requestAnimationFrame(tickGuide);
+  }
+  // the real outline is on it now - gone at once, under the black
+  // the outline drawn OVER the dashed square as it gets there: the dashed
+  // square is cut away inside the outline's outer box (only once it's
+  // close enough to touch it - a repaint, but only those last frames)
+  let guideBox = null, guideClipped = false;
+  function clipGuide() {
+    if (!guideBox || !lastOl || !guideEl.classList.contains('on')) return;
+    const { x0, y0, x1, y1, ro } = lastOl, g = guideBox;
+    const touching = x0 < g.x0 + T || y0 < g.y0 + T || x1 > g.x1 - T || y1 > g.y1 - T;
+    if (!touching) return;
+    guideClipped = true;
+    const clip = `path(evenodd, 'M-9999,-9999 H19999 V19999 H-9999 Z M${x0 + ro},${y0} H${x1 - ro} A${ro},${ro} 0 0 1 ${x1},${y0 + ro} V${y1 - ro} A${ro},${ro} 0 0 1 ${x1 - ro},${y1} H${x0 + ro} A${ro},${ro} 0 0 1 ${x0},${y1 - ro} V${y0 + ro} A${ro},${ro} 0 0 1 ${x0 + ro},${y0} Z')`;
+    guideEl.style.clipPath = clip;
+  }
+  function dropGuide() {
+    guideHold = false;
+    guideDir = 0;
+    guideDwell = 0;
+    guideP = guideQ = 0;
+    if (guideClipped) { guideEl.style.clipPath = ''; guideClipped = false; }
+    if (guideRaf) { cancelAnimationFrame(guideRaf); guideRaf = 0; }
+    drawGuide();
+  }
   function placeIdle() {
     // inside #idle: drawn at landscape size (#idle scales it by UI), with
     // the outline thickness divided back so it lands on the real outline
@@ -4443,6 +4619,7 @@
     const lk = 1.1 * k;
     document.getElementById('idle-logo').style.transform =
       `translate(${960 - 131 * lk / 2}px, ${CY - 72 * lk / 2}px) scale(${lk})`;
+    placeGuide();
   }
   function updateIdle() {
     const on = current === 0 && !animating;
@@ -4453,8 +4630,8 @@
     if (!on) idleEl.classList.remove('hovered');
   }
   if (canHover) {
-    idleHit.addEventListener('mouseenter', () => idleEl.classList.add('hovered'));
-    idleHit.addEventListener('mouseleave', () => idleEl.classList.remove('hovered'));
+    idleHit.addEventListener('mouseenter', () => { idleEl.classList.add('hovered'); kickGuide(); });
+    idleHit.addEventListener('mouseleave', () => { idleEl.classList.remove('hovered'); kickGuide(); });
   }
   placeIdle();
   updateIdle();
