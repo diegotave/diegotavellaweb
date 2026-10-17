@@ -112,12 +112,20 @@
     transition: opacity 0.3s ease;
     pointer-events: none;
   }
-  #cyan-tex.on, #intro-tex.on { opacity: 0.27; }
-  /* the cyan's, as chosen (difference, 27%): baked into the image itself -
-     the cyan's flat, so the blend's result is just colors - drawn plain,
-     no blending to work out every frame. The panel puts it back live */
+  #cyan-tex.on, #intro-tex.on { opacity: var(--cto, 0.27); }
+  /* touch: the difference at 27% baked into the image itself - the
+     cyan's flat, so the blend's result is just colors - drawn plain, no
+     blending to work out every frame */
   #cyan-tex.baked { mix-blend-mode: normal; }
   #cyan-tex.baked.on { opacity: 1; }
+  /* desktop: white specks laid on as they are, no blend - 45% on the
+     square (and over the intro clip and WATCH!'s preview), 28% on the
+     botonera (--cto, see updateCyanTex) */
+  #cyan-tex.plain, #intro-tex.plain { mix-blend-mode: normal; }
+  #intro-tex.plain.on { opacity: 0.45; }
+  /* (as tall as the hueco, centered, repeated sideways - it follows the
+     hueco through the grow, see placeIntroTex) */
+  #intro-tex.plain { background-size: auto 100%; background-repeat: repeat-x; background-position: center; }
   /* (the same over the intro clip, while it plays, and over WATCH!'s
      preview and its magenta panel while hovered - see updateOverTex) */
   #intro-tex { background-size: cover; }
@@ -902,6 +910,21 @@
     background-clip: text;
     color: transparent;
   }
+  /* (Firefox: the letters didn't show through that clip - so the text
+     plain black, and the magenta a copy of it on top, cut at the sweep) */
+  @supports (-moz-appearance: none) {
+    #botonera.dial .bot-num, #bot-dial-home { background: none; color: #000; }
+    #botonera.dial .bot-num::after, #bot-dial-home::after {
+      content: attr(data-t);
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ff4fd8;
+      clip-path: inset(0 max(0px, calc(100% - var(--sw, 0px))) 0 0);
+    }
+  }
   /* ...and in the (thin) brackets: a magenta copy of each, masked by its
      image, uncovered up to the sweep (clip-path, set per frame) */
   .dial-brk {
@@ -1315,7 +1338,15 @@
     position: absolute;
     inset: var(--oi, 0);
     border-radius: var(--ir, 0);
-    background: #80dfff;
+    /* (with the square's specks, at its 45%: as tall as the cyan,
+       repeated sideways - a 55% cyan veil over them) */
+    background-color: #80dfff;
+    background-image:
+      linear-gradient(rgba(128, 223, 255, 0.55), rgba(128, 223, 255, 0.55)),
+      url("assets/images/tex-dust-specks.webp");
+    background-size: auto, auto 100%;
+    background-repeat: no-repeat, repeat-x;
+    background-position: center;
     opacity: 0;
   }
   #idle.lit #idle-rect::after { animation: idle-flicker 0.52s linear forwards; }
@@ -2953,6 +2984,8 @@
       introCountLayer.style.transform = contentEl.style.transform;
       introTickerLayer.style.transform = contentEl.style.transform;
     }
+    // (and the specks over it, from the click on - desktop)
+    if (introRunning && canHover && !TOUCH) placeIntroTex(state, cyanX);
     const bt = String(state.bt ?? 0);
     if (bracketLeftThin.style.opacity !== bt) {
       bracketLeftThin.style.opacity = bt;
@@ -3262,6 +3295,8 @@
       // lays the tagline out - a layout pass better not taken mid-move);
       // shown just for that, never painted
       if (!tickerBuilt) prebuildTicker();
+      // (desktop: the specks on the cyan right away, growing with it)
+      updateOverTex();
     }
     const start = performance.now();
     // a move takes its target's duration - except botonera -> square,
@@ -3670,6 +3705,7 @@
     const num = document.createElement('div');
     num.className = 'bot-num';
     num.textContent = String(i).padStart(2, '0');
+    num.dataset.t = num.textContent; // (Firefox's sweep - see .bot-num::after)
     cell.appendChild(num);
     botoneraEl.appendChild(cell);
     botCells.push(cell);
@@ -4407,7 +4443,7 @@
       });
       dialHomeEl = document.createElement('div');
       dialHomeEl.id = 'bot-dial-home';
-      dialHomeEl.textContent = 'HOME';
+      dialHomeEl.textContent = dialHomeEl.dataset.t = 'HOME';
       botoneraEl.appendChild(dialHomeEl);
       dialBarEl = document.createElement('div');
       dialBarEl.className = 'bot-bar';
@@ -5504,22 +5540,31 @@
   // the clip, which sits over the preview and the panel
   function updateOverTex() {
     if (!canHover || TOUCH || !introVideo) return;
-    const on = introOn || (isWatchOpen() && current === SQUARE);
+    const on = introOn || introPending || (isWatchOpen() && current === SQUARE);
     let el = document.getElementById('intro-tex');
     if (!el) {
       el = document.createElement('div');
       el.id = 'intro-tex';
-      // (the texture's middle square - all that shows - at 1400px, gray)
-      el.style.backgroundImage = 'url("assets/images/tex-dust-1400.webp")';
+      // (the same white specks as the square's, plain - see #cyan-tex.plain)
+      el.style.backgroundImage = 'url("assets/images/tex-dust-specks.webp")';
+      el.classList.add('plain');
       introVideo.el.after(el);
-      const st = STATES[SQUARE];
-      el.style.transform = `translate(${CX - st.w / 2}px, ${(st.cy ?? CY) - st.h / 2}px)`;
-      el.style.width = st.w + 'px';
-      el.style.height = st.h + 'px';
-      el.style.borderRadius = st.r + 'px';
+      placeIntroTex(STATES[SQUARE]);
       void el.offsetWidth;
     }
+    if (introRunning && lastState) placeIntroTex(lastState);
     el.classList.toggle('on', on);
+  }
+  // its box: the hueco's (through the grow from the logo it follows it,
+  // see setState - the specks as tall as it, growing with it)
+  function placeIntroTex(st, cyanX = 0) {
+    const el = document.getElementById('intro-tex');
+    if (!el) return;
+    const { w, h, r } = st, rt = st.rt ?? r;
+    el.style.transform = `translate(${CX + cyanX - w / 2}px, ${(st.cy ?? CY) - h / 2}px)`;
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    el.style.borderRadius = `${rt}px ${rt}px ${r}px ${r}px`;
   }
   // --- (provisional) the cyan's texture + its test panel (see #cyan-tex)
   const cyanTex = document.getElementById('cyan-tex');
@@ -5578,10 +5623,12 @@
     if (on && !cyanTex.dataset.loaded) {
       cyanTex.dataset.loaded = '1';
       if (desk) {
-        cyanTex.style.backgroundImage = 'url("assets/images/cyan-tex-baked.webp")';
-        cyanTex.classList.add('baked');
+        cyanTex.style.backgroundImage = 'url("assets/images/tex-dust-specks.webp")';
+        cyanTex.classList.add('plain');
       } else cyanTex.classList.add('baked'); // (full strength: its strength's in the image)
     }
+    // (desktop: lighter on the botonera than on the square)
+    if (desk) cyanTex.style.setProperty('--cto', current === BOTONERA ? 0.28 : 0.45);
     if (on && lastState) placeCyanTex(lastState);
     cyanTex.classList.toggle('on', on);
     if (cut) { void cyanTex.offsetWidth; cyanTex.style.transition = ''; }
