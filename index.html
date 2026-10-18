@@ -161,8 +161,8 @@
      the Contact push slides it in - see pushShapes */
   #gray-shape { --c: #000; }
 
-  /* WATCH! - same look and behavior as the current site's: a small black
-     square blinking at the hueco's bottom right; hovered, it becomes a
+  /* WATCH! - same look and behavior as the current site's: a small white
+     circle blinking at the hueco's bottom right; hovered, it becomes a
      solid red triangle (pointing right, 2.025x) and "WATCH!"
      slides out to its left from behind it. At the botonera it's a plain
      triangle pointing back (click = back to the square). Transform and
@@ -200,8 +200,8 @@
   #watch-shape {
     width: 19px;
     height: 19px;
-    background: #000;
-    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+    background: #fff;
+    clip-path: circle(50%);
     transition: transform 0.5s ease;
     animation: watch-blink 0.6s steps(1, end) infinite;
   }
@@ -875,8 +875,8 @@
   }
   #botonera.live .bot-cell { pointer-events: auto; }
   /* desktop, the back arrow hovered: the row turns into a dial (see
-     botDial) - a magenta sweep left to right filling in the brackets,
-     bars, numbers and "HOME" as if they were hollow (no solid of its own -
+     botDial) - a black sweep left to right filling in the brackets,
+     bars, numbers and "<< HOME" as if they were hollow (no solid of its own -
      like "Diego Tavella"'s turn), the numbers and bars running off to the
      left and "HOME" in from the right, the brackets closing in on it;
      the row clipped to inside the brackets */
@@ -905,13 +905,13 @@
      leaves, so nothing jumps when the dial's over) */
   #botonera.dial .bot-num { opacity: var(--num-op, 0.6); }
   #botonera.dial .bot-num, #bot-dial-home {
-    background: linear-gradient(90deg, #ff4fd8 var(--sw, 0px), #000 var(--sw, 0px));
+    background: linear-gradient(90deg, #000 var(--sw, 0px), #000 var(--sw, 0px));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
   /* (Firefox: the letters didn't show through that clip - so the text
-     plain black, and the magenta a copy of it on top, cut at the sweep) */
+     plain black, and the sweep a copy of it on top, cut at the sweep) */
   @supports (-moz-appearance: none) {
     #botonera.dial .bot-num, #bot-dial-home { background: none; color: #000; }
     #botonera.dial .bot-num::after, #bot-dial-home::after {
@@ -921,18 +921,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #ff4fd8;
+      color: #000;
       clip-path: inset(0 max(0px, calc(100% - var(--sw, 0px))) 0 0);
     }
   }
-  /* ...and in the (thin) brackets: a magenta copy of each, masked by its
+  /* ...and in the (thin) brackets: a black copy of each, masked by its
      image, uncovered up to the sweep (clip-path, set per frame) */
   .dial-brk {
     position: absolute;
     left: 0;
     top: 0;
     height: 124.3px;
-    background: #ff4fd8;
+    background: #000;
     -webkit-mask: var(--img) center / 100% 100% no-repeat;
     mask: var(--img) center / 100% 100% no-repeat;
     transform-origin: 0 0;
@@ -1432,7 +1432,7 @@
     pointer-events: none;
     display: none;
   }
-  #wguide.on { display: block; }
+  /* (not shown any more - its clock still drives the viewfinder) */
   #wguide > div, #wguide > svg {
     position: absolute;
     left: 0;
@@ -1457,7 +1457,7 @@
     pointer-events: none;
     display: none;
   }
-  #bguide.on { display: block; }
+  /* (not shown any more - its clock still drives the dial) */
   #bguide > div, #bguide > svg, #bguide > div > div {
     position: absolute;
     left: 0;
@@ -1489,25 +1489,30 @@
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
   }
+  #viewfinder { --vk: 0.7; }
   #viewfinder.on { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s; }
-  /* each corner comes in from outside - up/down and sideways - onto its
-     spot (--vx/--vy: its way out, see placeViewfinder) */
+  /* each corner comes in from off screen - from its own corner of the
+     viewport (the top ones from above, the bottom ones from below) - onto
+     its spot (--vx/--vy: its way out, see placeViewfinder) */
   #viewfinder > .vf-corner {
     position: absolute;
     left: 0;
     top: 0;
     overflow: visible;
     translate: var(--vx) var(--vy);
-    transition: translate 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+    transition: translate 0.7s cubic-bezier(0.2, 0.7, 0.3, 1), scale 0.7s cubic-bezier(0.2, 0.7, 0.3, 1);
     will-change: translate;
   }
   #viewfinder.on > svg { translate: 0 0; }
-  /* WATCH! hovered: the frame opens out a little, a beat late as the
-     dashed rect's ends get there - and stays, framing it */
-  #viewfinder.pushed { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s; }
-  /* (each corner pushed straight out - up/down and sideways, same size -
-     to run parallel to the dashed rect the calle's width outside it) */
+  /* WATCH! hovered: the frame closes in to a square round the athletes'
+     circle - and stays, blended over the video */
+  #viewfinder.pushed { opacity: 1; visibility: visible; transition: opacity 0.3s ease, visibility 0s; mix-blend-mode: multiply; }
+  /* (each corner moved onto that square's corner, same size) */
   #viewfinder.pushed > svg { translate: var(--px) var(--py); }
+  /* (and a little smaller, each round its own vertex - square still) */
+  #viewfinder.pushed > .vf-corner, #viewfinder.leaving > .vf-corner { scale: var(--vk); }
+  /* (their line thickened back by as much, so it stays as thick) */
+  #viewfinder.pushed .vf-corner path, #viewfinder.leaving .vf-corner path { stroke-width: calc(var(--t) / var(--vk)); }
   /* square corners at rest; rounding off (to the dashed rect's parallel)
      as soon as anything starts to move them (d: the same commands both
      ways, the arc's radius from ~0 up) */
@@ -1516,9 +1521,10 @@
     stroke: #80dfff;
     stroke-linejoin: miter;
     d: var(--d0);
-    transition: d 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+    stroke-width: var(--t);
+    transition: d 0.5s cubic-bezier(0.2, 0.7, 0.3, 1), stroke-width 0.7s cubic-bezier(0.2, 0.7, 0.3, 1);
   }
-  #viewfinder.pushed .vf-corner path, #viewfinder.leaving .vf-corner path { d: var(--d1); }
+  #viewfinder.leaving .vf-corner path { d: var(--d1); }
   /* WATCH! clicked: the corners open out - away by --vd each way - till
      they're off the screen */
   #viewfinder.leaving { opacity: 1; visibility: visible; transition: none; }
@@ -1534,6 +1540,26 @@
      four-color bar on the right (just the colors). They come and go with it; WATCH! hovered they step aside
      for its texture */
   .vf-mark { position: absolute; left: 0; top: 0; overflow: visible; transition: opacity 0.3s ease; }
+  /* the target: grows in from nothing, turning once round as it does */
+  .vf-target {
+    scale: 0;
+    rotate: -360deg;
+    transition: opacity 0.3s ease, scale 0.7s cubic-bezier(0.2, 0.7, 0.3, 1), rotate 0.7s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  #viewfinder.on .vf-target { scale: 1; rotate: 0deg; }
+  /* the bar: its black (the bottom cell) shows up in its place and blinks
+     three times, then the rest unfolds upward from it, cell by cell */
+  .vf-bar rect { transform-box: fill-box; transform-origin: 50% 100%; }
+  #viewfinder.on .vf-bar rect:nth-child(4) { animation: vf-blink 0.6s steps(1, end) both; }
+  #viewfinder.on .vf-bar rect:nth-child(-n+3) { animation: vf-unfold 0.14s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+  #viewfinder.on .vf-bar rect:nth-child(3) { animation-delay: 0.6s; }
+  #viewfinder.on .vf-bar rect:nth-child(2) { animation-delay: 0.74s; }
+  #viewfinder.on .vf-bar rect:nth-child(1) { animation-delay: 0.88s; }
+  @keyframes vf-blink {
+    0%, 33.33%, 66.67%, 100% { opacity: 1; }
+    16.67%, 50%, 83.33% { opacity: 0; }
+  }
+  @keyframes vf-unfold { from { scale: 1 0; } to { scale: 1 1; } }
   #viewfinder.pushed .vf-mark, #viewfinder.leaving .vf-mark { opacity: 0; }
   /* the hover's text texture, outside the dashed square: rows of "DIEGO
      TAVELLA | EDITOR + MOTION GPX" at 30 degrees, big, every other row sliding
@@ -1553,12 +1579,10 @@
   .gtex.on { display: block; }
   #gtex { --c: #a9e9ff; font-size: 150px; }
   #gtex .gtex-row { letter-spacing: 0.08em; }
-  /* WATCH!'s: "VIDEOS", inside the botonera's dashed rect, beside the
-     square - very light magenta, lighter than its line */
-  #gtex-w { --c: #ffe5f9; font-size: 26px; }
-  /* the back arrow's: "HOME", outside the botonera's outline, the same
-     magenta, a little bigger */
-  #gtex-h { --c: #ffe5f9; font-size: 34px; }
+  /* the back arrow's: "HOME", outside the botonera's outline, in the
+     arrow's magenta at 35% on the white, a little bigger */
+  #gtex-h { --c: color-mix(in srgb, #ff4fd8 35%, #fff); font-size: 34px; }
+  #gtex-h .gtex-row { letter-spacing: 0.04em; }
   /* the botonera's (desktop, a number hovered): its number and title, in
      white ultra light, on the cyan only - kept in the stage just over the
      cyan shape, so everything else on it stays on top */
@@ -1610,7 +1634,7 @@
     white-space: nowrap;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: 700;
-    font-size: inherit; /* (the texture's own - see #gtex, #gtex-w) */
+    font-size: inherit; /* (the texture's own - see #gtex, #gtex-h) */
     letter-spacing: 0.12em;
     line-height: 1;
   }
@@ -1837,6 +1861,28 @@
     opacity: 0;
     pointer-events: none;
   }
+  /* the legal: white, tiny, centered at the bottom of every video - up
+     over the controls bar while it shows */
+  .vc-legal {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: clamp(6px, 0.6cqw, 10px);
+    z-index: 5;
+    padding: 0 16px;
+    text-align: center;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: clamp(16px, 1.24cqw, 20px);
+    letter-spacing: 0.02em;
+    color: #fff;
+    opacity: 0.8;
+    pointer-events: none;
+    user-select: none;
+    transition: transform 0.3s ease;
+  }
+  .video-controls:not(.idle) ~ .vc-legal {
+    transform: translateY(calc(-1 * (clamp(28px, 2.8cqw, 40px) + 2 * clamp(6px, 0.7cqw, 10px))));
+  }
   .vc-playpause {
     flex: 0 0 auto;
     width: clamp(28px, 2.8cqw, 40px);
@@ -2029,7 +2075,6 @@
     </div>
     <div class="gtex" id="gtex" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
     <div class="gtex" id="gtex-h" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
-    <div class="gtex" id="gtex-w" aria-hidden="true"><div class="gtex-mask"><div class="gtex-rot"><div class="gtex-in"><div class="gtex-layer"></div></div><div class="gtex-in"><div class="gtex-layer"></div></div></div></div></div>
     <div id="wguide" aria-hidden="true"><svg id="wg-l"><path/></svg><svg id="wg-r"><path/></svg><div id="wg-tl"><div class="g-dash"></div></div><div id="wg-bl"><div class="g-dash"></div></div><div id="wg-tr"><div class="g-dash"></div></div><div id="wg-br"><div class="g-dash"></div></div></div>
     <div id="guide" aria-hidden="true"><div id="g-top"><div class="g-dash"></div></div><svg id="g-tr"><path/></svg><div id="g-right"><div class="g-dash"></div></div><svg id="g-br"><path/></svg><div id="g-bottom"><div class="g-dash"></div></div><svg id="g-bl"><path/></svg><div id="g-left"><div class="g-dash"></div></div><svg id="g-tl"><path/></svg></div>
     <div id="viewfinder" aria-hidden="true"><svg class="vf-corner"><path/></svg><svg class="vf-corner"><path/></svg><svg class="vf-corner"><path/></svg><svg class="vf-corner"><path/></svg></div>
@@ -2063,6 +2108,7 @@
           </div>
         </div>
       </div>
+      <div class="vc-legal">All content, trademarks and logos are the property of their respective owners. Shown for portfolio purposes only.</div>
     </div>
   </div>
   <div id="gate">
@@ -4443,7 +4489,7 @@
       });
       dialHomeEl = document.createElement('div');
       dialHomeEl.id = 'bot-dial-home';
-      dialHomeEl.textContent = dialHomeEl.dataset.t = 'HOME';
+      dialHomeEl.textContent = dialHomeEl.dataset.t = '<< HOME';
       botoneraEl.appendChild(dialHomeEl);
       dialBarEl = document.createElement('div');
       dialBarEl.className = 'bot-bar';
@@ -4501,7 +4547,7 @@
       const x = 960 + (bar.toX - 960) * k - botScroll;
       bar.el.style.translate = botScroll ? `${-botScroll}px 0` : '';
       const lit = d > 0 && x < fr;
-      bar.el.style.background = lit ? '#ff4fd8' : '';
+      bar.el.style.background = lit ? '#000' : '';
       bar.el.style.opacity = lit ? '1' : '0.6';
     });
     // the middle bar (the plus, outside the clipped row): along with them,
@@ -4512,7 +4558,7 @@
     dialHomeEl.style.transform = `translate(${homeL}px, ${CY - 23.4}px)`;
     const hbx = inR - botScroll;
     dialBarEl.style.transform = barAt(hbx);
-    dialBarEl.style.background = hbx < fr ? '#ff4fd8' : '';
+    dialBarEl.style.background = hbx < fr ? '#000' : '';
     dialBarEl.style.opacity = hbx < fr ? '1' : '';
     // nothing past the brackets (their padding in)
     botoneraEl.style.clipPath = d > 0 ? `path('M${wl},${CY - 200} H${wr} V${CY + 200} H${wl} Z')` : '';
@@ -5316,10 +5362,6 @@
   }
   const logoTex = makeTex(document.getElementById('gtex'),
     'DIEGO TAVELLA <i class="gtex-bar"></i> EDITOR + MOTION GPX<i class="gtex-dot"></i>');
-  const watchTex = makeTex(document.getElementById('gtex-w'), 'VIDEOS<i class="gtex-dot"></i>', 2, false, () => {
-    const b = olBox(STATES[BOTONERA]);
-    return { x: b.x0, y: b.y0, w: b.x1 - b.x0, h: b.y1 - b.y0 };
-  });
   // --- the botonera's texture (desktop): the hovered number's "NN TITLE",
   // on the hueco, around the whole botonera (TEX_PAD clear of its
   // brackets). Moving from one number to the next just swaps the words;
@@ -5409,7 +5451,6 @@
   const wgStrips = ['wg-tl', 'wg-bl', 'wg-tr', 'wg-br'].map((id) => document.getElementById(id));
   const WG_IN_MS = 520, WG_OUT_MS = 420;
   let wg = null; // geometry, see placeWGuide
-  let wgCur = null; // its ends right now (see drawWGuide)
   let wgP = 0, wgDir = 0, wgHover = false, wgHold = false, wgRaf = 0, wgLast = 0, wgDrawn = -1;
   // a state's outline outer box, as setState snaps it
   function olBox(st) {
@@ -5445,23 +5486,8 @@
     wg = { sq, b, ro, L };
     wgDrawn = -1;
     drawWGuide();
-    watchTex.resized();
-    clipWatchTex();
     placeViewfinder();
     placeBGuide();
-  }
-  // WATCH!'s texture: only inside the botonera's dashed rect and outside
-  // the outline (the square, then the widening one), TEX_PAD clear of both
-  // - two bands, one each side
-  function clipWatchTex() {
-    if (!wg) return;
-    const b = wg.b, ol = lastOl || wg.sq, q = TEX_PAD;
-    const y0 = b.y0 + q, y1 = b.y1 - q;
-    // (its outer ends: where the dashed rect's are right now)
-    const lx = wgCur ? wgCur.lx : b.x0, rx = wgCur ? wgCur.rx : b.x1;
-    const band = (x0, x1) => (x1 > x0 ? `M${x0},${y0} H${x1} V${y1} H${x0} Z ` : '');
-    const d = band(lx + q, ol.x0 - q) + band(ol.x1 + q, rx - q);
-    watchTex.el.style.clipPath = `path('${d || 'M0,0 Z'}')`;
   }
   function drawWGuide() {
     if (!wg) return;
@@ -5471,9 +5497,6 @@
     wgDrawn = e;
     const { sq, b, ro, L } = wg;
     const lx = sq.x0 + (b.x0 - sq.x0) * e, rx = sq.x1 + (b.x1 - sq.x1) * e;
-    wgCur = { lx, rx };
-    // the texture kept inside it as it opens
-    if (watchTex.active()) clipWatchTex();
     wgL.style.transform = `translate(${lx}px, ${b.y0}px)`;
     wgR.style.transform = `translate(${rx - ro}px, ${b.y0}px)`;
     // each line: a window from its end to (past) the square, the dashes
@@ -5515,13 +5538,10 @@
     // cut away inside the square's outline
     if (on && lastOl) wgEl.style.clipPath = outsideOf(lastOl);
     kickWGuide();
-    if (on) { clipWatchTex(); watchTex.show(true); }
-    else if (!wgHold) watchTex.show(false);
   }
   // the square -> botonera move: inside the widening outline, cut away
   function clipWGuide() {
     if (wgEl.classList.contains('on') && lastOl) wgEl.style.clipPath = outsideOf(lastOl);
-    if (watchTex.active()) clipWatchTex();
   }
   function dropWGuide() {
     wgHold = false;
@@ -5530,7 +5550,6 @@
     wgP = 0;
     if (wgRaf) { cancelAnimationFrame(wgRaf); wgRaf = 0; }
     drawWGuide();
-    watchTex.show(false);
   }
   // (watchOpen may not be declared yet when this first runs)
   function isWatchOpen() { try { return watchOpen; } catch (e) { return false; } }
@@ -5637,7 +5656,10 @@
   // --- the viewfinder (see #viewfinder): the botonera's outline corners,
   // the arc and VF_LEG of each side
   const vfEl = document.getElementById('viewfinder');
-  const VF_LEG = 18, VF_FROM = 70; // its sides' length; how far out they come in from
+  const VF_LEG = 18; // its sides' length
+  // the athletes' circle of ticks, in the separator file's px (at its
+  // biggest), and the room left round it by the frame on WATCH! hover
+  const VF_CIRCLE = { x: 544, y: 486, r: 306 }, VF_CIRCLE_PAD = -30;
   function placeViewfinder() {
     if (!canHover || TOUCH) return;
     const b = olBox(STATES[BOTONERA]);
@@ -5646,6 +5668,15 @@
     // (same center, the calle's width out) when WATCH! pushes them there -
     // at rest they keep it, just sitting on the botonera's corners
     const t = T, h2 = t / 2, rc = b.ro + TEX_PAD + h2, ro = rc + h2, n = ro + VF_LEG;
+    // the square framing the athletes' circle: the separator covers the
+    // square's hueco (see setState), lifted with the WATCH! panel
+    const sq = STATES[SQUARE], sk = Math.max(sq.w / 1090, sq.h / 972);
+    const fcx = CX + (VF_CIRCLE.x - 1090 / 2) * sk;
+    const fcy = (sq.cy ?? CY) + (VF_CIRCLE.y - 972 / 2) * sk - (WATCH_PANEL_H + sq.gap) / 2;
+    const fs = VF_CIRCLE.r * sk + VF_CIRCLE_PAD;
+    // the viewport's edges, in stage px
+    const sc = stageScale(), ox = (viewport.clientWidth - 1920 * sc) / 2, oy = (viewport.clientHeight - STAGE_H * sc) / 2;
+    const vpL = -ox / sc, vpR = (viewport.clientWidth - ox) / sc, vpT = -oy / sc, vpB = (viewport.clientHeight - oy) / sc;
     // each corner drawn in its own n x n box, the line T wide down the
     // middle of where the outline will run
     // (each as a function of its arc's radius r: r = rc rounded, ~0 square
@@ -5666,20 +5697,24 @@
       svg.firstChild.style.setProperty('--d0', `path("${d(0.01)}")`);
       svg.firstChild.style.setProperty('--d1', `path("${d(rc)}")`);
       svg.firstChild.setAttribute('stroke-width', t);
-      svg.style.setProperty('--vx', (i === 0 || i === 3 ? -VF_FROM : VF_FROM) + 'px');
-      svg.style.setProperty('--vy', (i < 2 ? -VF_FROM : VF_FROM) + 'px');
-      // WATCH!'s push: out until its arc shares the dashed rect's center
-      const left = i === 0 || i === 3, top = i < 2, m = ro - b.ro;
-      svg.style.setProperty('--px', (left ? -m : m) + 'px');
-      svg.style.setProperty('--py', (top ? -m : m) + 'px');
+      // (its way in: from its corner of the viewport, just off it)
+      const left0 = i === 0 || i === 3, top0 = i < 2;
+      svg.style.setProperty('--vx', (left0 ? vpL - n - x : vpR - x) + 'px');
+      svg.style.setProperty('--vy', (top0 ? vpT - n - y : vpB - y) + 'px');
+      // WATCH! hovered: they close in to a square framing the video's
+      // circle (see VF_CIRCLE)
+      const left = i === 0 || i === 3, top = i < 2;
+      svg.style.transformOrigin = `${left ? 0 : 100}% ${top ? 0 : 100}%`;
+      svg.style.setProperty('--px', ((left ? fcx - fs : fcx + fs - n) - x) + 'px');
+      svg.style.setProperty('--py', ((top ? fcy - fs : fcy + fs - n) - y) + 'px');
     });
     // WATCH! clicked (see leaveViewfinder): out far enough to clear the
     // viewport on every side
     const m = ro - b.ro;
     const L = b.x0 - m, R = b.x1 + m, Tp = b.y0 - m, B = b.y1 + m; // the pushed frame's outer box
-    const sc = stageScale(), ox = (viewport.clientWidth - 1920 * sc) / 2, oy = (viewport.clientHeight - STAGE_H * sc) / 2;
-    const vd = Math.max(L - (-ox / sc), (viewport.clientWidth - ox) / sc - R, Tp - (-oy / sc), (viewport.clientHeight - oy) / sc - B) + n + 10;
+    const vd = Math.max(L - vpL, vpR - R, Tp - vpT, vpB - B) + n + 10;
     vfEl.style.setProperty('--vd', vd + 'px');
+    vfEl.style.setProperty('--t', t + 'px');
     // the print marks: on the arms' center lines, at rest
     placeMarks(b.x0 + h2, b.x1 - h2, t * 0.5);
     vfEl.querySelectorAll('.vf-corner').forEach((svg, i) => {
@@ -5720,8 +5755,11 @@
     const barEl = vfEl.querySelector('.vf-bar');
     // (their lines as thick as the viewfinder's)
     vfEl.querySelectorAll('.vf-mark [stroke]').forEach((el) => el.setAttribute('stroke-width', lw));
-    t1.style.transform = `translate(${xL - e}px, ${CY - e}px)`;
-    barEl.style.transform = `translate(${xR - VF_BAR_CELL / 2}px, ${CY - 2 * VF_BAR_CELL}px)`;
+    // (by left/top: the target's scale and turn are round its own center)
+    t1.style.left = (xL - e) + 'px';
+    t1.style.top = (CY - e) + 'px';
+    barEl.style.left = (xR - VF_BAR_CELL / 2) + 'px';
+    barEl.style.top = (CY - 2 * VF_BAR_CELL) + 'px';
   }
   function leaveViewfinder() {
     if (!canHover || TOUCH || !vfEl.classList.contains('pushed')) return;
@@ -5738,7 +5776,7 @@
     if (vfEl.classList.contains('leaving')) return; // (see leaveViewfinder)
     const at = canHover && !TOUCH && current === SQUARE && !animating && !wgHold;
     vfEl.classList.toggle('on', at && !wgHover);
-    // WATCH! hovered: its dashed rect nudges them out a little - framing it
+    // WATCH! hovered: they close in round the athletes' circle
     vfEl.classList.toggle('pushed', at && wgHover);
   }
 
@@ -5753,7 +5791,7 @@
   ['bg-t', 'bg-tr', 'bg-r', 'bg-br', 'bg-b', 'bg-bl', 'bg-l', 'bg-tl'].forEach((id) => { bgEls[id] = document.getElementById(id); });
   const BG_IN_MS = 560, BG_OUT_MS = 460;
   // its texture: "HOME", everywhere outside the botonera's outline
-  const homeTex = makeTex(document.getElementById('gtex-h'), 'HOME<i class="gtex-dot"></i>', 2);
+  const homeTex = makeTex(document.getElementById('gtex-h'), 'HOME<i class="gtex-dot"></i>', 1.5);
   const showHomeTex = (on) => homeTex.show(on);
 
   let bg = null;
